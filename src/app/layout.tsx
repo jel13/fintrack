@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster"; // Import Toaster
+// import { AppDataProvider } from "@/context/AppDataContext"; // Example context provider
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -26,8 +27,11 @@ export default function RootLayout({
           inter.variable
         )}
       >
-        {children}
-        <Toaster /> {/* Add Toaster here */}
+        {/* Wrap children potentially with Context Providers if needed later */}
+        {/* <AppDataProvider> */}
+            {children}
+            <Toaster /> {/* Add Toaster here */}
+        {/* </AppDataProvider> */}
       </body>
     </html>
   );

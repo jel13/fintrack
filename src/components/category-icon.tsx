@@ -1,43 +1,47 @@
 "use client";
 
 import type { FC } from 'react';
-import { ShoppingCart, Home, Utensils, Car, Shirt, Gift, HeartPulse, Plane, HelpCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import type { Category } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface CategoryIconProps {
-  categoryValue: string;
+  categoryValue?: string; // Now expects category ID or icon name string
   className?: string;
+  iconName?: string; // Allow passing icon name directly
+  fallbackIcon?: keyof typeof LucideIcons; // Specify a fallback icon name
 }
 
-export const categories: Category[] = [
-  { value: 'groceries', label: 'Groceries', icon: ShoppingCart },
-  { value: 'housing', label: 'Housing', icon: Home },
-  { value: 'food', label: 'Food & Dining', icon: Utensils },
-  { value: 'transport', label: 'Transport', icon: Car },
-  { value: 'clothing', label: 'Clothing', icon: Shirt },
-  { value: 'gifts', label: 'Gifts', icon: Gift },
-  { value: 'health', label: 'Health', icon: HeartPulse },
-  { value: 'travel', label: 'Travel', icon: Plane },
-  { value: 'income', label: 'Income', icon: TrendingUp }, // For income type
-  { value: 'other_expense', label: 'Other Expense', icon: TrendingDown }, // Default expense
-  { value: 'other', label: 'Other', icon: HelpCircle },
-];
-
-export const getCategoryByValue = (value: string): Category | undefined => {
-  return categories.find(cat => cat.value === value);
-}
-
-export const getCategoryIcon = (categoryValue: string): React.ComponentType<{ className?: string }> => {
-  const category = getCategoryByValue(categoryValue);
-  return category ? category.icon : HelpCircle; // Default icon
+// Function to get the Lucide icon component dynamically
+export const getCategoryIconComponent = (iconName?: string): React.ComponentType<LucideIcons.LucideProps> => {
+    if (!iconName || !(iconName in LucideIcons)) {
+        return LucideIcons.HelpCircle; // Default fallback
+    }
+    // Type assertion needed here because TypeScript can't guarantee the string maps to a valid key
+    return LucideIcons[iconName as keyof typeof LucideIcons] as React.ComponentType<LucideIcons.LucideProps>;
 };
 
-const CategoryIcon: FC<CategoryIconProps> = ({ categoryValue, className }) => {
-  const IconComponent = getCategoryIcon(categoryValue);
+// This function is likely less useful now if categories are managed dynamically
+// export const getCategoryByValue = (value: string, categories: Category[]): Category | undefined => {
+//   return categories.find(cat => cat.id === value);
+// }
+
+// Helper to get icon name from category ID (requires passing categories array)
+export const getIconNameFromCategoryId = (categoryId: string, categories: Category[]): string | undefined => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category?.icon;
+}
+
+const CategoryIcon: FC<CategoryIconProps> = ({ categoryValue, iconName: directIconName, className, fallbackIcon = 'HelpCircle' }) => {
+  const iconNameToUse = directIconName ?? categoryValue; // Use direct name if provided, else assume categoryValue is icon name
+  const IconComponent = getCategoryIconComponent(iconNameToUse ?? fallbackIcon);
   return <IconComponent className={cn("h-5 w-5", className)} />;
 };
 
 export default CategoryIcon;
 
-// Helper function for cn if not globally available
-const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(' ');
+// // Old categories definition - remove or keep for reference
+// export const categories_old: Category[] = [
+//   { value: 'groceries', label: 'Groceries', icon: LucideIcons.ShoppingCart },
+//   // ... other categories
+// ];

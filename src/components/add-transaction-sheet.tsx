@@ -42,15 +42,15 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import type { Transaction, TransactionType } from "@/types";
-import { categories, getCategoryByValue } from "@/components/category-icon";
+import type { Transaction, TransactionType, Category } from "@/types";
+import { getCategoryIconComponent } from '@/components/category-icon'; // Use new CategoryIcon logic
 
 const formSchema = z.object({
   type: z.enum(["income", "expense"]),
   amount: z.coerce.number().positive("Amount must be positive"),
-  category: z.string().min(1, "Category is required"),
+  category: z.string().min(1, "Category is required"), // Category ID
   date: z.date(),
-  description: z.string().optional(),
+  description: z.string().max(100, "Description max 100 chars").optional(), // Optional description
 });
 
 type TransactionFormValues = z.infer<typeof formSchema>;
@@ -59,9 +59,10 @@ interface AddTransactionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  categories: Category[]; // Pass full categories list
 }
 
-export function AddTransactionSheet({ open, onOpenChange, onAddTransaction }: AddTransactionSheetProps) {
+export function AddTransactionSheet({ open, onOpenChange, onAddTransaction, categories }: AddTransactionSheetProps) {
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -76,10 +77,11 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction }: Ad
   const transactionType = form.watch("type");
 
   const onSubmit = (values: TransactionFormValues) => {
+    // Ensure category is 'income' if type is income
+    const finalCategory = values.type === 'income' ? 'income' : values.category;
     onAddTransaction({
         ...values,
-        // Ensure category matches selected type or defaults if needed
-        category: values.type === 'income' ? 'income' : (values.category || 'other_expense'),
+        category: finalCategory,
     });
     form.reset(); // Reset form after submission
     onOpenChange(false); // Close sheet after submission
@@ -88,18 +90,18 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction }: Ad
   // Filter categories based on selected transaction type
   const filteredCategories = React.useMemo(() => {
     if (transactionType === 'income') {
-      return categories.filter(cat => cat.value === 'income');
+      return categories.filter(cat => cat.id === 'income');
     }
-    // Exclude 'income' category for expenses
-    return categories.filter(cat => cat.value !== 'income');
-  }, [transactionType]);
+    // Exclude 'income' category for expenses and exclude parent categories
+    return categories.filter(cat => cat.id !== 'income' && !categories.some(c => c.parentId === cat.id));
+  }, [transactionType, categories]);
 
   // Reset category if type changes and current category is not valid
   React.useEffect(() => {
     if (transactionType === 'income' && form.getValues('category') !== 'income') {
       form.setValue('category', 'income');
     } else if (transactionType === 'expense' && form.getValues('category') === 'income') {
-      form.setValue('category', ''); // Reset or set to a default expense category
+      form.setValue('category', ''); // Reset or set to a default expense category like 'other_expense'
     }
   }, [transactionType, form]);
 
@@ -110,11 +112,12 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction }: Ad
         <SheetHeader className="mb-4 text-left">
           <SheetTitle>Add Transaction</SheetTitle>
           <SheetDescription>
-            Log a new income or expense item.
+            Log a new income or expense item. Description is optional.
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-grow overflow-y-auto pr-2">
+          {/* Use ID add-transaction-form for the submit button */}
+          <form id="add-transaction-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-grow overflow-y-auto pr-2">
             <FormField
               control={form.control}
               name="type"
@@ -153,7 +156,7 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction }: Ad
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="0.00" {...field} />
+                    <Input type="number" placeholder="0.00" {...field} step="0.01" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -174,9 +177,9 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction }: Ad
                     </FormControl>
                     <SelectContent>
                       {filteredCategories.map((category) => {
-                         const Icon = category.icon;
+                         const Icon = getCategoryIconComponent(category.icon);
                          return (
-                           <SelectItem key={category.value} value={category.value}>
+                           <SelectItem key={category.id} value={category.id}>
                              <div className="flex items-center gap-2">
                                <Icon className="h-4 w-4 text-muted-foreground" />
                                <span>{category.label}</span>
@@ -184,6 +187,9 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction }: Ad
                            </SelectItem>
                          );
                        })}
+                        {transactionType === 'expense' && filteredCategories.length === 0 && (
+                            <SelectItem value="no-cat" disabled>No expense categories available</SelectItem>
+                        )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -237,7 +243,7 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction }: Ad
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Add a note..." {...field} />
+                      <Textarea placeholder="Add a note (e.g., Lunch with colleagues)" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -250,7 +256,8 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction }: Ad
             <SheetClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>
             </SheetClose>
-            <Button type="submit" form="add-transaction-form" onClick={form.handleSubmit(onSubmit)}>Save Transaction</Button>
+            {/* Button triggers the form submission */}
+            <Button type="submit" form="add-transaction-form">Save Transaction</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

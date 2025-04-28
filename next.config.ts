@@ -18,6 +18,25 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+   async redirects() {
+    return [
+      {
+        source: '/categories',
+        destination: '/categories', // Route to the actual categories page
+        permanent: true, // Or false if you might change it later
+      },
+        {
+        source: '/saving-goals',
+        destination: '/saving-goals', // Route to the actual saving goals page
+        permanent: true,
+      },
+       {
+        source: '/learn/budgeting-guide',
+        destination: '/learn/budgeting-guide', // Route to the guide page
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
