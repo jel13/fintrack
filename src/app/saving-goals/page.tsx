@@ -1,8 +1,9 @@
+
 "use client";
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank } from "lucide-react";
+import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,36 +49,50 @@ export default function SavingGoalsPage() {
         }
     }, [appData, isLoaded]);
 
+    const totalSavingsBudget = React.useMemo(() => {
+        if (!isLoaded) return 0; // Don't calculate until loaded
+        const currentMonth = format(new Date(), 'yyyy-MM');
+        const savingsBudget = appData.budgets.find(b => b.category === 'savings' && b.month === currentMonth);
+        return savingsBudget?.limit ?? 0;
+    }, [appData.budgets, isLoaded]); // Depend on isLoaded
+
+     const totalAllocatedPercentage = React.useMemo(() => {
+         if (!isLoaded) return 0; // Don't calculate until loaded
+         return appData.savingGoals.reduce((sum, goal) => sum + (goal.percentageAllocation ?? 0), 0);
+     }, [appData.savingGoals, isLoaded]); // Depend on isLoaded
+
+
     const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id' | 'savedAmount'> & { id?: string }) => {
         setAppData(prev => {
             const goals = [...prev.savingGoals];
+            const existingPercentage = existingGoal ? (existingGoal.percentageAllocation ?? 0) : 0;
+            const newPercentage = goalData.percentageAllocation ?? 0;
+            const currentTotalAllocated = prev.savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
+            const totalWithoutCurrent = currentTotalAllocated - existingPercentage;
+
+            // Prevent setting negative percentage
+            if (newPercentage < 0) {
+                 toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" });
+                 return prev; // Don't update state
+            }
+
+             // Prevent total allocation exceeding 100%
+             if (totalWithoutCurrent + newPercentage > 100) {
+                 const maxAllowed = 100 - totalWithoutCurrent;
+                 toast({ title: "Allocation Limit Exceeded", description: `Cannot allocate ${newPercentage}%. Total allocation would exceed 100% of savings budget. Available: ${maxAllowed.toFixed(1)}%`, variant: "destructive", duration: 5000 });
+                 goalData.percentageAllocation = Math.max(0, maxAllowed); // Cap at max available or 0 if negative
+            }
+
+
             if (goalData.id) {
                 // Update existing goal
                 const index = goals.findIndex(g => g.id === goalData.id);
                 if (index > -1) {
-                     // Prevent setting negative percentage
-                     if (goalData.percentageAllocation !== undefined && goalData.percentageAllocation < 0) goalData.percentageAllocation = 0;
-                     // Prevent setting allocation > 100 when considering others
-                     const otherAllocated = goals.filter(g => g.id !== goalData.id).reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
-                     if (goalData.percentageAllocation !== undefined && (otherAllocated + goalData.percentageAllocation > 100)) {
-                          toast({ title: "Allocation Warning", description: `Cannot allocate ${goalData.percentageAllocation}%. Total allocation would exceed 100%. Available: ${(100 - otherAllocated).toFixed(1)}%`, variant: "destructive", duration: 5000 });
-                          goalData.percentageAllocation = Math.max(0, 100 - otherAllocated); // Cap at max available
-                     }
-
                     goals[index] = { ...goals[index], ...goalData };
                     toast({ title: "Goal Updated", description: `Saving goal "${goalData.name}" updated.` });
                 }
             } else {
                 // Add new goal
-                 // Prevent setting negative percentage
-                if (goalData.percentageAllocation !== undefined && goalData.percentageAllocation < 0) goalData.percentageAllocation = 0;
-                // Prevent setting allocation > 100 when considering others
-                const currentAllocated = goals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
-                 if (goalData.percentageAllocation !== undefined && (currentAllocated + goalData.percentageAllocation > 100)) {
-                      toast({ title: "Allocation Warning", description: `Cannot allocate ${goalData.percentageAllocation}%. Total allocation would exceed 100%. Available: ${(100 - currentAllocated).toFixed(1)}%`, variant: "destructive", duration: 5000 });
-                      goalData.percentageAllocation = Math.max(0, 100 - currentAllocated); // Cap at max available
-                 }
-
                 const newGoal: SavingGoal = {
                     ...goalData,
                     id: `goal-${Date.now().toString()}`,
@@ -109,18 +124,6 @@ export default function SavingGoalsPage() {
         setIsAddGoalDialogOpen(true);
     }
 
-    const totalSavingsBudget = React.useMemo(() => {
-        if (!isLoaded) return 0; // Don't calculate until loaded
-        const currentMonth = format(new Date(), 'yyyy-MM');
-        const savingsBudget = appData.budgets.find(b => b.category === 'savings' && b.month === currentMonth);
-        return savingsBudget?.limit ?? 0;
-    }, [appData.budgets, isLoaded]); // Depend on isLoaded
-
-     const totalAllocatedPercentage = React.useMemo(() => {
-         if (!isLoaded) return 0; // Don't calculate until loaded
-         return appData.savingGoals.reduce((sum, goal) => sum + (goal.percentageAllocation ?? 0), 0);
-     }, [appData.savingGoals, isLoaded]); // Depend on isLoaded
-
 
     return (
         <div className="flex flex-col h-screen p-4 bg-background">
@@ -138,14 +141,33 @@ export default function SavingGoalsPage() {
             </div>
 
             {/* Savings Budget Info */}
-             <Card className="mb-4 bg-primary/10 border-primary">
-                <CardContent className="p-3 text-sm text-primary"> {/* Adjusted text color */}
+             <Card className="mb-4 bg-accent/10 border-accent">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <Info className="h-5 w-5 text-accent" /> Monthly Savings Allocation
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0 text-sm text-accent flex flex-col gap-1">
                      {isLoaded ? (
                         <>
-                        <p>Monthly Savings Budget: <span className="font-semibold">{formatCurrency(totalSavingsBudget)}</span></p>
-                        <p>Total Goal Allocation: <span className="font-semibold">{totalAllocatedPercentage.toFixed(1)}%</span></p>
-                        {totalAllocatedPercentage > 100 && <p className="text-xs text-destructive font-semibold">Warning: Total allocation exceeds 100%!</p>}
-                        {totalSavingsBudget <= 0 && <p className="text-xs text-primary/80">Set a 'Savings' budget on the Budgets tab to allocate funds.</p>}
+                        <div className="flex justify-between">
+                            <span>Total Savings Budget:</span>
+                            <span className="font-semibold">{formatCurrency(totalSavingsBudget)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Allocated to Goals (%):</span>
+                            <span className="font-semibold">{totalAllocatedPercentage.toFixed(1)}%</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span>Allocated to Goals ($):</span>
+                            <span className="font-semibold">{formatCurrency(totalSavingsBudget * (totalAllocatedPercentage / 100))}</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span>Unallocated Savings ($):</span>
+                            <span className="font-semibold">{formatCurrency(totalSavingsBudget * (1 - totalAllocatedPercentage / 100))}</span>
+                        </div>
+                        {totalAllocatedPercentage > 100 && <p className="text-xs text-destructive font-semibold mt-1">Warning: Total goal allocation exceeds 100% of savings budget!</p>}
+                        {totalSavingsBudget <= 0 && <p className="text-xs text-accent/80 mt-1">Set a 'Savings' budget on the Budgets tab to allocate funds.</p>}
                         </>
                      ) : (
                          <p>Loading budget info...</p>
@@ -162,61 +184,65 @@ export default function SavingGoalsPage() {
                 ) : (
                     <div className="space-y-3">
                         {appData.savingGoals.length > 0 ? (
-                            appData.savingGoals.map(goal => (
-                                <Card key={goal.id} className="relative group/goal">
-                                    <CardHeader className="flex flex-row items-start justify-between pb-2 pr-12"> {/* Added padding-right */}
-                                        <div>
-                                            <CardTitle className="text-base">{goal.name}</CardTitle>
-                                            {goal.description && <CardDescription className="text-xs mt-1">{goal.description}</CardDescription>}
-                                        </div>
-                                        {/* Edit/Delete Buttons - Absolutely positioned */}
-                                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/goal:opacity-100 focus-within:opacity-100 transition-opacity">
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(goal)} aria-label={`Edit ${goal.name}`}>
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete ${goal.name}`}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                     </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This action cannot be undone. This will permanently delete the "{goal.name}" saving goal.
-                                                    </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction
-                                                        onClick={() => handleDeleteGoal(goal.id)}
-                                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                                        Delete Goal
-                                                    </AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                         <div className="flex justify-between text-xs mb-1 text-muted-foreground">
-                                             <span>Progress</span>
-                                             <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
-                                         </div>
-                                        <Progress value={(goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) : 0) * 100} className="h-2 [&>*]:bg-accent" />
-                                        {goal.percentageAllocation !== undefined && goal.percentageAllocation > 0 && (
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                Allocated: {goal.percentageAllocation}% of Savings Budget
-                                                {totalSavingsBudget > 0 && ` (~${formatCurrency((goal.percentageAllocation / 100) * totalSavingsBudget)}/mo)`}
-                                            </p>
-                                        )}
-                                         {goal.targetDate && (
-                                             <p className="text-xs text-muted-foreground mt-1">Target Date: {format(goal.targetDate, 'MMM yyyy')}</p>
-                                         )}
-                                    </CardContent>
-                                </Card>
-                            ))
+                            appData.savingGoals.map(goal => {
+                                 const progressValue = (goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) : 0) * 100;
+                                 const monthlyContribution = (goal.percentageAllocation ?? 0) / 100 * totalSavingsBudget;
+                                 return (
+                                    <Card key={goal.id} className="relative group/goal">
+                                        <CardHeader className="flex flex-row items-start justify-between pb-2 pr-12"> {/* Added padding-right */}
+                                            <div>
+                                                <CardTitle className="text-base">{goal.name}</CardTitle>
+                                                {goal.description && <CardDescription className="text-xs mt-1">{goal.description}</CardDescription>}
+                                            </div>
+                                            {/* Edit/Delete Buttons - Absolutely positioned */}
+                                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/goal:opacity-100 focus-within:opacity-100 transition-opacity">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(goal)} aria-label={`Edit ${goal.name}`}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete ${goal.name}`}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This action cannot be undone. This will permanently delete the "{goal.name}" saving goal.
+                                                        </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            onClick={() => handleDeleteGoal(goal.id)}
+                                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                            Delete Goal
+                                                        </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="flex justify-between text-xs mb-1 text-muted-foreground">
+                                                <span>Progress ({progressValue.toFixed(1)}%)</span>
+                                                <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
+                                            </div>
+                                            <Progress value={progressValue} className="h-2 [&>*]:bg-accent" />
+                                            {goal.percentageAllocation !== undefined && goal.percentageAllocation > 0 && (
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Allocation: {goal.percentageAllocation}% of Savings
+                                                    {totalSavingsBudget > 0 && ` (${formatCurrency(monthlyContribution)}/mo)`}
+                                                </p>
+                                            )}
+                                            {goal.targetDate && (
+                                                <p className="text-xs text-muted-foreground mt-1">Target Date: {format(goal.targetDate, 'MMM yyyy')}</p>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })
                         ) : (
                              <div className="text-center text-muted-foreground py-10">
                                  <PiggyBank className="mx-auto h-12 w-12 mb-2" />
@@ -237,7 +263,11 @@ export default function SavingGoalsPage() {
                 }}
                 onSaveGoal={handleAddOrUpdateGoal}
                 existingGoal={editingGoal}
-                totalAllocatedPercentage={totalAllocatedPercentage}
+                // Pass allocation already used by OTHER goals
+                totalAllocatedPercentage={existingGoal
+                    ? totalAllocatedPercentage - (existingGoal.percentageAllocation ?? 0)
+                    : totalAllocatedPercentage
+                }
                 savingsBudget={totalSavingsBudget}
             />
         </div>

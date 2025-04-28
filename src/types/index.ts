@@ -1,19 +1,21 @@
+
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
   id: string;
   type: TransactionType;
   amount: number;
-  category: string; // Corresponds to Category value/id
+  category: string; // Corresponds to Category id
   date: Date;
   description?: string;
 }
 
 export interface Budget {
   id: string;
-  category: string; // Corresponds to Category value/id
-  limit: number; // Monetary limit
-  percentage?: number; // Optional: Percentage limit (0-100)
+  category: string; // Corresponds to Category id
+  limit: number; // Monetary limit (calculated or fallback)
+  // Percentage is required for user-set expense budgets, optional (undefined) for auto-calculated Savings budget
+  percentage?: number;
   spent: number;
   month: string; // e.g., "2024-07"
 }

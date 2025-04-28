@@ -1,10 +1,11 @@
+
 "use client";
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Switch } from "@/components/ui/switch"
+import { Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +19,7 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription, // Added missing import
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,21 +34,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Budget, Category } from "@/types";
-import CategoryIcon, { getCategoryIconComponent } from '@/components/category-icon'; // Use new CategoryIcon
+import { getCategoryIconComponent } from '@/components/category-icon';
 import { Label } from "@/components/ui/label";
+import { formatCurrency } from "@/lib/utils"; // Use util function
 
-// Schema allows either limit or percentage, or both if they match income
+
+// Schema focuses on percentage input
 const formSchema = z.object({
   category: z.string().min(1, "Category is required"),
-  limit: z.coerce.number().nonnegative("Limit must be non-negative").optional(),
-  percentage: z.coerce.number().gte(0, "Percentage must be >= 0").lte(100, "Percentage must be <= 100").optional(),
-  isPercentageInput: z.boolean().default(false),
-}).refine(data => data.limit !== undefined || data.percentage !== undefined, {
-    message: "Please set either a monetary limit or a percentage",
-    path: ["limit"], // Attach error to one field for display
-}).refine(data => !(data.limit === 0 && data.percentage === 0), {
-    message: "Budget cannot be zero for both limit and percentage.",
-    path: ["limit"],
+  percentage: z.coerce.number()
+    .gte(0, "Percentage must be >= 0")
+    .lte(100, "Percentage must be <= 100")
+    .refine(val => val !== undefined && val > 0, "Percentage must be greater than 0"), // Ensure percentage is provided and > 0
 });
 
 
@@ -56,62 +54,48 @@ type BudgetFormValues = z.infer<typeof formSchema>;
 interface AddBudgetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddBudget: (budget: Omit<Budget, 'id' | 'spent' | 'month'>) => void;
+  onAddBudget: (budget: Omit<Budget, 'id' | 'spent' | 'month' | 'limit'>) => void; // Limit calculated later
   existingCategories: string[]; // Pass IDs of categories that already have budgets
   categories: Category[]; // Pass available spending categories
   monthlyIncome: number | null; // Pass income for calculations
+  totalAllocatedPercentage: number; // Pass current allocation total
 }
 
-export function AddBudgetDialog({ open, onOpenChange, onAddBudget, existingCategories, categories: availableCategories, monthlyIncome }: AddBudgetDialogProps) {
+export function AddBudgetDialog({ open, onOpenChange, onAddBudget, existingCategories, categories: availableCategories, monthlyIncome, totalAllocatedPercentage }: AddBudgetDialogProps) {
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       category: "",
-      limit: undefined,
       percentage: undefined,
-      isPercentageInput: false,
     },
   });
 
   const { watch, setValue } = form;
-  const isPercentageInput = watch('isPercentageInput');
-  const limitValue = watch('limit');
   const percentageValue = watch('percentage');
+  const selectedCategory = watch('category');
 
-  React.useEffect(() => {
-    if (monthlyIncome && monthlyIncome > 0) {
-      if (isPercentageInput && percentageValue !== undefined) {
-        const calculatedLimit = parseFloat(((percentageValue / 100) * monthlyIncome).toFixed(2));
-        setValue('limit', calculatedLimit, { shouldValidate: true });
-      } else if (!isPercentageInput && limitValue !== undefined) {
-        const calculatedPercentage = parseFloat(((limitValue / monthlyIncome) * 100).toFixed(1));
-         setValue('percentage', calculatedPercentage > 100 ? 100 : calculatedPercentage, { shouldValidate: true }); // Cap at 100%
-      }
-    } else {
-        // If no income, clear the derived value
-        if (isPercentageInput) setValue('limit', undefined);
-        else setValue('percentage', undefined);
-    }
-  }, [isPercentageInput, limitValue, percentageValue, monthlyIncome, setValue]);
+  // Calculate available percentage
+  const availablePercentage = Math.max(0, 100 - totalAllocatedPercentage);
 
-  // Clear the other field when switching input mode if income exists
-  React.useEffect(() => {
-      if(monthlyIncome && monthlyIncome > 0) {
-          if (isPercentageInput) {
-              setValue('limit', undefined);
-          } else {
-              setValue('percentage', undefined);
-          }
+  // Calculate monetary value based on percentage and income
+  const calculatedLimit = React.useMemo(() => {
+      if (monthlyIncome && monthlyIncome > 0 && percentageValue !== undefined) {
+          return parseFloat(((percentageValue / 100) * monthlyIncome).toFixed(2));
       }
-  }, [isPercentageInput, monthlyIncome, setValue]);
+      return 0;
+  }, [percentageValue, monthlyIncome]);
 
 
   const onSubmit = (values: BudgetFormValues) => {
+    // Validate against available percentage
+    if (values.percentage > availablePercentage) {
+         form.setError("percentage", { message: `Allocation exceeds 100%. Max available: ${availablePercentage.toFixed(1)}%` });
+         return;
+    }
+
     const finalValues = {
         category: values.category,
-        // Ensure values are numbers, default to 0 if undefined
-        limit: values.limit ?? 0,
-        percentage: values.percentage, // Keep undefined if not calculated/set
+        percentage: values.percentage,
     };
     onAddBudget(finalValues);
     form.reset();
@@ -129,7 +113,7 @@ export function AddBudgetDialog({ open, onOpenChange, onAddBudget, existingCateg
         <DialogHeader>
           <DialogTitle>Set Budget</DialogTitle>
           <DialogDescription>
-            Define a spending limit for a category this month. Input either a percentage or a fixed amount.
+             Define a spending limit by allocating a percentage of your income ({formatCurrency(monthlyIncome)}).
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -171,96 +155,59 @@ export function AddBudgetDialog({ open, onOpenChange, onAddBudget, existingCateg
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="isPercentageInput"
-              render={({ field }) => (
-                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Input Mode</FormLabel>
-                      <FormDescription>
-                         {field.value ? "Enter percentage of income" : "Enter fixed monetary amount"}
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={!monthlyIncome || monthlyIncome <= 0} // Disable switch if no income
-                      />
-                    </FormControl>
-                </FormItem>
-              )}
-              />
-
-            {isPercentageInput ? (
-                 <FormField
-                  control={form.control}
-                  name="percentage"
-                  render={({ field }) => (
+             <FormField
+                control={form.control}
+                name="percentage"
+                render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Percentage (%)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="e.g., 10" {...field} step="0.1" value={field.value ?? ''} disabled={!monthlyIncome || monthlyIncome <= 0}/>
-                      </FormControl>
-                       {monthlyIncome && monthlyIncome > 0 && field.value !== undefined && (
-                         <FormDescription>
-                           Calculated Limit: ${((field.value / 100) * monthlyIncome).toFixed(2)}
-                         </FormDescription>
-                       )}
-                       {!monthlyIncome || monthlyIncome <= 0 && (
-                           <FormDescription className="text-destructive">
-                                Set income first to use percentages.
-                           </FormDescription>
-                       )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-            ) : (
-                 <FormField
-                    control={form.control}
-                    name="limit"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Monthly Limit ($)</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="100.00" {...field} step="0.01" value={field.value ?? ''}/>
-                        </FormControl>
-                         {monthlyIncome && monthlyIncome > 0 && field.value !== undefined && field.value > 0 && (
-                             <FormDescription>
-                               Calculated Percentage: {((field.value / monthlyIncome) * 100).toFixed(1)}%
-                             </FormDescription>
-                         )}
-                        <FormMessage />
-                        </FormItem>
+                    <FormLabel>Percentage (%)</FormLabel>
+                    <FormControl>
+                        <Input
+                            type="number"
+                            placeholder={`e.g., 15 (Max ${availablePercentage.toFixed(1)}% available)`}
+                            {...field}
+                            step="0.1"
+                            max={availablePercentage} // Set max based on availability
+                            min={0}
+                            value={field.value ?? ''}
+                            disabled={!monthlyIncome || monthlyIncome <= 0} />
+                    </FormControl>
+                    {monthlyIncome && monthlyIncome > 0 && percentageValue !== undefined && (
+                        <FormDescription>
+                        Equivalent Amount: {formatCurrency(calculatedLimit)}
+                        </FormDescription>
                     )}
-                 />
-            )}
+                    {!monthlyIncome || monthlyIncome <= 0 && (
+                        <FormDescription className="text-destructive">
+                            Set income first to allocate percentages.
+                        </FormDescription>
+                    )}
+                     <FormMessage />
+                     {field.value !== undefined && field.value > availablePercentage && (
+                          <p className="text-sm font-medium text-destructive">
+                            Exceeds available percentage ({availablePercentage.toFixed(1)}%).
+                          </p>
+                      )}
+                    </FormItem>
+                )}
+                />
 
-             {/* Display calculated value (read-only) */}
-            {monthlyIncome && monthlyIncome > 0 && (
-                isPercentageInput && limitValue !== undefined ? (
-                <FormItem>
-                    <Label className="text-muted-foreground">Calculated Limit ($)</Label>
-                    <Input type="number" value={limitValue.toFixed(2)} readOnly disabled className="bg-muted/50" />
-                </FormItem>
-                ) : !isPercentageInput && percentageValue !== undefined ? (
-                 <FormItem>
-                    <Label className="text-muted-foreground">Calculated Percentage (%)</Label>
-                    <Input type="number" value={percentageValue.toFixed(1)} readOnly disabled className="bg-muted/50"/>
-                 </FormItem>
-                 ) : null
-            )}
+            {/* Display calculated monetary value */}
+             <FormItem>
+                <Label className="text-muted-foreground">Calculated Amount ($)</Label>
+                <Input type="text" value={formatCurrency(calculatedLimit)} readOnly disabled className="bg-muted/50" />
+                 <FormDescription>This amount is automatically calculated based on the percentage.</FormDescription>
+             </FormItem>
 
 
           </form>
         </Form>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={() => { form.reset(); onOpenChange(false); }}>Cancel</Button>
           <Button type="submit" form="add-budget-form">Save Budget</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+

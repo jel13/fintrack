@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -29,7 +30,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import type { SavingGoal } from "@/types";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils"; // Assuming formatCurrency is here
@@ -38,12 +38,18 @@ import { formatCurrency } from "@/lib/utils"; // Assuming formatCurrency is here
 const formSchema = z.object({
   name: z.string().min(1, "Goal name is required").max(50, "Name max 50 chars"),
   targetAmount: z.coerce.number().positive("Target amount must be positive"),
-  percentageAllocation: z.coerce.number().gte(0, "Percentage must be >= 0").lte(100, "Percentage must be <= 100").optional(),
+  percentageAllocation: z.coerce.number() // Percentage of SAVINGS budget
+    .gte(0, "Percentage must be >= 0")
+    .lte(100, "Percentage must be <= 100")
+    .optional(), // Make it optional initially, validation based on context
   targetDate: z.date().optional().nullable(),
   description: z.string().max(100, "Description max 100 chars").optional(),
   icon: z.string().optional(), // Assuming icon name string
-  allocatePercentage: z.boolean().default(false), // To control percentage input visibility
+}).refine(data => data.percentageAllocation !== undefined && data.percentageAllocation > 0, {
+    message: "Please allocate a percentage > 0", // Require percentage allocation
+    path: ["percentageAllocation"],
 });
+
 
 type GoalFormValues = z.infer<typeof formSchema>;
 
@@ -52,8 +58,8 @@ interface AddSavingGoalDialogProps {
   onOpenChange: (open: boolean) => void;
   onSaveGoal: (goal: Omit<SavingGoal, 'id' | 'savedAmount'> & { id?: string }) => void; // id is optional for create
   existingGoal: SavingGoal | null; // Pass goal data for editing
-  totalAllocatedPercentage: number;
-  savingsBudget: number;
+  totalAllocatedPercentage: number; // Percentage of *savings budget* already allocated to *other* goals
+  savingsBudget: number; // The total amount available in the savings budget this month
 }
 
 export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGoal, totalAllocatedPercentage, savingsBudget }: AddSavingGoalDialogProps) {
@@ -66,7 +72,6 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
         targetDate: existingGoal.targetDate,
         description: existingGoal.description,
         icon: existingGoal.icon,
-        allocatePercentage: !!existingGoal.percentageAllocation, // Set switch based on existing data
     } : {
       name: "",
       targetAmount: 0,
@@ -74,7 +79,6 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
       targetDate: null,
       description: "",
       icon: "",
-      allocatePercentage: false,
     },
   });
 
@@ -87,7 +91,6 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
             targetDate: existingGoal.targetDate,
             description: existingGoal.description,
             icon: existingGoal.icon,
-            allocatePercentage: !!existingGoal.percentageAllocation,
         } : {
             name: "",
             targetAmount: 0,
@@ -95,33 +98,37 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
             targetDate: null,
             description: "",
             icon: "",
-            allocatePercentage: false,
         });
     }, [open, existingGoal, form]);
 
   const { watch, setValue } = form;
-  const allocatePercentage = watch('allocatePercentage');
   const currentPercentage = watch('percentageAllocation') ?? 0;
+
+  // Calculate allocation available within the savings budget (considering other goals)
   const currentAllocatedWithoutThis = existingGoal
       ? totalAllocatedPercentage - (existingGoal.percentageAllocation ?? 0)
       : totalAllocatedPercentage;
   const maxAllowedPercentage = Math.max(0, 100 - currentAllocatedWithoutThis);
 
-  // Clear percentage if switch is off
-  React.useEffect(() => {
-      if (!allocatePercentage) {
-          setValue('percentageAllocation', undefined);
-      } else if (allocatePercentage && form.getValues('percentageAllocation') === undefined) {
-          // Optionally set a default when switched on, e.g., 0
-          // setValue('percentageAllocation', 0);
+  // Calculate the monetary amount this goal would receive based on the percentage and savings budget
+  const calculatedMonthlyContribution = React.useMemo(() => {
+      if (savingsBudget > 0 && currentPercentage > 0) {
+          return (currentPercentage / 100) * savingsBudget;
       }
-  }, [allocatePercentage, setValue, form]);
+      return 0;
+  }, [currentPercentage, savingsBudget]);
+
 
   const onSubmit = (values: GoalFormValues) => {
-    // Ensure percentage is undefined if switch is off
+     // Double-check allocation percentage against available
+     if (values.percentageAllocation && values.percentageAllocation > maxAllowedPercentage) {
+         form.setError("percentageAllocation", { message: `Allocation exceeds 100% of savings budget. Max available: ${maxAllowedPercentage.toFixed(1)}%` });
+         return;
+     }
+
     const dataToSave: Omit<SavingGoal, 'id' | 'savedAmount'> & { id?: string } = {
         ...values,
-        percentageAllocation: values.allocatePercentage ? values.percentageAllocation : undefined,
+        percentageAllocation: values.percentageAllocation, // Already validated > 0 by schema refine
     };
      if (existingGoal) {
       dataToSave.id = existingGoal.id;
@@ -136,7 +143,7 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
         <DialogHeader>
           <DialogTitle>{existingGoal ? "Edit Saving Goal" : "Add Saving Goal"}</DialogTitle>
           <DialogDescription>
-            {existingGoal ? "Update the details for your saving goal." : "Set up a new goal to save towards."}
+            {existingGoal ? "Update the details for your saving goal." : "Set up a new goal and allocate a percentage of your savings budget."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -162,70 +169,51 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
                 <FormItem>
                   <FormLabel>Target Amount ($)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="1000.00" {...field} step="0.01" />
+                    <Input type="number" placeholder="1000.00" {...field} step="0.01" min="0"/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="allocatePercentage"
-              render={({ field }) => (
-                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Allocate from Savings Budget?</FormLabel>
-                       <FormDescription>
-                         {field.value ? "Set % of savings budget" : "Allocate manually"}
-                      </FormDescription>
-                    </div>
+             <FormField
+                control={form.control}
+                name="percentageAllocation"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Allocation (% of Savings Budget)</FormLabel>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
+                    {/* Use spread, but ensure value is handled correctly for undefined */}
+                    <Input
+                        type="number"
+                        placeholder={`Max ${maxAllowedPercentage.toFixed(1)}% available`}
+                        {...field}
+                        value={field.value ?? ''} // Handle undefined for input value
+                        step="0.1"
+                        max={maxAllowedPercentage}
+                        min={0}
                         disabled={savingsBudget <= 0}
-                      />
+                    />
                     </FormControl>
+                    {savingsBudget > 0 && field.value !== undefined && (
+                        <FormDescription>
+                        Approx. {formatCurrency(calculatedMonthlyContribution)} per month from Savings.
+                        </FormDescription>
+                    )}
+                    {savingsBudget <= 0 && (
+                        <FormDescription className="text-destructive">
+                            Your monthly Savings budget is currently $0. Increase it on the Budgets tab to allocate funds here.
+                        </FormDescription>
+                    )}
+                    <FormMessage />
+                     {field.value !== undefined && field.value > maxAllowedPercentage && (
+                          <p className="text-sm font-medium text-destructive">
+                            Exceeds available savings allocation ({maxAllowedPercentage.toFixed(1)}%).
+                          </p>
+                      )}
                 </FormItem>
-              )}
-              />
-
-             {allocatePercentage && (
-                 <FormField
-                  control={form.control}
-                  name="percentageAllocation"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Percentage of Savings Budget (%)</FormLabel>
-                      <FormControl>
-                        {/* Use spread, but ensure value is handled correctly for undefined */}
-                        <Input
-                          type="number"
-                          placeholder={`Max ${maxAllowedPercentage.toFixed(1)}% available`}
-                          {...field}
-                          value={field.value ?? ''} // Handle undefined for input value
-                          step="0.1"
-                          max={maxAllowedPercentage}
-                          min={0}
-                          disabled={savingsBudget <= 0}
-                        />
-                      </FormControl>
-                       {savingsBudget > 0 && field.value !== undefined && (
-                           <FormDescription>
-                           Approx. {formatCurrency((field.value / 100) * savingsBudget)} per month.
-                           </FormDescription>
-                       )}
-                       {savingsBudget <= 0 && (
-                           <FormDescription className="text-destructive">
-                                Savings budget is 0. Set a Savings budget first.
-                           </FormDescription>
-                       )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-             )}
+                )}
+            />
 
 
             <FormField
