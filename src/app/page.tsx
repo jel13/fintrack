@@ -3,7 +3,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet } from "lucide-react";
+import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity } from "lucide-react"; // Added BarChart3/Activity for Insights
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { getCategoryIconComponent } from '@/components/category-icon';
 import { Progress } from "@/components/ui/progress"; // Import Progress
+import { InsightsView } from "@/components/insights-view"; // Import InsightsView
 
 
 export default function Home() {
@@ -38,10 +39,15 @@ export default function Home() {
   const [isAddTransactionSheetOpen, setIsAddTransactionSheetOpen] = React.useState(false);
   const [isAddBudgetDialogOpen, setIsAddBudgetDialogOpen] = React.useState(false);
   const [tempIncome, setTempIncome] = React.useState<string>(''); // Initialize empty
-  const [selectedIncomeCategory, setSelectedIncomeCategory] = React.useState<string>('salary'); // Default income category selection
+  const [selectedIncomeCategory, setSelectedIncomeCategory] = React.useState<string>(''); // Default income category selection - empty initially
   const { toast } = useToast();
 
   const currentMonth = format(new Date(), 'yyyy-MM');
+  // Calculate previous month string
+   const previousMonthDate = new Date(currentMonth + '-01T00:00:00'); // Ensure time part for correct month calculation
+   previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
+   const previousMonth = format(previousMonthDate, 'yyyy-MM');
+
 
   // Load data from localStorage only on the client after initial mount
   React.useEffect(() => {
@@ -91,18 +97,29 @@ export default function Home() {
     if (!isLoaded || monthlyIncome === null) return; // Don't run until loaded and income is set
 
      setAppData(prevData => {
+         let budgetsChanged = false; // Flag to track if budgets actually change
+
          const updatedBudgets = prevData.budgets.map(budget => {
+              let changed = false;
               // Recalculate spent for all budgets based on current transactions
-             const spent = prevData.transactions
+              const spent = prevData.transactions
                  .filter(t => t.type === 'expense' && t.category === budget.category && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
+
+              if (budget.spent !== spent) changed = true;
+
 
              // Recalculate limit based on percentage if applicable (excluding Savings)
              let limit = budget.limit;
              if (budget.category !== 'savings' && budget.percentage !== undefined && prevData.monthlyIncome !== null) {
-                 limit = parseFloat(((budget.percentage / 100) * prevData.monthlyIncome).toFixed(2));
+                 const newLimit = parseFloat(((budget.percentage / 100) * prevData.monthlyIncome).toFixed(2));
+                  if (budget.limit !== newLimit) {
+                     limit = newLimit;
+                     changed = true;
+                 }
              }
 
+             if (changed) budgetsChanged = true;
              return { ...budget, spent, limit, month: budget.month || currentMonth }; // Ensure month is set
          });
 
@@ -119,12 +136,17 @@ export default function Home() {
             const savingsSpent = prevData.transactions
                  .filter(t => t.type === 'expense' && t.category === 'savings' && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
-            updatedBudgets[savingsBudgetIndex] = {
-                ...updatedBudgets[savingsBudgetIndex],
-                limit: leftover,
-                spent: savingsSpent, // Recalculate spent for savings too
-                percentage: undefined // Savings percentage is implicit
-            };
+
+            const currentSavingsBudget = updatedBudgets[savingsBudgetIndex];
+            if (currentSavingsBudget.limit !== leftover || currentSavingsBudget.spent !== savingsSpent) {
+                updatedBudgets[savingsBudgetIndex] = {
+                    ...currentSavingsBudget,
+                    limit: leftover,
+                    spent: savingsSpent, // Recalculate spent for savings too
+                    percentage: undefined // Savings percentage is implicit
+                };
+                budgetsChanged = true;
+            }
 
         } else {
             // Add new savings budget if it doesn't exist
@@ -139,17 +161,21 @@ export default function Home() {
                 spent: savingsSpent,
                 month: currentMonth,
             });
+            budgetsChanged = true;
         }
 
-        // Only return updated data if something actually changed to prevent infinite loops
-        // Compare based on relevant fields that change here (limits, spent amounts)
-        const relevantOldBudgets = JSON.stringify(prevData.budgets.map(b => ({ id: b.id, limit: b.limit, spent: b.spent, month: b.month })));
-        const relevantNewBudgets = JSON.stringify(updatedBudgets.map(b => ({ id: b.id, limit: b.limit, spent: b.spent, month: b.month })));
-
-        if (relevantOldBudgets !== relevantNewBudgets) {
+        // Only return updated data if budgets actually changed to prevent infinite loops
+        if (budgetsChanged) {
+             // Sort budgets after potential changes
+             updatedBudgets.sort((a, b) => {
+                 if (a.category === 'savings') return 1; // Savings last
+                 if (b.category === 'savings') return -1;
+                 return (prevData.categories.find(c => c.id === a.category)?.label ?? a.category)
+                        .localeCompare(prevData.categories.find(c => c.id === b.category)?.label ?? b.category);
+             });
              return { ...prevData, budgets: updatedBudgets };
         }
-        return prevData;
+        return prevData; // No changes, return previous state
 
      });
   }, [transactions, monthlyIncome, currentMonth, isLoaded]); // Recalculate when these change
@@ -255,6 +281,7 @@ export default function Home() {
         toast({ title: "Invalid Income", description: "Please enter a valid positive number for income.", variant: "destructive" });
         return;
     }
+    // Ensure an income category is selected
     if (!selectedIncomeCategory) {
          toast({ title: "Select Income Source", description: "Please select an income source category.", variant: "destructive" });
          return;
@@ -306,7 +333,7 @@ export default function Home() {
       toast({ title: "Income Updated", description: `Monthly income set to ${formatCurrency(incomeValue)}. Budget limits updated.` });
       // Optionally clear tempIncome here if desired after successful set
       // setTempIncome('');
-      // setSelectedIncomeCategory('salary'); // Reset category selection
+      // setSelectedIncomeCategory(''); // Reset category selection to force selection next time
   };
 
    const getCategoryById = (id: string): Category | undefined => {
@@ -375,20 +402,27 @@ export default function Home() {
                              <Label htmlFor="income-category">Source Category</Label>
                              <Select value={selectedIncomeCategory} onValueChange={setSelectedIncomeCategory}>
                                 <SelectTrigger id="income-category">
+                                    {/* Display placeholder only if no category is selected */}
                                     <SelectValue placeholder="Select source" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {incomeCategories.map((cat) => {
-                                        const Icon = getCategoryIconComponent(cat.icon);
-                                        return (
-                                            <SelectItem key={cat.id} value={cat.id}>
-                                                <div className="flex items-center gap-2">
-                                                <Icon className="h-4 w-4 text-muted-foreground" />
-                                                <span>{cat.label}</span>
-                                                </div>
-                                            </SelectItem>
-                                        );
-                                    })}
+                                    {incomeCategories.length > 0 ? (
+                                        incomeCategories.map((cat) => {
+                                            const Icon = getCategoryIconComponent(cat.icon);
+                                            return (
+                                                <SelectItem key={cat.id} value={cat.id}>
+                                                    <div className="flex items-center gap-2">
+                                                    <Icon className="h-4 w-4 text-muted-foreground" />
+                                                    <span>{cat.label}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            );
+                                        })
+                                    ) : (
+                                         <SelectItem value="no-income-cats" disabled>
+                                            No income categories defined
+                                         </SelectItem>
+                                    )}
                                 </SelectContent>
                              </Select>
                          </div>
@@ -511,6 +545,10 @@ export default function Home() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-3 pt-0 text-sm text-primary-foreground flex flex-col gap-1">
+                         <div className="flex justify-between text-primary">
+                             <span>Income:</span>
+                             <span className="font-semibold">{formatCurrency(monthlyIncome)}</span>
+                         </div>
                         <div className="flex justify-between text-primary">
                             <span>Total Allocated (% of Income):</span>
                             <span className="font-semibold">{totalAllocatedPercentage.toFixed(1)}%</span>
@@ -523,6 +561,16 @@ export default function Home() {
                             <span>Allocated to Savings ($):</span>
                             <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
                         </div>
+                         {/* Remaining budget calculation */}
+                         <div className="flex justify-between text-muted-foreground">
+                            <span>Remaining to Allocate (%):</span>
+                            <span className="font-semibold">{(100 - totalAllocatedPercentage - (savingsBudgetAmount > 0 ? (savingsBudgetAmount / monthlyIncome * 100) : 0)).toFixed(1)}%</span>
+                        </div>
+                         <div className="flex justify-between text-muted-foreground">
+                            <span>Remaining to Allocate ($):</span>
+                            <span className="font-semibold">{formatCurrency(monthlyIncome - totalAllocatedBudgetAmount - savingsBudgetAmount)}</span>
+                        </div>
+
                          {(totalAllocatedPercentage > 100) && (
                             <p className="text-xs text-destructive font-semibold mt-1">Warning: Total allocation exceeds 100%!</p>
                          )}
@@ -573,38 +621,46 @@ export default function Home() {
             </div>
 
               {/* Display Savings Summary */}
-             {isLoaded && monthlyIncome !== null && hasExpenseBudgetsSet && (
+             {isLoaded && monthlyIncome !== null && (
                 <Card className="mb-4 bg-accent/10 border-accent">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                             <PiggyBank className="h-5 w-5 text-accent"/> Savings & Goals Allocation
                         </CardTitle>
+                         <CardDescription className="text-xs">
+                            Your Savings budget is automatically calculated based on leftover income after expense budgets. Allocate percentages of this savings amount to your goals.
+                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-3 pt-0 text-sm text-accent flex flex-col gap-1">
                          <div className="flex justify-between">
                             <span>Monthly Savings Budget:</span>
                             <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
                         </div>
-                        <div className="flex justify-between">
-                            <span>Allocated to Goals (% of Savings):</span>
-                             <span className="font-semibold">
-                                {savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0).toFixed(1)}%
-                             </span>
-                        </div>
-                         <div className="flex justify-between">
-                            <span>Allocated to Goals ($):</span>
-                             <span className="font-semibold">
-                                {formatCurrency(savingsBudgetAmount * (savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) / 100))}
-                             </span>
-                        </div>
+                         {/* Show allocation only if savings budget > 0 */}
+                         {savingsBudgetAmount > 0 && (
+                             <>
+                             <div className="flex justify-between">
+                                <span>Allocated to Goals (% of Savings):</span>
+                                 <span className="font-semibold">
+                                    {savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0).toFixed(1)}%
+                                 </span>
+                            </div>
+                             <div className="flex justify-between">
+                                <span>Allocated to Goals ($):</span>
+                                 <span className="font-semibold">
+                                    {formatCurrency(savingsBudgetAmount * (savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) / 100))}
+                                 </span>
+                            </div>
+                             </>
+                         )}
                          {savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) > 100 && (
                              <p className="text-xs text-destructive font-semibold mt-1">Warning: Goal allocation exceeds 100% of savings budget!</p>
                          )}
                           {savingsBudgetAmount <= 0 && (
-                             <p className="text-xs text-accent/80 mt-1">Increase your Savings budget (by reducing expense budgets) on the Budgets tab to allocate funds to goals.</p>
+                             <p className="text-xs text-accent/80 mt-1">Your savings budget is currently $0. Manage goals in the dedicated page, but funding requires reducing expense budgets.</p>
                           )}
-                           {!hasExpenseBudgetsSet && (
-                               <p className="text-xs text-accent/80 mt-1">Set expense budgets first to determine savings amount.</p>
+                           {!hasExpenseBudgetsSet && isLoaded && monthlyIncome !== null && (
+                               <p className="text-xs text-accent/80 mt-1">Set expense budgets first to determine your available savings amount.</p>
                            )}
                     </CardContent>
                 </Card>
@@ -632,11 +688,15 @@ export default function Home() {
                                 </div>
                                 <Progress value={progressPercent} className="w-full h-2 [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:bg-accent [&::-moz-progress-bar]:bg-accent" />
                                 {/* Show allocation info if applicable */}
-                                {goal.percentageAllocation && goal.percentageAllocation > 0 && isLoaded && hasExpenseBudgetsSet && (
+                                {goal.percentageAllocation && goal.percentageAllocation > 0 && isLoaded && savingsBudgetAmount > 0 && (
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Receives {goal.percentageAllocation}% of Savings
-                                        {savingsBudgetAmount > 0 ? ` (${formatCurrency(monthlyContribution)}/month)` : ' ($0/month)'}
+                                        Receives {goal.percentageAllocation}% of Savings ({formatCurrency(monthlyContribution)}/month)
                                     </p>
+                                )}
+                                {goal.percentageAllocation && goal.percentageAllocation > 0 && isLoaded && savingsBudgetAmount <= 0 && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                          Receives {goal.percentageAllocation}% of Savings ($0/month)
+                                      </p>
                                 )}
                                  {goal.targetDate && (
                                      <p className="text-xs text-muted-foreground mt-1">Target: {format(goal.targetDate, 'MMM yyyy')}</p>
@@ -663,6 +723,41 @@ export default function Home() {
              </Card>
         </TabsContent>
 
+         {/* Insights Tab */}
+         <TabsContent value="insights" className="flex-grow overflow-y-auto p-4 space-y-4">
+             <div className="flex justify-between items-center mb-4">
+                 <h2 className="text-lg font-semibold">Financial Insights</h2>
+                 {/* Optional actions like export? */}
+             </div>
+             {!isLoaded ? (
+                 <p className="text-center text-muted-foreground pt-10">Loading insights...</p>
+             ) : monthlyIncome === null ? (
+                  <Card className="border-dashed border-muted-foreground">
+                      <CardContent className="p-6 text-center text-muted-foreground">
+                          <AlertCircle className="mx-auto h-8 w-8 mb-2" />
+                         <p>Please set your monthly income on the Dashboard tab to view insights.</p>
+                      </CardContent>
+                  </Card>
+             ) : !hasExpenseBudgetsSet ? (
+                 <Card className="border-dashed border-muted-foreground">
+                      <CardContent className="p-6 text-center text-muted-foreground">
+                         <BarChart3 className="mx-auto h-8 w-8 mb-2" />
+                         <p>Set your budgets in the 'Budgets' tab to generate detailed insights.</p>
+                      </CardContent>
+                  </Card>
+             ) : (
+                <InsightsView
+                    currentMonth={currentMonth}
+                    previousMonth={previousMonth}
+                    transactions={transactions}
+                    budgets={budgets} // Pass all budgets for potential cross-month comparison
+                    categories={categories}
+                    monthlyIncome={monthlyIncome}
+                />
+             )}
+         </TabsContent>
+
+
         {/* Floating Action Button (Show only if loaded, income set, AND expense budgets exist) */}
         {isLoaded && monthlyIncome !== null && hasExpenseBudgetsSet && (
              <div className="fixed bottom-20 right-4 z-10">
@@ -679,7 +774,7 @@ export default function Home() {
 
 
         {/* Bottom Navigation */}
-        <TabsList className="grid w-full grid-cols-4 h-16 rounded-none sticky bottom-0 bg-background border-t">
+        <TabsList className="grid w-full grid-cols-5 h-16 rounded-none sticky bottom-0 bg-background border-t"> {/* Changed to grid-cols-5 */}
           <TabsTrigger value="dashboard" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <LayoutDashboard className="h-5 w-5" />
             <span className="text-xs">Dashboard</span>
@@ -695,6 +790,10 @@ export default function Home() {
            <TabsTrigger value="goals" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <PiggyBank className="h-5 w-5" />
              <span className="text-xs">Goals</span>
+          </TabsTrigger>
+           <TabsTrigger value="insights" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary"> {/* Added Insights Trigger */}
+            <Activity className="h-5 w-5" /> {/* Using Activity icon */}
+             <span className="text-xs">Insights</span>
           </TabsTrigger>
         </TabsList>
       </Tabs>
