@@ -1,7 +1,9 @@
+
+
 "use client";
 
 import * as React from "react";
-import { TrendingDown } from "lucide-react";
+import { TrendingDown } from "lucide-react"; // Import TrendingDown icon
 import { Label, Pie, PieChart, Cell, Sector } from "recharts";
 import { format } from 'date-fns';
 
@@ -20,6 +22,7 @@ import {
 } from "@/components/ui/chart";
 import type { Transaction, Category } from "@/types";
 import { getCategoryIconComponent } from "@/components/category-icon";
+import { formatCurrency } from "@/lib/utils"; // Import formatCurrency
 
 
 // Define a consistent color mapping (can be expanded or made dynamic)
@@ -36,7 +39,7 @@ const CHART_COLORS = [
 interface SpendingChartProps {
   transactions: Transaction[];
   month: string; // e.g., "2024-07"
-  categories: Category[]; // Pass categories for label lookup
+  categories: Category[]; // Pass relevant categories (e.g., only expense categories)
 }
 
 export function SpendingChart({ transactions, month, categories }: SpendingChartProps) {
@@ -61,7 +64,10 @@ export function SpendingChart({ transactions, month, categories }: SpendingChart
   const spendingByCategory = React.useMemo(() => {
     const categoryMap: Record<string, number> = {};
     monthlyExpenses.forEach((t) => {
-      categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount;
+      // Aggregate spending under parent categories if applicable
+      const category = categories.find(c => c.id === t.category);
+      const topLevelCategoryId = category?.parentId || t.category; // Use parent ID or own ID if top-level
+      categoryMap[topLevelCategoryId] = (categoryMap[topLevelCategoryId] || 0) + t.amount;
     });
 
     return Object.entries(categoryMap)
@@ -69,7 +75,7 @@ export function SpendingChart({ transactions, month, categories }: SpendingChart
         name: getCategoryLabel(categoryId), // Use label for display name
         value: amount,
         fill: CHART_COLORS[index % CHART_COLORS.length], // Cycle through defined colors
-        categoryId: categoryId, // Store original ID
+        categoryId: categoryId, // Store original (potentially parent) ID
       }))
       .sort((a, b) => b.value - a.value); // Sort descending by amount
   }, [monthlyExpenses, categories]); // Add categories dependency
@@ -94,13 +100,8 @@ export function SpendingChart({ transactions, month, categories }: SpendingChart
    }, [spendingByCategory, categories]); // Add categories dependency
 
 
-    // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-  };
-
   // Calculate previous month string
-  const previousMonthDate = new Date(month + '-01');
+  const previousMonthDate = new Date(month + '-01T00:00:00'); // Ensure time part for correct month calculation
   previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
   const previousMonth = format(previousMonthDate, 'yyyy-MM');
 
@@ -114,13 +115,20 @@ export function SpendingChart({ transactions, month, categories }: SpendingChart
   const spendingChange = totalMonthlySpending - previousMonthTotalSpending;
   const spendingChangePercentage = previousMonthTotalSpending > 0
     ? ((spendingChange / previousMonthTotalSpending) * 100)
-    : (totalMonthlySpending > 0 ? 100 : 0); // Handle division by zero
+    : (totalMonthlySpending > 0 ? Infinity : 0); // Use Infinity for percentage if previous was 0 but current > 0
+
+  const displaySpendingChangePercentage = () => {
+     if (spendingChangePercentage === Infinity) return "(vs $0)";
+     if (isNaN(spendingChangePercentage)) return "(N/A)";
+     return `(${spendingChangePercentage.toFixed(1)}%)`;
+  }
+
 
   return (
     <Card className="flex flex-col">
       <CardHeader className="items-center pb-0">
         <CardTitle>Spending Analysis</CardTitle>
-        <CardDescription>{format(new Date(month + '-01'), 'MMMM yyyy')} - Expenses by Category</CardDescription>
+        <CardDescription>{format(new Date(month + '-01T00:00:00'), 'MMMM yyyy')} - Expenses by Category</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         {spendingByCategory.length > 0 ? (
@@ -131,7 +139,7 @@ export function SpendingChart({ transactions, month, categories }: SpendingChart
            <PieChart>
              <ChartTooltip
                cursor={false}
-               content={<ChartTooltipContent hideLabel indicator="dot"/>}
+               content={<ChartTooltipContent hideLabel indicator="dot" formatter={(value, name) => ({ value: formatCurrency(value as number), name })}/>}
              />
              <Pie
                data={spendingByCategory}
@@ -184,13 +192,13 @@ export function SpendingChart({ transactions, month, categories }: SpendingChart
       </CardContent>
        <CardFooter className="flex-col gap-2 text-sm pt-4">
         {/* Comparison with previous month */}
-        <div className="flex items-center gap-2 font-medium leading-none">
-          {previousMonthTotalSpending > 0 ? (
+        <div className="flex items-center gap-1 font-medium leading-none text-center">
+          {totalMonthlySpending > 0 || previousMonthTotalSpending > 0 ? (
              <>
-                Spending is {spendingChange >= 0 ? 'up' : 'down'} <span className={cn(spendingChange >= 0 ? 'text-destructive' : 'text-accent')}>{formatCurrency(Math.abs(spendingChange))} ({spendingChangePercentage.toFixed(1)}%)</span> vs last month.
+                Spending is {spendingChange >= 0 ? 'up' : 'down'} <span className={cn(spendingChange >= 0 ? 'text-destructive' : 'text-accent')}>{formatCurrency(Math.abs(spendingChange))} {displaySpendingChangePercentage()}</span> vs last month ({format(previousMonthDate, 'MMM yyyy')}).
              </>
           ) : (
-             totalMonthlySpending > 0 ? 'First month with spending data.' : 'No spending data available.'
+             'No spending data for comparison.'
           )}
         </div>
 
@@ -210,3 +218,4 @@ export function SpendingChart({ transactions, month, categories }: SpendingChart
     </Card>
   );
 }
+

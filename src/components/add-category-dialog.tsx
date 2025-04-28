@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import * as React from "react";
@@ -7,6 +9,7 @@ import * as z from "zod";
 import * as LucideIcons from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
 import {
   Dialog,
   DialogContent,
@@ -18,6 +21,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -39,6 +43,7 @@ const formSchema = z.object({
   label: z.string().min(1, "Category name is required").max(50, "Name max 50 chars"),
   icon: z.string().min(1, "Icon is required"), // Store icon name string
   parentId: z.string().optional().nullable(), // Allow null for top-level
+  isIncomeSource: z.boolean().default(false), // Add field for income source flag
 });
 
 type CategoryFormValues = z.infer<typeof formSchema>;
@@ -62,10 +67,12 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
         label: existingCategory.label,
         icon: existingCategory.icon,
         parentId: existingCategory.parentId,
+        isIncomeSource: existingCategory.isIncomeSource ?? false,
     } : {
       label: "",
       icon: "HelpCircle", // Default icon
       parentId: null,
+      isIncomeSource: false,
     },
   });
 
@@ -75,10 +82,12 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
             label: existingCategory.label,
             icon: existingCategory.icon,
             parentId: existingCategory.parentId,
+            isIncomeSource: existingCategory.isIncomeSource ?? false,
         } : {
             label: "",
             icon: "HelpCircle",
             parentId: null,
+            isIncomeSource: false,
         });
     }, [open, existingCategory, form]);
 
@@ -89,6 +98,11 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
          form.setError("parentId", { message: "Cannot set category as its own parent." });
          return;
      }
+     // Prevent income source from having a parent or being a parent itself (for now)
+     if (values.isIncomeSource && values.parentId) {
+         form.setError("parentId", { message: "Income source categories cannot be sub-categories." });
+         return;
+     }
      // Add more checks if needed (e.g., prevent deep nesting)
 
     const dataToSave: Omit<Category, 'id'> & { id?: string } = {
@@ -97,17 +111,24 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
     };
     if (existingCategory) {
       dataToSave.id = existingCategory.id;
+      // Prevent changing isIncomeSource for existing categories if needed (optional rule)
+      // dataToSave.isIncomeSource = existingCategory.isIncomeSource;
     }
     onSaveCategory(dataToSave);
     onOpenChange(false); // Close dialog
   };
 
-   // Filter categories suitable for being parents (cannot be a child of the current category being edited)
+   // Filter categories suitable for being parents
    const potentialParents = React.useMemo(() => {
-        if (!existingCategory) return categories.filter(c => c.id !== 'income'); // All non-income categories for new
-        // Exclude self and potential descendants (simple check, might need recursion for deeper nesting)
-        return categories.filter(c => c.id !== existingCategory.id && c.parentId !== existingCategory.id && c.id !== 'income');
+        // Exclude income sources, self, and potential descendants
+        return categories.filter(c =>
+            !c.isIncomeSource && // Cannot be an income source
+            c.id !== existingCategory?.id && // Cannot be self
+            c.parentId !== existingCategory?.id // Cannot be a direct child (basic check)
+        );
     }, [categories, existingCategory]);
+
+    const isIncomeSourceChecked = form.watch('isIncomeSource');
 
 
   return (
@@ -128,7 +149,7 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
                 <FormItem>
                   <FormLabel>Category Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Groceries, Water Bill" {...field} />
+                    <Input placeholder="e.g., Groceries, Salary, Water Bill" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -170,15 +191,52 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
             />
 
              <FormField
+                control={form.control}
+                name="isIncomeSource"
+                render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm">
+                    <FormControl>
+                        <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                           field.onChange(checked);
+                           // If checked, clear parentId
+                           if (checked) {
+                               form.setValue('parentId', null);
+                           }
+                        }}
+                        disabled={!!existingCategory} // Disable changing type for existing categories
+                        />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                        <FormLabel>
+                         Is this an Income Source?
+                        </FormLabel>
+                        <FormDescription>
+                         Check if this category represents income (e.g., Salary, Freelance). Income sources cannot be sub-categories.
+                        </FormDescription>
+                         {existingCategory && <FormDescription className="text-xs text-muted-foreground italic">Type cannot be changed after creation.</FormDescription>}
+                    </div>
+                     <FormMessage />
+                    </FormItem>
+                )}
+                />
+
+
+             <FormField
               control={form.control}
               name="parentId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Parent Category (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value ?? ""} /* Handle null value */>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value ?? ""} /* Handle null value */
+                    disabled={isIncomeSourceChecked} // Disable if it's an income source
+                  >
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a parent (optional)" />
+                      <SelectTrigger disabled={isIncomeSourceChecked}>
+                        <SelectValue placeholder={isIncomeSourceChecked ? "N/A (Income Source)" : "Select a parent (optional)"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -196,7 +254,7 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
                         })}
                     </SelectContent>
                   </Select>
-                   <FormDescription>Make this a sub-category by selecting a parent.</FormDescription>
+                   <FormDescription>Make this an expense sub-category by selecting a parent.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -213,3 +271,4 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
     </Dialog>
   );
 }
+

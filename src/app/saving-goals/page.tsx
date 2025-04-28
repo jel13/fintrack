@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -28,9 +29,8 @@ import { useToast } from "@/hooks/use-toast";
 
 
 export default function SavingGoalsPage() {
-    // Initialize with default data
     const [appData, setAppData] = React.useState<AppData>(defaultAppData);
-    const [isLoaded, setIsLoaded] = React.useState(false); // Track client-side load
+    const [isLoaded, setIsLoaded] = React.useState(false);
     const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = React.useState(false);
     const [editingGoal, setEditingGoal] = React.useState<SavingGoal | null>(null);
     const { toast } = useToast();
@@ -49,46 +49,59 @@ export default function SavingGoalsPage() {
         }
     }, [appData, isLoaded]);
 
-    const totalSavingsBudget = React.useMemo(() => {
+    // Calculate the current month's savings budget LIMIT
+    const totalSavingsBudgetLimit = React.useMemo(() => {
         if (!isLoaded) return 0; // Don't calculate until loaded
         const currentMonth = format(new Date(), 'yyyy-MM');
         const savingsBudget = appData.budgets.find(b => b.category === 'savings' && b.month === currentMonth);
-        return savingsBudget?.limit ?? 0;
+        return savingsBudget?.limit ?? 0; // Get the calculated limit for savings
     }, [appData.budgets, isLoaded]); // Depend on isLoaded
 
-     const totalAllocatedPercentage = React.useMemo(() => {
+    // Calculate the total percentage of the *savings budget* allocated to goals
+     const totalAllocatedPercentageOfSavings = React.useMemo(() => {
          if (!isLoaded) return 0; // Don't calculate until loaded
          return appData.savingGoals.reduce((sum, goal) => sum + (goal.percentageAllocation ?? 0), 0);
      }, [appData.savingGoals, isLoaded]); // Depend on isLoaded
 
 
     const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id' | 'savedAmount'> & { id?: string }) => {
+        // Validation before updating state
+        const newPercentage = goalData.percentageAllocation ?? 0;
+        const currentTotalAllocated = appData.savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
+        const existingPercentage = editingGoal ? (editingGoal.percentageAllocation ?? 0) : 0;
+        const totalWithoutCurrent = currentTotalAllocated - existingPercentage;
+
+        // Prevent negative percentage
+        if (newPercentage < 0) {
+            toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" });
+            return; // Don't update state
+        }
+
+        // Prevent total allocation exceeding 100% of the savings budget
+        if (totalWithoutCurrent + newPercentage > 100) {
+            const maxAllowed = Math.max(0, 100 - totalWithoutCurrent);
+            toast({
+                title: "Allocation Limit Exceeded",
+                description: `Cannot allocate ${newPercentage}%. Total allocation would exceed 100% of savings budget. Available: ${maxAllowed.toFixed(1)}%`,
+                variant: "destructive",
+                duration: 5000
+            });
+            // Optionally automatically adjust to max allowed, or just prevent save
+            // goalData.percentageAllocation = maxAllowed; // Auto-adjust approach
+             return; // Prevent save approach
+        }
+
+        // If validation passes, update the state
         setAppData(prev => {
-            const goals = [...prev.savingGoals];
-            const existingPercentage = existingGoal ? (existingGoal.percentageAllocation ?? 0) : 0;
-            const newPercentage = goalData.percentageAllocation ?? 0;
-            const currentTotalAllocated = prev.savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
-            const totalWithoutCurrent = currentTotalAllocated - existingPercentage;
-
-            // Prevent setting negative percentage
-            if (newPercentage < 0) {
-                 toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" });
-                 return prev; // Don't update state
-            }
-
-             // Prevent total allocation exceeding 100%
-             if (totalWithoutCurrent + newPercentage > 100) {
-                 const maxAllowed = 100 - totalWithoutCurrent;
-                 toast({ title: "Allocation Limit Exceeded", description: `Cannot allocate ${newPercentage}%. Total allocation would exceed 100% of savings budget. Available: ${maxAllowed.toFixed(1)}%`, variant: "destructive", duration: 5000 });
-                 goalData.percentageAllocation = Math.max(0, maxAllowed); // Cap at max available or 0 if negative
-            }
-
+            let goals = [...prev.savingGoals];
 
             if (goalData.id) {
                 // Update existing goal
                 const index = goals.findIndex(g => g.id === goalData.id);
                 if (index > -1) {
-                    goals[index] = { ...goals[index], ...goalData };
+                    // Ensure savedAmount is preserved unless explicitly modified
+                    const originalSavedAmount = goals[index].savedAmount;
+                    goals[index] = { ...goals[index], ...goalData, savedAmount: originalSavedAmount };
                     toast({ title: "Goal Updated", description: `Saving goal "${goalData.name}" updated.` });
                 }
             } else {
@@ -96,7 +109,7 @@ export default function SavingGoalsPage() {
                 const newGoal: SavingGoal = {
                     ...goalData,
                     id: `goal-${Date.now().toString()}`,
-                    savedAmount: 0, // Initialize saved amount
+                    savedAmount: 0, // Initialize saved amount for new goals
                 };
                 goals.push(newGoal);
                  toast({ title: "Goal Added", description: `New saving goal "${newGoal.name}" added.` });
@@ -111,6 +124,12 @@ export default function SavingGoalsPage() {
     const handleDeleteGoal = (goalId: string) => {
         const goalToDelete = appData.savingGoals.find(g => g.id === goalId);
          if (!goalToDelete) return; // Should not happen
+
+        // Add check: Prevent deletion if goal has saved amount? (Optional business rule)
+        // if (goalToDelete.savedAmount > 0) {
+        //     toast({ title: "Cannot Delete", description: `Goal "${goalToDelete.name}" has funds saved. Consider reallocating first.`, variant: "destructive"});
+        //     return;
+        // }
 
         setAppData(prev => ({
             ...prev,
@@ -146,28 +165,33 @@ export default function SavingGoalsPage() {
                     <CardTitle className="text-base flex items-center gap-2">
                         <Info className="h-5 w-5 text-accent" /> Monthly Savings Allocation
                     </CardTitle>
+                    <CardDescription className="text-xs">
+                         This is the amount leftover from your income after allocating to expense budgets. You can allocate percentages of this amount to specific goals below.
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 text-sm text-accent flex flex-col gap-1">
                      {isLoaded ? (
                         <>
                         <div className="flex justify-between">
-                            <span>Total Savings Budget:</span>
-                            <span className="font-semibold">{formatCurrency(totalSavingsBudget)}</span>
+                            <span>Total Savings Budget This Month:</span>
+                            <span className="font-semibold">{formatCurrency(totalSavingsBudgetLimit)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>Allocated to Goals (%):</span>
-                            <span className="font-semibold">{totalAllocatedPercentage.toFixed(1)}%</span>
+                            <span>Allocated to Goals (% of Savings):</span>
+                            <span className="font-semibold">{totalAllocatedPercentageOfSavings.toFixed(1)}%</span>
                         </div>
                          <div className="flex justify-between">
                             <span>Allocated to Goals ($):</span>
-                            <span className="font-semibold">{formatCurrency(totalSavingsBudget * (totalAllocatedPercentage / 100))}</span>
+                             {/* Calculate the monetary value allocated based on the *current* savings budget limit */}
+                            <span className="font-semibold">{formatCurrency(totalSavingsBudgetLimit * (totalAllocatedPercentageOfSavings / 100))}</span>
                         </div>
                          <div className="flex justify-between">
                             <span>Unallocated Savings ($):</span>
-                            <span className="font-semibold">{formatCurrency(totalSavingsBudget * (1 - totalAllocatedPercentage / 100))}</span>
+                             {/* Calculate unallocated portion */}
+                            <span className="font-semibold">{formatCurrency(totalSavingsBudgetLimit * (1 - totalAllocatedPercentageOfSavings / 100))}</span>
                         </div>
-                        {totalAllocatedPercentage > 100 && <p className="text-xs text-destructive font-semibold mt-1">Warning: Total goal allocation exceeds 100% of savings budget!</p>}
-                        {totalSavingsBudget <= 0 && <p className="text-xs text-accent/80 mt-1">Set a 'Savings' budget on the Budgets tab to allocate funds.</p>}
+                        {totalAllocatedPercentageOfSavings > 100 && <p className="text-xs text-destructive font-semibold mt-1">Warning: Total goal allocation exceeds 100% of savings budget!</p>}
+                        {totalSavingsBudgetLimit <= 0 && <p className="text-xs text-accent/80 mt-1">Your current savings budget is $0. Reduce expense budgets on the Budgets tab to increase savings.</p>}
                         </>
                      ) : (
                          <p>Loading budget info...</p>
@@ -186,7 +210,8 @@ export default function SavingGoalsPage() {
                         {appData.savingGoals.length > 0 ? (
                             appData.savingGoals.map(goal => {
                                  const progressValue = (goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) : 0) * 100;
-                                 const monthlyContribution = (goal.percentageAllocation ?? 0) / 100 * totalSavingsBudget;
+                                 // Calculate expected monthly contribution based on current savings budget limit
+                                 const monthlyContribution = (goal.percentageAllocation ?? 0) / 100 * totalSavingsBudgetLimit;
                                  return (
                                     <Card key={goal.id} className="relative group/goal">
                                         <CardHeader className="flex flex-row items-start justify-between pb-2 pr-12"> {/* Added padding-right */}
@@ -233,12 +258,12 @@ export default function SavingGoalsPage() {
                                             {goal.percentageAllocation !== undefined && goal.percentageAllocation > 0 && (
                                                 <p className="text-xs text-muted-foreground mt-1">
                                                     Allocation: {goal.percentageAllocation}% of Savings
-                                                    {totalSavingsBudget > 0 && ` (${formatCurrency(monthlyContribution)}/mo)`}
+                                                    {totalSavingsBudgetLimit > 0 && ` (Est. ${formatCurrency(monthlyContribution)}/mo)`}
                                                 </p>
                                             )}
-                                            {goal.targetDate && (
-                                                <p className="text-xs text-muted-foreground mt-1">Target Date: {format(goal.targetDate, 'MMM yyyy')}</p>
-                                            )}
+                                             {goal.targetDate && (
+                                                 <p className="text-xs text-muted-foreground mt-1">Target Date: {format(goal.targetDate, 'MMM yyyy')}</p>
+                                             )}
                                         </CardContent>
                                     </Card>
                                 );
@@ -247,7 +272,7 @@ export default function SavingGoalsPage() {
                              <div className="text-center text-muted-foreground py-10">
                                  <PiggyBank className="mx-auto h-12 w-12 mb-2" />
                                 <p>You haven't set any saving goals yet.</p>
-                                <p>Click "Add Goal" to start planning!</p>
+                                <p>Click "Add Goal" to start planning where your savings will go!</p>
                              </div>
                         )}
                     </div>
@@ -263,13 +288,15 @@ export default function SavingGoalsPage() {
                 }}
                 onSaveGoal={handleAddOrUpdateGoal}
                 existingGoal={editingGoal}
-                // Pass allocation already used by OTHER goals
-                totalAllocatedPercentage={existingGoal
-                    ? totalAllocatedPercentage - (existingGoal.percentageAllocation ?? 0)
-                    : totalAllocatedPercentage
+                // Pass the percentage of the savings budget already allocated to *other* goals
+                totalAllocatedPercentage={editingGoal
+                    ? totalAllocatedPercentageOfSavings - (editingGoal.percentageAllocation ?? 0)
+                    : totalAllocatedPercentageOfSavings
                 }
-                savingsBudget={totalSavingsBudget}
+                 // Pass the actual monetary value of the savings budget this month
+                savingsBudgetAmount={totalSavingsBudgetLimit}
             />
         </div>
     );
 }
+

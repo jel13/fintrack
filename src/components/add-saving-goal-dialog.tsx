@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -38,15 +39,17 @@ import { formatCurrency } from "@/lib/utils"; // Assuming formatCurrency is here
 const formSchema = z.object({
   name: z.string().min(1, "Goal name is required").max(50, "Name max 50 chars"),
   targetAmount: z.coerce.number().positive("Target amount must be positive"),
-  percentageAllocation: z.coerce.number() // Percentage of SAVINGS budget
-    .gte(0, "Percentage must be >= 0")
-    .lte(100, "Percentage must be <= 100")
-    .optional(), // Make it optional initially, validation based on context
+  // Percentage of the *monthly savings budget* to allocate
+  percentageAllocation: z.coerce.number({ invalid_type_error: "Percentage must be a number" })
+    .gte(0.1, "Allocation must be at least 0.1%") // Minimum allocation
+    .lte(100, "Allocation cannot exceed 100%")
+    .multipleOf(0.1, { message: "Allocation can have max 1 decimal place" }) // Allow one decimal place
+    .optional(), // Make optional initially, require later if needed
   targetDate: z.date().optional().nullable(),
   description: z.string().max(100, "Description max 100 chars").optional(),
   icon: z.string().optional(), // Assuming icon name string
 }).refine(data => data.percentageAllocation !== undefined && data.percentageAllocation > 0, {
-    message: "Please allocate a percentage > 0", // Require percentage allocation
+    message: "Please allocate a percentage > 0 of your savings", // Require percentage allocation
     path: ["percentageAllocation"],
 });
 
@@ -58,11 +61,20 @@ interface AddSavingGoalDialogProps {
   onOpenChange: (open: boolean) => void;
   onSaveGoal: (goal: Omit<SavingGoal, 'id' | 'savedAmount'> & { id?: string }) => void; // id is optional for create
   existingGoal: SavingGoal | null; // Pass goal data for editing
-  totalAllocatedPercentage: number; // Percentage of *savings budget* already allocated to *other* goals
-  savingsBudget: number; // The total amount available in the savings budget this month
+  // Percentage of the *savings budget* already allocated to *other* goals
+  totalAllocatedPercentage: number;
+  // The actual monetary value of the savings budget this month
+  savingsBudgetAmount: number;
 }
 
-export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGoal, totalAllocatedPercentage, savingsBudget }: AddSavingGoalDialogProps) {
+export function AddSavingGoalDialog({
+    open,
+    onOpenChange,
+    onSaveGoal,
+    existingGoal,
+    totalAllocatedPercentage, // Percentage allocated to *other* goals
+    savingsBudgetAmount // The actual amount available in savings this month
+}: AddSavingGoalDialogProps) {
   const form = useForm<GoalFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: existingGoal ? {
@@ -101,28 +113,29 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
         });
     }, [open, existingGoal, form]);
 
-  const { watch, setValue } = form;
+  const { watch, setValue, setError } = form;
   const currentPercentage = watch('percentageAllocation') ?? 0;
 
-  // Calculate allocation available within the savings budget (considering other goals)
-  const currentAllocatedWithoutThis = existingGoal
-      ? totalAllocatedPercentage - (existingGoal.percentageAllocation ?? 0)
-      : totalAllocatedPercentage;
-  const maxAllowedPercentage = Math.max(0, 100 - currentAllocatedWithoutThis);
+  // Calculate available allocation percentage WITHIN the savings budget
+  const maxAllowedPercentage = React.useMemo(() => {
+      // `totalAllocatedPercentage` is the percentage allocated to *other* goals
+      return Math.max(0, parseFloat((100 - totalAllocatedPercentage).toFixed(1)));
+  }, [totalAllocatedPercentage]);
 
-  // Calculate the monetary amount this goal would receive based on the percentage and savings budget
+
+  // Calculate the monetary amount this goal would receive based on its percentage and the total savings budget amount
   const calculatedMonthlyContribution = React.useMemo(() => {
-      if (savingsBudget > 0 && currentPercentage > 0) {
-          return (currentPercentage / 100) * savingsBudget;
+      if (savingsBudgetAmount > 0 && currentPercentage > 0) {
+          return (currentPercentage / 100) * savingsBudgetAmount;
       }
       return 0;
-  }, [currentPercentage, savingsBudget]);
+  }, [currentPercentage, savingsBudgetAmount]);
 
 
   const onSubmit = (values: GoalFormValues) => {
-     // Double-check allocation percentage against available
+     // Double-check allocation percentage against available within savings budget
      if (values.percentageAllocation && values.percentageAllocation > maxAllowedPercentage) {
-         form.setError("percentageAllocation", { message: `Allocation exceeds 100% of savings budget. Max available: ${maxAllowedPercentage.toFixed(1)}%` });
+         setError("percentageAllocation", { message: `Allocation exceeds 100% of savings budget. Max available: ${maxAllowedPercentage.toFixed(1)}%` });
          return;
      }
 
@@ -134,6 +147,7 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
       dataToSave.id = existingGoal.id;
     }
     onSaveGoal(dataToSave);
+    // form.reset(); // Reset happens on open now
     onOpenChange(false); // Close dialog
   };
 
@@ -143,7 +157,7 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
         <DialogHeader>
           <DialogTitle>{existingGoal ? "Edit Saving Goal" : "Add Saving Goal"}</DialogTitle>
           <DialogDescription>
-            {existingGoal ? "Update the details for your saving goal." : "Set up a new goal and allocate a percentage of your savings budget."}
+            {existingGoal ? "Update the details for your saving goal." : "Set a target and allocate a portion of your monthly savings budget towards it."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -169,7 +183,7 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
                 <FormItem>
                   <FormLabel>Target Amount ($)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="1000.00" {...field} step="0.01" min="0"/>
+                    <Input type="number" placeholder="1000.00" {...field} step="0.01" min="0.01"/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -181,36 +195,36 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
                 name="percentageAllocation"
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel>Allocation (% of Savings Budget)</FormLabel>
+                    <FormLabel>Allocation (% of Monthly Savings)</FormLabel>
                     <FormControl>
-                    {/* Use spread, but ensure value is handled correctly for undefined */}
                     <Input
                         type="number"
                         placeholder={`Max ${maxAllowedPercentage.toFixed(1)}% available`}
                         {...field}
                         value={field.value ?? ''} // Handle undefined for input value
+                        onChange={e => {
+                            const val = e.target.value;
+                            field.onChange(val === '' ? undefined : parseFloat(val));
+                        }}
                         step="0.1"
                         max={maxAllowedPercentage}
-                        min={0}
-                        disabled={savingsBudget <= 0}
+                        min="0.1" // Minimum allocation
+                        disabled={savingsBudgetAmount <= 0}
                     />
                     </FormControl>
-                    {savingsBudget > 0 && field.value !== undefined && (
+                    {savingsBudgetAmount > 0 && (
                         <FormDescription>
-                        Approx. {formatCurrency(calculatedMonthlyContribution)} per month from Savings.
+                           Allocate {field.value ?? 0}% of your monthly savings ({formatCurrency(savingsBudgetAmount)}) towards this goal.
+                           <br/> Approx. {formatCurrency(calculatedMonthlyContribution)} per month.
+                           <br/> Available to allocate: {maxAllowedPercentage.toFixed(1)}%
                         </FormDescription>
                     )}
-                    {savingsBudget <= 0 && (
+                    {savingsBudgetAmount <= 0 && (
                         <FormDescription className="text-destructive">
-                            Your monthly Savings budget is currently $0. Increase it on the Budgets tab to allocate funds here.
+                            Your monthly Savings budget is currently $0. Increase it on the Budgets tab to enable allocation here.
                         </FormDescription>
                     )}
                     <FormMessage />
-                     {field.value !== undefined && field.value > maxAllowedPercentage && (
-                          <p className="text-sm font-medium text-destructive">
-                            Exceeds available savings allocation ({maxAllowedPercentage.toFixed(1)}%).
-                          </p>
-                      )}
                 </FormItem>
                 )}
             />
@@ -276,9 +290,13 @@ export function AddSavingGoalDialog({ open, onOpenChange, onSaveGoal, existingGo
         </Form>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button type="submit" form="saving-goal-form">{existingGoal ? "Save Changes" : "Add Goal"}</Button>
+           {/* Disable save if savings budget is zero? */}
+          <Button type="submit" form="saving-goal-form" disabled={savingsBudgetAmount <= 0}>
+             {existingGoal ? "Save Changes" : "Add Goal"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+

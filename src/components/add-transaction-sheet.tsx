@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import * as React from "react";
@@ -13,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -48,7 +51,7 @@ import { getCategoryIconComponent } from '@/components/category-icon'; // Use ne
 const formSchema = z.object({
   type: z.enum(["income", "expense"]),
   amount: z.coerce.number().positive("Amount must be positive"),
-  category: z.string().min(1, "Category is required"), // Category ID
+  category: z.string().min(1, "Category is required"), // Category ID (e.g., 'groceries', 'salary')
   date: z.date(),
   description: z.string().max(100, "Description max 100 chars").optional(), // Optional description
 });
@@ -59,14 +62,22 @@ interface AddTransactionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
-  categories: Category[]; // Pass full categories list
+  // Pass categories suitable for selection (includes income sources and spendable expense categories)
+  categoriesForSelect: Category[];
+  canAddExpense: boolean; // Flag to determine if expense option should be enabled
 }
 
-export function AddTransactionSheet({ open, onOpenChange, onAddTransaction, categories }: AddTransactionSheetProps) {
+export function AddTransactionSheet({
+    open,
+    onOpenChange,
+    onAddTransaction,
+    categoriesForSelect,
+    canAddExpense
+}: AddTransactionSheetProps) {
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      type: "expense",
+      type: canAddExpense ? "expense" : "income", // Default based on whether expenses are allowed
       amount: 0,
       category: "",
       date: new Date(),
@@ -74,36 +85,53 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction, cate
     },
   });
 
+  // Reset form when opening or when canAddExpense changes
+  React.useEffect(() => {
+     if (open) {
+         form.reset({
+             type: canAddExpense ? "expense" : "income",
+             amount: 0,
+             category: "",
+             date: new Date(),
+             description: "",
+         });
+     }
+  }, [open, canAddExpense, form]);
+
+
   const transactionType = form.watch("type");
 
   const onSubmit = (values: TransactionFormValues) => {
-    // Ensure category is 'income' if type is income
-    const finalCategory = values.type === 'income' ? 'income' : values.category;
     onAddTransaction({
         ...values,
-        category: finalCategory,
+        category: values.category, // Category is now directly from selection based on type
     });
-    form.reset(); // Reset form after submission
+    // form.reset(); // Reset happens on open now
     onOpenChange(false); // Close sheet after submission
   };
 
   // Filter categories based on selected transaction type
   const filteredCategories = React.useMemo(() => {
-    if (transactionType === 'income') {
-      return categories.filter(cat => cat.id === 'income');
-    }
-    // Exclude 'income' category for expenses and exclude parent categories
-    return categories.filter(cat => cat.id !== 'income' && !categories.some(c => c.parentId === cat.id));
-  }, [transactionType, categories]);
+    return categoriesForSelect.filter(cat => {
+        if (transactionType === 'income') {
+            return cat.isIncomeSource === true;
+        } else { // expense
+             // Exclude income sources and the main 'savings' category (if present)
+            return cat.isIncomeSource !== true && cat.id !== 'savings';
+        }
+    });
+  }, [transactionType, categoriesForSelect]);
 
-  // Reset category if type changes and current category is not valid
+  // Reset category if type changes and current category is not valid for the new type
   React.useEffect(() => {
-    if (transactionType === 'income' && form.getValues('category') !== 'income') {
-      form.setValue('category', 'income');
-    } else if (transactionType === 'expense' && form.getValues('category') === 'income') {
-      form.setValue('category', ''); // Reset or set to a default expense category like 'other_expense'
-    }
-  }, [transactionType, form]);
+     const currentCategory = form.getValues('category');
+     if (!currentCategory) return; // Don't reset if empty
+
+     const isValidForType = filteredCategories.some(cat => cat.id === currentCategory);
+     if (!isValidForType) {
+         form.setValue('category', ''); // Reset category selection
+     }
+  }, [transactionType, filteredCategories, form]);
 
 
   return (
@@ -126,15 +154,23 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction, cate
                   <FormLabel>Type</FormLabel>
                   <FormControl>
                     <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      onValueChange={(value) => {
+                          // Only allow changing to 'expense' if canAddExpense is true
+                          if (value === 'expense' && !canAddExpense) {
+                              // Optionally show a toast or message here
+                              return; // Prevent selection
+                          }
+                          field.onChange(value);
+                      }}
+                      value={field.value} // Use controlled value
                       className="flex space-x-4"
                     >
                       <FormItem className="flex items-center space-x-2 space-y-0">
                         <FormControl>
-                          <RadioGroupItem value="expense" id="expense" />
+                           {/* Disable expense option if canAddExpense is false */}
+                          <RadioGroupItem value="expense" id="expense" disabled={!canAddExpense} />
                         </FormControl>
-                        <FormLabel htmlFor="expense" className="font-normal">Expense</FormLabel>
+                        <FormLabel htmlFor="expense" className={cn("font-normal", !canAddExpense && "text-muted-foreground/50 cursor-not-allowed")}>Expense</FormLabel>
                       </FormItem>
                       <FormItem className="flex items-center space-x-2 space-y-0">
                         <FormControl>
@@ -144,6 +180,7 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction, cate
                       </FormItem>
                     </RadioGroup>
                   </FormControl>
+                   {!canAddExpense && <FormDescription className="text-sm text-muted-foreground">Set expense budgets to enable logging expenses.</FormDescription>}
                   <FormMessage />
                 </FormItem>
               )}
@@ -156,7 +193,7 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction, cate
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="0.00" {...field} step="0.01" />
+                    <Input type="number" placeholder="0.00" {...field} step="0.01" min="0.01"/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -169,27 +206,28 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction, cate
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
-                   <Select onValueChange={field.onChange} value={field.value} disabled={transactionType === 'income'}>
+                   <Select onValueChange={field.onChange} value={field.value} >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
+                        <SelectValue placeholder={`Select ${transactionType} category`} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {filteredCategories.map((category) => {
-                         const Icon = getCategoryIconComponent(category.icon);
-                         return (
-                           <SelectItem key={category.id} value={category.id}>
-                             <div className="flex items-center gap-2">
-                               <Icon className="h-4 w-4 text-muted-foreground" />
-                               <span>{category.label}</span>
-                             </div>
-                           </SelectItem>
-                         );
-                       })}
-                        {transactionType === 'expense' && filteredCategories.length === 0 && (
-                            <SelectItem value="no-cat" disabled>No expense categories available</SelectItem>
-                        )}
+                      {filteredCategories.length > 0 ? (
+                          filteredCategories.map((category) => {
+                             const Icon = getCategoryIconComponent(category.icon);
+                             return (
+                               <SelectItem key={category.id} value={category.id}>
+                                 <div className="flex items-center gap-2">
+                                   <Icon className="h-4 w-4 text-muted-foreground" />
+                                   <span>{category.label}</span>
+                                 </div>
+                               </SelectItem>
+                             );
+                           })
+                       ) : (
+                            <SelectItem value="no-cat" disabled>No {transactionType} categories available</SelectItem>
+                       )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -263,3 +301,4 @@ export function AddTransactionSheet({ open, onOpenChange, onAddTransaction, cate
     </Sheet>
   );
 }
+
