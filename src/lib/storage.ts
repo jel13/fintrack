@@ -1,5 +1,6 @@
 // Basic localStorage wrapper - consider a more robust solution for production
 import type { AppData } from '@/types';
+import { format } from 'date-fns'; // Import format
 
 const APP_DATA_KEY = 'finTrackMobileData';
 
@@ -22,7 +23,7 @@ const defaultCategories: AppData['categories'] = [
 ];
 
 
-const defaultAppData: AppData = {
+export const defaultAppData: AppData = { // Export the default data
   monthlyIncome: null,
   transactions: [],
   budgets: [],
@@ -32,12 +33,14 @@ const defaultAppData: AppData = {
 
 export const loadAppData = (): AppData => {
   if (typeof window === 'undefined') {
-    return defaultAppData; // Return default if on server-side
+    return { ...defaultAppData }; // Return a copy of default if on server-side
   }
   try {
     const storedData = localStorage.getItem(APP_DATA_KEY);
     if (storedData) {
       const parsedData: AppData = JSON.parse(storedData);
+      const currentMonth = format(new Date(), 'yyyy-MM');
+
       // Ensure dates are parsed correctly
       parsedData.transactions = parsedData.transactions.map(t => ({
         ...t,
@@ -47,29 +50,83 @@ export const loadAppData = (): AppData => {
         ...g,
         targetDate: g.targetDate ? new Date(g.targetDate) : null,
       }));
+
+      // Ensure budgets have month and spent initialized if missing
+      parsedData.budgets = parsedData.budgets.map(b => {
+          const spent = parsedData.transactions
+              .filter(t => t.type === 'expense' && t.category === b.category && format(t.date, 'yyyy-MM') === (b.month || currentMonth))
+              .reduce((sum, t) => sum + t.amount, 0);
+          return {
+            ...b,
+            month: b.month || currentMonth, // Default to current month if missing
+            spent: b.spent !== undefined ? b.spent : spent, // Initialize spent if missing
+          };
+      });
+
       // Merge default categories with stored ones if missing (e.g., after an update)
       const mergedCategories = [...defaultCategories];
       const storedCategoryIds = new Set(parsedData.categories.map(c => c.id));
-      defaultCategories.forEach(defaultCat => {
-        if (!storedCategoryIds.has(defaultCat.id)) {
-          mergedCategories.push(defaultCat);
-        } else {
-          // Ensure non-deletable flags are preserved from defaults
-           const storedCatIndex = parsedData.categories.findIndex(c => c.id === defaultCat.id);
-            if (storedCatIndex > -1 && defaultCat.isDeletable === false) {
-                parsedData.categories[storedCatIndex].isDeletable = false;
-            }
+
+      parsedData.categories.forEach(storedCat => {
+        const defaultMatch = defaultCategories.find(dc => dc.id === storedCat.id);
+        if (defaultMatch) {
+          // Update the default category entry with stored data, but keep default flags
+          const index = mergedCategories.findIndex(mc => mc.id === storedCat.id);
+          if (index > -1) {
+            mergedCategories[index] = {
+              ...storedCat, // Take stored label, icon, parentId
+              isDefault: defaultMatch.isDefault, // Keep default status
+              isDeletable: defaultMatch.isDeletable, // Keep default deletable status
+            };
+          }
+        } else if (!storedCategoryIds.has(storedCat.id)) {
+           // This condition seems wrong - should be adding stored *custom* categories
+           // Let's re-evaluate logic: We start with defaults, then add custom ones
+           // Correct approach: Start with defaults, then add/update based on stored data
         }
       });
+
+       // Corrected Merge Logic:
+       const finalCategories = [...defaultCategories]; // Start with defaults
+       const defaultIds = new Set(defaultCategories.map(c => c.id));
+
+       parsedData.categories.forEach(storedCat => {
+            const existingIndex = finalCategories.findIndex(fc => fc.id === storedCat.id);
+            if (existingIndex > -1) {
+                // Update existing default category, but preserve non-editable flags
+                 finalCategories[existingIndex] = {
+                    ...storedCat, // Use stored label, icon, parentId
+                    isDefault: finalCategories[existingIndex].isDefault, // Keep original default flag
+                    isDeletable: finalCategories[existingIndex].isDeletable, // Keep original deletable flag
+                 };
+            } else {
+                // Add custom category from storage
+                 finalCategories.push({
+                     ...storedCat,
+                     isDefault: false, // Custom categories are not default
+                     isDeletable: true, // Custom categories are deletable by default
+                 });
+            }
+       });
+
+
       // Ensure 'Savings' exists and is not deletable in the final list
-       let savingsCategory = mergedCategories.find(c => c.id === 'savings');
+       let savingsCategory = finalCategories.find(c => c.id === 'savings');
        if (!savingsCategory) {
-         mergedCategories.push({ id: 'savings', label: 'Savings', icon: 'PiggyBank', isDefault: true, isDeletable: false });
+         finalCategories.push({ id: 'savings', label: 'Savings', icon: 'PiggyBank', isDefault: true, isDeletable: false });
        } else if (savingsCategory.isDeletable !== false) {
          savingsCategory.isDeletable = false; // Force non-deletable
        }
+        // Ensure 'Income' exists and is not deletable
+       let incomeCategory = finalCategories.find(c => c.id === 'income');
+        if (!incomeCategory) {
+         finalCategories.push({ id: 'income', label: 'Income', icon: 'TrendingUp', isDefault: true, isDeletable: false });
+       } else if (incomeCategory.isDeletable !== false) {
+         incomeCategory.isDeletable = false; // Force non-deletable
+       }
 
-      parsedData.categories = mergedCategories;
+
+      parsedData.categories = finalCategories;
 
 
       return parsedData;
@@ -77,7 +134,7 @@ export const loadAppData = (): AppData => {
   } catch (error) {
     console.error("Failed to load app data from localStorage:", error);
   }
-  return defaultAppData;
+  return { ...defaultAppData }; // Return a copy on error
 };
 
 export const saveAppData = (data: AppData) => {
@@ -88,11 +145,12 @@ export const saveAppData = (data: AppData) => {
       ...data,
       transactions: data.transactions.map(t => ({
         ...t,
-        date: t.date.toISOString(),
+        // Check if date is already a string (might happen during rapid updates)
+        date: typeof t.date === 'string' ? t.date : t.date.toISOString(),
       })),
       savingGoals: data.savingGoals.map(g => ({
         ...g,
-        targetDate: g.targetDate ? g.targetDate.toISOString() : null,
+        targetDate: g.targetDate ? (typeof g.targetDate === 'string' ? g.targetDate : g.targetDate.toISOString()) : null,
       })),
     };
     localStorage.setItem(APP_DATA_KEY, JSON.stringify(dataToStore));

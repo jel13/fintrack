@@ -13,7 +13,7 @@ import TransactionListItem from "@/components/transaction-list-item";
 import { SpendingChart } from "@/components/spending-chart";
 import type { Transaction, Budget, Category, AppData, SavingGoal } from "@/types";
 import { format } from 'date-fns';
-import { loadAppData, saveAppData } from "@/lib/storage";
+import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage"; // Import defaultAppData
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -21,21 +21,34 @@ import Link from "next/link"; // Import Link for navigation
 
 
 export default function Home() {
-  const [appData, setAppData] = React.useState<AppData>(loadAppData());
+  // Initialize with defaultAppData to ensure server/client match initially
+  const [appData, setAppData] = React.useState<AppData>(defaultAppData);
+  const [isLoaded, setIsLoaded] = React.useState(false); // Track if data is loaded from storage
   const [isAddTransactionSheetOpen, setIsAddTransactionSheetOpen] = React.useState(false);
   const [isAddBudgetDialogOpen, setIsAddBudgetDialogOpen] = React.useState(false);
+   // Initialize tempIncome based on the *default* state initially
   const [tempIncome, setTempIncome] = React.useState<string>(appData.monthlyIncome?.toString() ?? '');
   const { toast } = useToast();
 
   const currentMonth = format(new Date(), 'yyyy-MM'); // Get current month in YYYY-MM format
 
-  // Derived state from appData
-  const { monthlyIncome, transactions, budgets, categories, savingGoals } = appData;
-
-   // Persist data whenever appData changes
+   // Load data from localStorage only on the client after initial mount
   React.useEffect(() => {
-    saveAppData(appData);
-  }, [appData]);
+    const loadedData = loadAppData();
+    setAppData(loadedData);
+    setTempIncome(loadedData.monthlyIncome?.toString() ?? ''); // Update tempIncome after loading
+    setIsLoaded(true); // Mark data as loaded
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  // Persist data whenever appData changes *after* initial load
+  React.useEffect(() => {
+    if (isLoaded) { // Only save after initial data is loaded
+      saveAppData(appData);
+    }
+  }, [appData, isLoaded]);
+
+  // Destructure AFTER the useEffect load might update it
+  const { monthlyIncome, transactions, budgets, categories, savingGoals } = appData;
 
 
   // Calculate summaries for the current month
@@ -62,6 +75,8 @@ export default function Home() {
 
   // Update budget spending whenever transactions change
   React.useEffect(() => {
+    if (!isLoaded) return; // Don't run budget updates until data is loaded
+
      setAppData(prevData => {
          const updatedBudgets = prevData.budgets.map(budget => {
              if (budget.month === currentMonth) {
@@ -117,9 +132,15 @@ export default function Home() {
         }
 
 
-        return { ...prevData, budgets: updatedBudgets };
+        // Only return updated data if something actually changed to prevent infinite loops
+        if (JSON.stringify(prevData.budgets) !== JSON.stringify(updatedBudgets)) {
+             return { ...prevData, budgets: updatedBudgets };
+        }
+        return prevData;
+
+
      });
-  }, [transactions, monthlyIncome, currentMonth]); // Dependency on monthlyIncome added
+  }, [transactions, monthlyIncome, currentMonth, isLoaded]); // Dependency on isLoaded added
 
 
   const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
@@ -154,7 +175,7 @@ export default function Home() {
     };
 
     setAppData(prev => {
-        const updatedBudgets = [...prev.budgets, budgetWithDetails];
+        const updatedBudgets = [...prev.budgets.filter(b => !(b.category === newBudget.category && b.month === currentMonth)), budgetWithDetails]; // Replace if exists
         // Recalculate Savings budget after adding a new one
         const savingsBudgetIndex = updatedBudgets.findIndex(b => b.category === 'savings' && b.month === currentMonth);
         const totalBudgeted = updatedBudgets
@@ -187,12 +208,14 @@ export default function Home() {
 
 
   // Format currency helper
-  const formatCurrency = (amount: number) => {
-    const absAmount = Math.abs(amount);
-    const sign = amount < 0 ? '-' : '';
-    // Basic formatting, consider using Intl.NumberFormat for robustness
-    return `${sign}$${absAmount.toFixed(2)}`;
+  const formatCurrency = (amount: number | null | undefined): string => {
+      if (amount === null || amount === undefined) return '$0.00';
+      const absAmount = Math.abs(amount);
+      const sign = amount < 0 ? '-' : '';
+      // Basic formatting, consider using Intl.NumberFormat for robustness
+      return `${sign}$${absAmount.toFixed(2)}`;
   };
+
 
  const handleSetIncome = () => {
     const incomeValue = parseFloat(tempIncome);
@@ -263,8 +286,8 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-background">
       <Tabs defaultValue="dashboard" className="flex-grow flex flex-col">
         <TabsContent value="dashboard" className="flex-grow overflow-y-auto p-4 space-y-4">
-           {/* Set Income Card (if not set) */}
-            {monthlyIncome === null && (
+           {/* Set Income Card (Conditionally render based on *state*, not just loaded value) */}
+            {isLoaded && monthlyIncome === null && (
               <Card className="border-primary border-2 shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2"><AlertCircle className="text-primary h-5 w-5"/> Set Your Monthly Income</CardTitle>
@@ -287,8 +310,8 @@ export default function Home() {
               </Card>
             )}
 
-            {/* Monthly Summary Cards (only show if income is set) */}
-             {monthlyIncome !== null && (
+            {/* Monthly Summary Cards (Conditionally render based on *state*) */}
+             {isLoaded && monthlyIncome !== null && (
                 <>
                  <div className="grid gap-4 grid-cols-2">
                     <Card>
@@ -325,8 +348,8 @@ export default function Home() {
              )}
 
 
-          {/* Spending Chart */}
-          {monthlyIncome !== null && <SpendingChart transactions={transactions} month={currentMonth} categories={categories} />}
+          {/* Spending Chart (Conditionally render based on *state*) */}
+          {isLoaded && monthlyIncome !== null && <SpendingChart transactions={transactions} month={currentMonth} categories={categories} />}
 
           {/* Recent Transactions */}
           <Card>
@@ -362,14 +385,16 @@ export default function Home() {
         <TabsContent value="budgets" className="flex-grow overflow-y-auto p-4 space-y-4">
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
-             {monthlyIncome !== null && (
+             {isLoaded && monthlyIncome !== null && (
                 <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
                 </Button>
              )}
           </div>
 
-          {monthlyIncome === null ? (
+          {!isLoaded ? (
+              <p className="text-center text-muted-foreground pt-10">Loading...</p>
+          ) : monthlyIncome === null ? (
              <Card className="border-dashed border-muted-foreground">
                  <CardContent className="p-6 text-center text-muted-foreground">
                      <AlertCircle className="mx-auto h-8 w-8 mb-2" />
@@ -410,7 +435,7 @@ export default function Home() {
                                 <span>{((goal.savedAmount / goal.targetAmount) * 100).toFixed(1)}%</span>
                             </div>
                             <progress value={goal.savedAmount} max={goal.targetAmount} className="w-full h-2 [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:bg-accent [&::-moz-progress-bar]:bg-accent"></progress>
-                            {goal.percentageAllocation && monthlyIncome && budgets.find(b => b.category === 'savings') && (
+                             {goal.percentageAllocation && isLoaded && monthlyIncome && budgets.find(b => b.category === 'savings') && (
                                 <p className="text-xs text-muted-foreground mt-1">
                                     Receives {goal.percentageAllocation}% of Savings budget ({formatCurrency((goal.percentageAllocation / 100) * (budgets.find(b => b.category === 'savings')?.limit ?? 0))}/month)
                                 </p>
@@ -436,8 +461,8 @@ export default function Home() {
              </Card>
         </TabsContent>
 
-        {/* Floating Action Button */}
-        {monthlyIncome !== null && (
+        {/* Floating Action Button (Conditionally render based on *state*) */}
+        {isLoaded && monthlyIncome !== null && (
              <div className="fixed bottom-20 right-4 z-10">
                 <Button
                     size="icon"
