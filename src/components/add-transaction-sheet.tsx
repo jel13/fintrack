@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,8 @@ import { getCategoryIconComponent } from '@/components/category-icon'; // Use ne
 
 const formSchema = z.object({
   type: z.enum(["income", "expense"]),
-  amount: z.coerce.number().positive("Amount must be positive"),
+  amount: z.coerce.number({ invalid_type_error: "Amount must be a number", required_error: "Amount is required" })
+    .positive("Amount must be positive"),
   category: z.string().min(1, "Category is required"), // Category ID (e.g., 'groceries', 'salary')
   date: z.date(),
   description: z.string().max(100, "Description max 100 chars").optional(), // Optional description
@@ -78,7 +80,7 @@ export function AddTransactionSheet({
     resolver: zodResolver(formSchema),
     defaultValues: {
       type: canAddExpense ? "expense" : "income", // Default based on whether expenses are allowed
-      amount: 0,
+      amount: undefined, // Use undefined for number coercion
       category: "",
       date: new Date(),
       description: "",
@@ -90,7 +92,7 @@ export function AddTransactionSheet({
      if (open) {
          form.reset({
              type: canAddExpense ? "expense" : "income",
-             amount: 0,
+             amount: undefined,
              category: "",
              date: new Date(),
              description: "",
@@ -105,8 +107,11 @@ export function AddTransactionSheet({
     onAddTransaction({
         ...values,
         category: values.category, // Category is now directly from selection based on type
+        amount: values.amount, // Already validated as positive number
+        date: values.date,
+        description: values.description,
+        type: values.type,
     });
-    // form.reset(); // Reset happens on open now
     onOpenChange(false); // Close sheet after submission
   };
 
@@ -119,7 +124,7 @@ export function AddTransactionSheet({
              // Exclude income sources and the main 'savings' category (if present)
             return cat.isIncomeSource !== true && cat.id !== 'savings';
         }
-    });
+    }).sort((a, b) => a.label.localeCompare(b.label)); // Sort alphabetically
   }, [transactionType, categoriesForSelect]);
 
   // Reset category if type changes and current category is not valid for the new type
@@ -136,161 +141,181 @@ export function AddTransactionSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-lg p-4 h-[90vh] flex flex-col">
-        <SheetHeader className="mb-4 text-left">
+      <SheetContent side="bottom" className="rounded-t-lg p-0 h-[90vh] flex flex-col">
+        <SheetHeader className="p-4 pb-2 border-b">
           <SheetTitle>Add Transaction</SheetTitle>
           <SheetDescription>
-            Log a new income or expense item. Description is optional.
+            Log a new income or expense. Description is optional.
           </SheetDescription>
         </SheetHeader>
-        <Form {...form}>
-          {/* Use ID add-transaction-form for the submit button */}
-          <form id="add-transaction-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-grow overflow-y-auto pr-2">
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem className="space-y-2">
-                  <FormLabel>Type</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={(value) => {
-                          // Only allow changing to 'expense' if canAddExpense is true
-                          if (value === 'expense' && !canAddExpense) {
-                              // Optionally show a toast or message here
-                              return; // Prevent selection
-                          }
-                          field.onChange(value);
-                      }}
-                      value={field.value} // Use controlled value
-                      className="flex space-x-4"
-                    >
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                           {/* Disable expense option if canAddExpense is false */}
-                          <RadioGroupItem value="expense" id="expense" disabled={!canAddExpense} />
-                        </FormControl>
-                        <FormLabel htmlFor="expense" className={cn("font-normal", !canAddExpense && "text-muted-foreground/50 cursor-not-allowed")}>Expense</FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="income" id="income" />
-                        </FormControl>
-                        <FormLabel htmlFor="income" className="font-normal">Income</FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                   {!canAddExpense && <FormDescription className="text-sm text-muted-foreground">Set expense budgets to enable logging expenses.</FormDescription>}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="0.00" {...field} step="0.01" min="0.01"/>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
-                   <Select onValueChange={field.onChange} value={field.value} >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={`Select ${transactionType} category`} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {filteredCategories.length > 0 ? (
-                          filteredCategories.map((category) => {
-                             const Icon = getCategoryIconComponent(category.icon);
-                             return (
-                               <SelectItem key={category.id} value={category.id}>
-                                 <div className="flex items-center gap-2">
-                                   <Icon className="h-4 w-4 text-muted-foreground" />
-                                   <span>{category.label}</span>
-                                 </div>
-                               </SelectItem>
-                             );
-                           })
-                       ) : (
-                            <SelectItem value="no-cat" disabled>No {transactionType} categories available</SelectItem>
-                       )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-             <FormField
+         <ScrollArea className="flex-grow overflow-y-auto"> {/* Wrap form content */}
+          <Form {...form}>
+            {/* Use ID add-transaction-form for the submit button */}
+            <form id="add-transaction-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4">
+              <FormField
                 control={form.control}
-                name="description"
+                name="type"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel>Type</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={(value) => {
+                            // Only allow changing to 'expense' if canAddExpense is true
+                            if (value === 'expense' && !canAddExpense) {
+                                // Optionally show a toast or message here
+                                return; // Prevent selection
+                            }
+                            field.onChange(value);
+                        }}
+                        value={field.value} // Use controlled value
+                        className="flex space-x-4"
+                      >
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                             {/* Disable expense option if canAddExpense is false */}
+                            <RadioGroupItem value="expense" id="expense" disabled={!canAddExpense} />
+                          </FormControl>
+                          <FormLabel htmlFor="expense" className={cn("font-normal cursor-pointer", !canAddExpense && "text-muted-foreground/50 cursor-not-allowed")}>Expense</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="income" id="income" />
+                          </FormControl>
+                          <FormLabel htmlFor="income" className="font-normal cursor-pointer">Income</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                     {!canAddExpense && <FormDescription className="text-xs text-destructive">Set expense budgets first to enable logging expenses.</FormDescription>}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormLabel>Amount</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Add a note (e.g., Lunch with colleagues)" {...field} />
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        {...field}
+                        value={field.value === undefined ? '' : field.value}
+                         onChange={e => {
+                            const val = e.target.value;
+                            // Allow empty string or parse as number
+                            field.onChange(val === '' ? undefined : parseFloat(val));
+                        }}
+                        step="0.01"
+                        min="0.01"
+                        />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-          </form>
-        </Form>
-        <SheetFooter className="mt-auto pt-4 border-t">
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                     <Select onValueChange={field.onChange} value={field.value} >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={`Select ${transactionType} category`} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {filteredCategories.length > 0 ? (
+                            filteredCategories.map((category) => {
+                               const Icon = getCategoryIconComponent(category.icon);
+                               return (
+                                 <SelectItem key={category.id} value={category.id}>
+                                   <div className="flex items-center gap-2">
+                                     <Icon className="h-4 w-4 text-muted-foreground" />
+                                     <span>{category.label}</span>
+                                   </div>
+                                 </SelectItem>
+                               );
+                             })
+                         ) : (
+                              <SelectItem value="no-cat" disabled>No {transactionType} categories available</SelectItem>
+                         )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? (
+                              format(field.value, "PPP") // More readable date format
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={(date) => field.onChange(date ?? new Date())} // Default to today if cleared
+                          initialFocus
+                          disabled={(date) => date > new Date()} // Disable future dates
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+               <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                            placeholder="Add a note (e.g., Lunch with colleagues)"
+                            {...field}
+                            rows={2} // Smaller text area
+                            className="resize-none" // Prevent resizing
+                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+            </form>
+          </Form>
+         </ScrollArea> {/* End ScrollArea */}
+        <SheetFooter className="mt-auto p-4 pt-2 border-t bg-background sticky bottom-0">
             <SheetClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>
             </SheetClose>
@@ -301,4 +326,3 @@ export function AddTransactionSheet({
     </Sheet>
   );
 }
-

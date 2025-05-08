@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Briefcase } from "lucide-react";
+import { ArrowLeft, PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Briefcase, TrendingDown, Folder, FolderOpen, File } from "lucide-react"; // Added Folder icons
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge"; // Import Badge
 
 
 export default function CategoriesPage() {
@@ -39,6 +40,14 @@ export default function CategoriesPage() {
     React.useEffect(() => {
         const loadedData = loadAppData();
         setAppData(loadedData);
+        // Expand top-level categories by default initially
+        const initialExpanded: Record<string, boolean> = {};
+         loadedData.categories.forEach(cat => {
+             if (!cat.parentId) { // Only top-level
+                 initialExpanded[cat.id] = true;
+             }
+         });
+        setExpandedCategories(initialExpanded);
         setIsLoaded(true);
     }, []);
 
@@ -133,14 +142,13 @@ export default function CategoriesPage() {
              return;
          }
 
-         // Check if category has children (only relevant for non-income sources)
-         if (!categoryToDelete.isIncomeSource) {
-             const hasChildren = appData.categories.some(c => c.parentId === categoryId);
-             if (hasChildren) {
-                 toast({ title: "Cannot Delete", description: "Please delete or reassign sub-categories first.", variant: "destructive"});
-                 return;
-             }
-         }
+         // Check if category has children
+         const hasChildren = appData.categories.some(c => c.parentId === categoryId);
+         if (hasChildren) {
+              toast({ title: "Cannot Delete", description: "Please delete or reassign sub-categories first.", variant: "destructive"});
+              return;
+          }
+
 
          // Check if category is used in transactions or budgets (expense categories) or saving goals
          let isInUse = false;
@@ -198,38 +206,63 @@ export default function CategoriesPage() {
             .filter(cat => cat.parentId === parentId)
             .sort((a, b) => a.label.localeCompare(b.label));
 
+         if (children.length === 0 && level === 0) {
+            return (
+                 <p className="text-sm text-muted-foreground pl-2 py-4">
+                    {parentId === null && categoriesToRender.length === 0 ? "No categories defined in this section." : ""}
+                 </p>
+            );
+        }
+
+
         return children.map(cat => {
             const Icon = getCategoryIconComponent(cat.icon);
             const hasChildren = categoriesToRender.some(c => c.parentId === cat.id);
             const isExpanded = !!expandedCategories[cat.id];
+            const isIncome = cat.isIncomeSource ?? false;
 
             return (
                 <div key={cat.id} className="flex flex-col" style={{ marginLeft: `${level * 16}px` }}>
-                   <Card className={cn("mb-2 group/cat relative", level > 0 && "border-l-4 border-muted-foreground/20")}>
-                      <CardContent className="p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                                {hasChildren ? (
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => toggleExpand(cat.id)}>
-                                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                    </Button>
-                                ) : (
-                                    <span className="w-6 flex-shrink-0"></span> // Placeholder for alignment
-                                )}
-                                <Icon className="h-5 w-5 text-primary flex-shrink-0" />
+                   {/* Use Card for visual grouping, subtle border */}
+                   <Card className={cn(
+                        "mb-1 group/cat relative transition-all duration-150 ease-in-out hover:shadow-md",
+                        level > 0 ? "border-l-4 border-muted-foreground/10" : "border", // Indentation indicator
+                        isExpanded ? "shadow-sm" : "shadow-xs"
+                    )}>
+                      <CardContent className="p-2 flex items-center justify-between cursor-pointer" onClick={() => hasChildren && toggleExpand(cat.id)}>
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                {/* Expand/Collapse Icon */}
+                                <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
+                                    {hasChildren ? (
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-70 group-hover/cat:opacity-100" onClick={(e) => { e.stopPropagation(); toggleExpand(cat.id); }}>
+                                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                        </Button>
+                                    ) : (
+                                         // Placeholder or different icon for leaf nodes
+                                         <File className="h-4 w-4 text-muted-foreground/50" />
+                                    )}
+                                </div>
+
+                                {/* Category Icon and Label */}
+                                <Icon className={cn("h-4 w-4 flex-shrink-0", isIncome ? "text-accent" : "text-primary")} />
                                 <span className="text-sm font-medium truncate flex-grow">{cat.label}</span>
-                                {/* Indicate type (Income/Expense) and Default status */}
-                                {cat.isIncomeSource && <span className="text-xs text-accent/80 flex-shrink-0 ml-1">(Income)</span>}
-                                {cat.isDefault && <span className="text-xs text-muted-foreground flex-shrink-0 ml-1">(Default)</span>}
+
+                                {/* Badges for Type and Default Status */}
+                                <div className="flex gap-1 ml-auto flex-shrink-0 mr-12"> {/* Space before actions */}
+                                     {isIncome && <Badge variant="outline" className="text-xs h-5 border-accent/50 text-accent">Income</Badge>}
+                                     {cat.isDefault && <Badge variant="secondary" className="text-xs h-5">Default</Badge>}
+                                </div>
                             </div>
-                            <div className="flex gap-1 opacity-0 group-hover/cat:opacity-100 focus-within:opacity-100 transition-opacity ml-2 flex-shrink-0">
-                                 {/* Allow editing always, but disable changing type later */}
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(cat)} aria-label={`Edit ${cat.label}`}>
+
+                            {/* Action Buttons (Appear on Hover/Focus) */}
+                            <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex gap-1 opacity-0 group-hover/cat:opacity-100 focus-within:opacity-100 transition-opacity ml-1 flex-shrink-0">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEditDialog(cat); }} aria-label={`Edit ${cat.label}`}>
                                     <Edit className="h-4 w-4" />
                                 </Button>
-                                {cat.isDeletable !== false ? ( // Show delete only if deletable
-                                     <AlertDialog>
+                                {cat.isDeletable !== false ? (
+                                     <AlertDialog onOpenChange={(open) => !open && (document.activeElement as HTMLElement)?.blur()}>
                                         <AlertDialogTrigger asChild>
-                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete ${cat.label}`}>
+                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => e.stopPropagation()} aria-label={`Delete ${cat.label}`}>
                                                 <Trash2 className="h-4 w-4" />
                                              </Button>
                                         </AlertDialogTrigger>
@@ -251,7 +284,6 @@ export default function CategoriesPage() {
                                         </AlertDialogContent>
                                     </AlertDialog>
                                 ) : (
-                                    // Show disabled trash icon for non-deletable
                                      <span className="h-7 w-7 flex items-center justify-center text-muted-foreground/50 cursor-not-allowed" title={`Cannot delete ${cat.isDefault ? 'default' : ''} category "${cat.label}"`}>
                                           <Trash2 className="h-4 w-4" />
                                      </span>
@@ -259,7 +291,12 @@ export default function CategoriesPage() {
                             </div>
                       </CardContent>
                    </Card>
-                    {hasChildren && isExpanded && renderCategoryTree(categoriesToRender, cat.id, level + 1)}
+                   {/* Recursive Call for Children */}
+                   {hasChildren && isExpanded && (
+                        <div className="mt-1 pl-1 border-l border-dashed border-muted-foreground/30">
+                           {renderCategoryTree(categoriesToRender, cat.id, level + 1)}
+                        </div>
+                    )}
                 </div>
             );
         });
@@ -271,9 +308,9 @@ export default function CategoriesPage() {
 
 
     return (
-        <div className="flex flex-col h-screen p-4 bg-background">
-            {/* Header */}
-            <div className="flex items-center mb-4">
+        <div className="flex flex-col h-screen bg-background">
+             {/* Header */}
+            <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
                 <Link href="/" passHref>
                     <Button variant="ghost" size="icon" aria-label="Back to Home">
                         <ArrowLeft className="h-5 w-5" />
@@ -285,36 +322,55 @@ export default function CategoriesPage() {
                 </Button>
             </div>
 
-            {/* Categories List Area */}
-            <ScrollArea className="flex-grow">
+             {/* Categories List Area */}
+            <ScrollArea className="flex-grow p-4">
                  {!isLoaded ? (
-                     <p className="text-center text-muted-foreground pt-10">Loading categories...</p>
+                      <div className="space-y-4">
+                        {/* Skeleton Loading State */}
+                        {[...Array(3)].map((_, i) => (
+                           <Card key={`skel-inc-${i}`} className="mb-2 p-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-6 h-6 bg-muted rounded-full animate-pulse"></div>
+                                    <div className="h-4 bg-muted rounded w-1/2 animate-pulse"></div>
+                                </div>
+                           </Card>
+                        ))}
+                         {[...Array(5)].map((_, i) => (
+                           <Card key={`skel-exp-${i}`} className="mb-2 p-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-6 h-6 bg-muted rounded-full animate-pulse"></div>
+                                    <div className="h-4 bg-muted rounded w-3/4 animate-pulse"></div>
+                                </div>
+                           </Card>
+                        ))}
+                    </div>
                  ) : (
                     <div className="space-y-4">
                          {/* Income Sources Section */}
                          <div>
-                             <h2 className="text-lg font-semibold mb-2 flex items-center gap-2"><Briefcase className="h-5 w-5 text-accent" /> Income Sources</h2>
-                             <div className="space-y-0">
+                             <h2 className="text-lg font-semibold mb-2 flex items-center gap-2 border-b pb-1"><Briefcase className="h-5 w-5 text-accent" /> Income Sources</h2>
+                             <div className="space-y-1 mt-2">
                                  {renderCategoryTree(incomeCats, null)}
                                  {incomeCats.length === 0 && (
-                                      <p className="text-sm text-muted-foreground pl-2">No income sources defined.</p>
+                                      <p className="text-sm text-muted-foreground pl-2 py-4">No income sources defined. Click 'Add Category' to create one.</p>
                                   )}
                              </div>
                          </div>
 
                         {/* Expense Categories Section */}
                          <div>
-                             <h2 className="text-lg font-semibold mb-2 flex items-center gap-2"><TrendingDown className="h-5 w-5 text-primary" /> Expense Categories</h2>
-                             <div className="space-y-0">
+                             <h2 className="text-lg font-semibold mb-2 flex items-center gap-2 border-b pb-1"><TrendingDown className="h-5 w-5 text-primary" /> Expense Categories</h2>
+                             <div className="space-y-1 mt-2">
                                  {renderCategoryTree(expenseCats, null)}
-                                 {expenseCats.filter(c => c.parentId === null).length === 0 && (
-                                     <p className="text-sm text-muted-foreground pl-2">No top-level expense categories defined.</p>
+                                 {expenseCats.filter(c => c.parentId === null).length === 0 && ( // Check for top-level expenses
+                                     <p className="text-sm text-muted-foreground pl-2 py-4">No expense categories defined. Click 'Add Category' to create one.</p>
                                  )}
                              </div>
                          </div>
 
-                        {appData.categories.length === 0 && (
-                            <p className="text-center text-muted-foreground pt-10">No categories found. Add one to get started!</p>
+                        {/* Overall Empty State */}
+                        {appData.categories.length === incomeCats.length + expenseCats.length && incomeCats.length === 0 && expenseCats.length === 0 && (
+                             <p className="text-center text-muted-foreground pt-10">No categories found. Add one to get started!</p>
                         )}
                     </div>
                  )}
@@ -335,4 +391,5 @@ export default function CategoriesPage() {
         </div>
     );
 }
+```
 

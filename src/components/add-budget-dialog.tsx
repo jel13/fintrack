@@ -40,14 +40,13 @@ import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/utils"; // Use util function
 
 
-// Schema focuses on percentage input
+// Schema focuses solely on percentage input
 const formSchema = z.object({
   category: z.string().min(1, "Category is required"),
-  percentage: z.coerce.number({ invalid_type_error: "Percentage must be a number" })
+  percentage: z.coerce.number({ invalid_type_error: "Percentage must be a number", required_error: "Percentage is required" })
     .gte(0.1, "Percentage must be at least 0.1%") // Minimum percentage
     .lte(100, "Percentage cannot exceed 100%")
-    .multipleOf(0.1, { message: "Percentage can have max 1 decimal place" }) // Allow one decimal place
-    .refine(val => val !== undefined, "Percentage is required"), // Ensure percentage is provided
+    .multipleOf(0.1, { message: "Percentage can have max 1 decimal place" }), // Allow one decimal place
 });
 
 
@@ -89,13 +88,13 @@ export function AddBudgetDialog({
   }, [open, form]);
 
 
-  const { watch, setValue, setError } = form;
+  const { watch, setError } = form;
   const percentageValue = watch('percentage');
-  const selectedCategory = watch('category');
 
   // Calculate available percentage (remaining from 100% after allocating to other expense categories)
   const availablePercentage = React.useMemo(() => {
-      return Math.max(0, parseFloat((100 - totalAllocatedPercentage).toFixed(1))); // Ensure precision
+      // Ensure precision and handle potential floating point issues
+      return Math.max(0, parseFloat((100 - totalAllocatedPercentage).toFixed(1)));
   }, [totalAllocatedPercentage]);
 
   // Calculate monetary value based on percentage and income
@@ -120,7 +119,6 @@ export function AddBudgetDialog({
         // limit and spent are calculated later when saving AppData
     };
     onAddBudget(finalValues);
-    // form.reset(); // Reset happens on open now
     onOpenChange(false);
   };
 
@@ -133,9 +131,9 @@ export function AddBudgetDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Set Budget</DialogTitle>
+          <DialogTitle>Set Category Budget</DialogTitle>
           <DialogDescription>
-             Allocate a percentage of your monthly income ({formatCurrency(monthlyIncome)}) to this category.
+             Allocate a percentage of your monthly income ({formatCurrency(monthlyIncome ?? 0)}) to this expense category. The monetary limit will be calculated automatically.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -167,7 +165,7 @@ export function AddBudgetDialog({
                         })
                       ) : (
                         <SelectItem value="no-categories" disabled>
-                          All categories have budgets or no categories available
+                          All categories have budgets or none available
                         </SelectItem>
                       )}
                     </SelectContent>
@@ -191,7 +189,8 @@ export function AddBudgetDialog({
                             step="0.1" // Allow decimals
                             max={availablePercentage} // Set max based on availability
                             min="0.1" // Minimum percentage
-                            value={field.value ?? ''}
+                            // Convert undefined to empty string for controlled input
+                            value={field.value === undefined ? '' : field.value}
                             onChange={e => {
                                 const val = e.target.value;
                                 // Allow empty string or parse as number
@@ -200,8 +199,7 @@ export function AddBudgetDialog({
                             disabled={!monthlyIncome || monthlyIncome <= 0} />
                     </FormControl>
                      <FormDescription>
-                        Enter the percentage of income for this budget.
-                        <br/> Available to allocate: {availablePercentage.toFixed(1)}%
+                        Enter the percentage of income ({formatCurrency(monthlyIncome ?? 0)}) for this budget.
                       </FormDescription>
                     {!monthlyIncome || monthlyIncome <= 0 ? (
                         <p className="text-sm font-medium text-destructive">
@@ -209,10 +207,13 @@ export function AddBudgetDialog({
                         </p>
                     ) : percentageValue !== undefined && percentageValue > 0 ? (
                          <p className="text-sm text-muted-foreground">
-                            Calculated Amount: {formatCurrency(calculatedLimit)}
+                            Calculated Limit: {formatCurrency(calculatedLimit)}
                          </p>
                     ) : null }
                      <FormMessage />
+                      <p className="text-xs text-muted-foreground pt-1">
+                          Available to allocate: {availablePercentage.toFixed(1)}%
+                      </p>
                     </FormItem>
                 )}
                 />
@@ -220,11 +221,10 @@ export function AddBudgetDialog({
           </form>
         </Form>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => { /* form.reset(); */ onOpenChange(false); }}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button type="submit" form="add-budget-form" disabled={!monthlyIncome || monthlyIncome <= 0}>Save Budget</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

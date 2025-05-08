@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import * as React from "react";
@@ -31,6 +29,7 @@ import {
 import { getCategoryIconComponent } from '@/components/category-icon';
 import { Progress } from "@/components/ui/progress"; // Import Progress
 import { InsightsView } from "@/components/insights-view"; // Import InsightsView
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton for loading state
 
 
 export default function Home() {
@@ -54,6 +53,9 @@ export default function Home() {
     const loadedData = loadAppData();
     setAppData(loadedData);
     setTempIncome(loadedData.monthlyIncome?.toString() ?? ''); // Update tempIncome after loading
+    // Pre-select the first income category if none is stored/selected (improved UX)
+    const firstIncomeCat = loadedData.categories.find(c => c.isIncomeSource)?.id ?? '';
+    setSelectedIncomeCategory(firstIncomeCat);
     setIsLoaded(true); // Mark data as loaded
   }, []); // Empty dependency array ensures this runs only once on mount
 
@@ -69,6 +71,7 @@ export default function Home() {
 
   // Calculate summaries for the current month
   const monthlySummary = React.useMemo(() => {
+    if (!isLoaded) return { income: 0, expenses: 0, balance: 0, incomeTransactions: 0 };
     const currentMonthTransactions = transactions.filter(t => format(t.date, 'yyyy-MM') === currentMonth);
     const incomeTransactions = currentMonthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
     // Use monthlyIncome as the primary source of truth for total income
@@ -76,7 +79,7 @@ export default function Home() {
     const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
     const balance = effectiveIncome - expenses; // Balance based on set income vs logged expenses
     return { income: effectiveIncome, expenses, balance, incomeTransactions };
-  }, [transactions, monthlyIncome, currentMonth]);
+  }, [transactions, monthlyIncome, currentMonth, isLoaded]);
 
   // Separate categories
   const incomeCategories = React.useMemo(() => categories.filter(cat => cat.isIncomeSource), [categories]);
@@ -103,7 +106,7 @@ export default function Home() {
               let changed = false;
               // Recalculate spent for all budgets based on current transactions
               const spent = prevData.transactions
-                 .filter(t => t.type === 'expense' && t.category === budget.category && format(t.date, 'yyyy-MM') === currentMonth)
+                 .filter(t => t.type === 'expense' && t.category === budget.category && format(t.date, 'yyyy-MM') === (budget.month || currentMonth)) // Use budget month or current month
                  .reduce((sum, t) => sum + t.amount, 0);
 
               if (budget.spent !== spent) changed = true;
@@ -120,14 +123,15 @@ export default function Home() {
              }
 
              if (changed) budgetsChanged = true;
-             return { ...budget, spent, limit, month: budget.month || currentMonth }; // Ensure month is set
+             // Ensure budget always has a month, defaulting to current if somehow missing
+             return { ...budget, spent, limit, month: budget.month || currentMonth };
          });
 
-        // Auto-calculate and update the Savings budget limit
+        // Auto-calculate and update the Savings budget limit FOR THE CURRENT MONTH
         const savingsBudgetIndex = updatedBudgets.findIndex(b => b.category === 'savings' && b.month === currentMonth);
         const totalBudgetedExcludingSavings = updatedBudgets
-            .filter(b => b.category !== 'savings' && b.month === currentMonth)
-            .reduce((sum, b) => sum + b.limit, 0); // Use the recalculated limits
+            .filter(b => b.category !== 'savings' && b.month === currentMonth) // Only consider current month budgets
+            .reduce((sum, b) => sum + b.limit, 0); // Use the potentially recalculated limits
 
         const leftover = Math.max(0, (prevData.monthlyIncome ?? 0) - totalBudgetedExcludingSavings); // Leftover for savings
 
@@ -148,8 +152,8 @@ export default function Home() {
                 budgetsChanged = true;
             }
 
-        } else {
-            // Add new savings budget if it doesn't exist
+        } else if (prevData.monthlyIncome !== null) { // Only add savings if income is set
+            // Add new savings budget if it doesn't exist FOR THE CURRENT MONTH
              const savingsSpent = prevData.transactions
                  .filter(t => t.type === 'expense' && t.category === 'savings' && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
@@ -170,8 +174,10 @@ export default function Home() {
              updatedBudgets.sort((a, b) => {
                  if (a.category === 'savings') return 1; // Savings last
                  if (b.category === 'savings') return -1;
-                 return (prevData.categories.find(c => c.id === a.category)?.label ?? a.category)
-                        .localeCompare(prevData.categories.find(c => c.id === b.category)?.label ?? b.category);
+                 // Handle potential case where category doesn't exist (shouldn't happen ideally)
+                 const labelA = prevData.categories.find(c => c.id === a.category)?.label ?? a.category;
+                 const labelB = prevData.categories.find(c => c.id === b.category)?.label ?? b.category;
+                 return labelA.localeCompare(labelB);
              });
              return { ...prevData, budgets: updatedBudgets };
         }
@@ -186,20 +192,20 @@ export default function Home() {
     if (newTransaction.type === 'expense') {
       const budgetExists = currentMonthBudgets.some(b => b.category === newTransaction.category);
       if (!budgetExists && newTransaction.category !== 'savings') { // Allow savings pseudo-transactions
-        toast({ title: "Budget Required", description: `Please set a budget for '${getCategoryById(newTransaction.category)?.label}' before adding expenses.`, variant: "destructive" });
+        toast({ title: "Budget Required", description: `Please set a budget for '${getCategoryById(newTransaction.category)?.label ?? newTransaction.category}' before adding expenses.`, variant: "destructive" });
         return;
       }
     }
 
     const transactionWithId: Transaction = {
       ...newTransaction,
-      id: Date.now().toString(), // Simple unique ID generation
+      id: `tx-${Date.now().toString()}`, // Simple unique ID generation
     };
     setAppData(prev => ({
         ...prev,
         transactions: [transactionWithId, ...prev.transactions].sort((a, b) => b.date.getTime() - a.date.getTime()),
     }));
-    toast({ title: "Transaction added", description: `${newTransaction.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(newTransaction.amount)} logged for ${getCategoryById(newTransaction.category)?.label}.` });
+    toast({ title: "Transaction added", description: `${newTransaction.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(newTransaction.amount)} logged for ${getCategoryById(newTransaction.category)?.label ?? newTransaction.category}.` });
   };
 
  const handleAddBudget = (newBudget: Omit<Budget, 'id' | 'spent' | 'month' | 'limit'>) => {
@@ -227,7 +233,13 @@ export default function Home() {
     };
 
     // 50% Needs Rule Check (Example: Housing, Groceries, Transport, Bills are 'Needs')
-    const needsCategoryIds = ['housing', 'groceries', 'transport', 'bills']; // Define your needs categories
+     const needsCategoryIds = appData.categories.filter(c =>
+        c.label.toLowerCase().includes('housing') ||
+        c.label.toLowerCase().includes('groceries') ||
+        c.label.toLowerCase().includes('transport') ||
+        c.label.toLowerCase().includes('bill')
+    ).map(c => c.id); // Define your needs categories IDs dynamically or statically
+
     const currentNeedsPercentage = currentMonthBudgets
         .filter(b => needsCategoryIds.includes(b.category) && b.category !== newBudget.category) // Exclude the new budget being added for now
         .reduce((sum, b) => sum + (b.percentage ?? 0), 0)
@@ -265,19 +277,21 @@ export default function Home() {
         updatedBudgets.sort((a, b) => {
              if (a.category === 'savings') return 1; // Savings last
              if (b.category === 'savings') return -1;
-             return (getCategoryById(a.category)?.label ?? a.category).localeCompare(getCategoryById(b.category)?.label ?? b.category);
+             const labelA = getCategoryById(a.category)?.label ?? a.category;
+             const labelB = getCategoryById(b.category)?.label ?? b.category;
+             return labelA.localeCompare(labelB);
          });
 
         return { ...prev, budgets: updatedBudgets };
     });
-    toast({ title: "Budget Set", description: `Budget for ${getCategoryById(newBudget.category)?.label} set to ${newBudget.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(budgetWithDetails.limit)}).` });
+    toast({ title: "Budget Set", description: `Budget for ${getCategoryById(newBudget.category)?.label ?? newBudget.category} set to ${newBudget.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(budgetWithDetails.limit)}).` });
 };
 
 
 
  const handleSetIncome = () => {
     const incomeValue = parseFloat(tempIncome);
-    if (isNaN(incomeValue) || incomeValue < 0) {
+    if (isNaN(incomeValue) || incomeValue <= 0) { // Income must be positive
         toast({ title: "Invalid Income", description: "Please enter a valid positive number for income.", variant: "destructive" });
         return;
     }
@@ -293,7 +307,7 @@ export default function Home() {
          amount: incomeValue,
          category: selectedIncomeCategory, // Use selected category
          date: new Date(),
-         description: `Initial monthly income set`, // Or a more generic description
+         description: `Monthly income set`, // Simplified description
      };
 
      // Update AppData: set monthlyIncome and recalculate budget limits based on FIXED percentages
@@ -374,13 +388,26 @@ export default function Home() {
   }, [currentMonthBudgets]);
 
 
+  // Loading State UI
+    if (!isLoaded) {
+        return (
+            <div className="flex flex-col h-screen p-4 bg-background items-center justify-center">
+                 <svg className="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-muted-foreground">Loading your financial data...</p>
+            </div>
+        );
+    }
+
   return (
     <div className="flex flex-col h-screen bg-background">
       <Tabs defaultValue="dashboard" className="flex-grow flex flex-col">
         <TabsContent value="dashboard" className="flex-grow overflow-y-auto p-4 space-y-4">
-           {/* Set Income Card - Show if not loaded OR if income is null */}
-            {!isLoaded || monthlyIncome === null ? (
-              <Card className="border-primary border-2 shadow-lg">
+           {/* Set Income Card - Show if income is null */}
+            {monthlyIncome === null ? (
+              <Card className="border-primary border-2 shadow-lg animate-fade-in">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2"><Wallet className="text-primary h-5 w-5"/> Set Your Monthly Income</CardTitle>
                   <CardDescription>Estimate your total income for the month and select the primary source.</CardDescription>
@@ -432,20 +459,18 @@ export default function Home() {
               </Card>
             ) : null}
 
-            {/* Monthly Summary Cards (Show only if loaded and income is set) */}
-             {isLoaded && monthlyIncome !== null && (
+            {/* Monthly Summary Cards (Show only if income is set) */}
+             {monthlyIncome !== null && (
                 <>
-                 <div className="grid gap-4 grid-cols-2">
+                 <div className="grid gap-4 grid-cols-2 animate-slide-up">
                     <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Income</CardTitle>
                         <Wallet className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-primary">{formatCurrency(monthlySummary.income)}</div>
+                        <div className="text-2xl font-bold text-primary">{formatCurrency(monthlyIncome)}</div>
                         <p className="text-xs text-muted-foreground">Set for this month</p>
-                        {/* Optionally show income logged via transactions */}
-                        {/* <p className="text-xs text-muted-foreground">Logged: {formatCurrency(monthlySummary.incomeTransactions)}</p> */}
                     </CardContent>
                     </Card>
                     <Card>
@@ -458,13 +483,13 @@ export default function Home() {
                          {hasExpenseBudgetsSet ? (
                             <div className="text-2xl font-bold">{formatCurrency(monthlySummary.expenses)}</div>
                          ) : (
-                            <div className="text-sm text-muted-foreground italic">Set budgets first</div>
+                             <Skeleton className="h-8 w-24" /> // Skeleton for loading feel
                          )}
-                        <p className="text-xs text-muted-foreground">This month</p>
+                         <p className="text-xs text-muted-foreground">{hasExpenseBudgetsSet ? "This month" : "Set budgets first"}</p>
                     </CardContent>
                     </Card>
                 </div>
-                <Card>
+                <Card className="animate-slide-up" style={{"animationDelay": "0.1s"}}>
                     <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Remaining Balance</CardTitle>
                     <CardDescription>Estimated income vs logged expenses this month</CardDescription>
@@ -478,30 +503,60 @@ export default function Home() {
              )}
 
 
-          {/* Spending Chart (Show if loaded, income set, and expense budgets exist) */}
-          {isLoaded && monthlyIncome !== null && hasExpenseBudgetsSet && <SpendingChart transactions={transactions} month={currentMonth} categories={expenseCategories} />}
+          {/* Spending Chart (Show if income set, and expense budgets exist) */}
+          {monthlyIncome !== null && hasExpenseBudgetsSet && (
+             <div className="animate-slide-up" style={{"animationDelay": "0.2s"}}>
+                 <SpendingChart transactions={transactions} month={currentMonth} categories={expenseCategories} />
+             </div>
+           )}
 
-          {/* Recent Transactions (Show if loaded and income set) */}
-          {isLoaded && monthlyIncome !== null && (
-            <Card>
+          {/* Recent Transactions (Show if income set) */}
+          {monthlyIncome !== null && (
+            <Card className="animate-slide-up" style={{"animationDelay": "0.3s"}}>
                 <CardHeader>
                 <CardTitle>Recent Transactions</CardTitle>
+                 <CardDescription>Your latest financial activity.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                 <ScrollArea className="h-[200px]">
                     {transactions.slice(0, 5).map((t) => ( // Show latest 5
-                    <TransactionListItem key={t.id} transaction={t} categories={categories} />
+                        <TransactionListItem key={t.id} transaction={t} categories={categories} />
                     ))}
-                    {transactions.length === 0 && <p className="p-4 text-center text-muted-foreground">No transactions yet.</p>}
+                    {transactions.length === 0 && (
+                        <div className="p-4 text-center text-muted-foreground">
+                             <List className="mx-auto h-8 w-8 mb-2" />
+                            No transactions yet. Use the '+' button to add one!
+                        </div>
+                    )}
                 </ScrollArea>
+                 {transactions.length > 5 && (
+                     <div className="p-2 text-center">
+                        <Link href="#" onClick={(e) => { e.preventDefault(); document.querySelector('button[value="transactions"]')?.click(); }}>
+                             <Button variant="link" size="sm">View All History</Button>
+                        </Link>
+                     </div>
+                )}
                 </CardContent>
             </Card>
           )}
-           {!hasExpenseBudgetsSet && isLoaded && monthlyIncome !== null && (
-                <Card className="border-dashed border-muted-foreground">
+           {!hasExpenseBudgetsSet && monthlyIncome !== null && (
+                <Card className="border-dashed border-muted-foreground animate-fade-in">
                     <CardContent className="p-6 text-center text-muted-foreground">
-                        <List className="mx-auto h-8 w-8 mb-2" />
-                        <p>Set your budgets in the 'Budgets' tab to start tracking expenses and see spending analysis.</p>
+                        <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
+                        <p className="font-semibold">Ready to Budget?</p>
+                        <p className="text-sm">Head over to the 'Budgets' tab to allocate your income and start tracking your spending effectively.</p>
+                         <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>
+                             Go to Budgets
+                        </Button>
+                    </CardContent>
+                </Card>
+           )}
+           {monthlyIncome === null && (
+                <Card className="border-dashed border-muted-foreground animate-fade-in">
+                    <CardContent className="p-6 text-center text-muted-foreground">
+                         <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
+                         <p className="font-semibold">Set Your Income</p>
+                        <p className="text-sm">Please set your estimated monthly income above to unlock budgeting and tracking features.</p>
                     </CardContent>
                 </Card>
            )}
@@ -510,16 +565,28 @@ export default function Home() {
         <TabsContent value="transactions" className="flex-grow overflow-y-auto p-0">
            <ScrollArea className="h-full">
              <div className="p-4 space-y-2">
-              <h2 className="text-lg font-semibold">All Transactions</h2>
+              <h2 className="text-lg font-semibold mb-2">All Transactions</h2>
                {/* Show message if no budget set and trying to view transactions */}
-               {!hasExpenseBudgetsSet && isLoaded && monthlyIncome !== null && transactions.filter(t => t.type === 'expense').length === 0 ? (
-                   <p className="text-center text-muted-foreground pt-10">Set expense budgets first to view or add expense transactions.</p>
+               {!hasExpenseBudgetsSet && monthlyIncome !== null && transactions.filter(t => t.type === 'expense').length === 0 ? (
+                    <Card className="border-dashed border-muted-foreground">
+                         <CardContent className="p-6 text-center text-muted-foreground">
+                            <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
+                             <p className="font-semibold">Set Budgets First</p>
+                            <p className="text-sm">You need to set budgets in the 'Budgets' tab before you can log or view expense transactions.</p>
+                            <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>
+                                Go to Budgets
+                            </Button>
+                         </CardContent>
+                    </Card>
                ) : transactions.length > 0 ? (
                    transactions.map((t) => (
                     <TransactionListItem key={t.id} transaction={t} categories={categories} />
                    ))
                 ) : (
-                   <p className="text-center text-muted-foreground pt-10">No transactions recorded.</p>
+                    <div className="p-4 text-center text-muted-foreground pt-10">
+                        <List className="mx-auto h-8 w-8 mb-2" />
+                       No transactions recorded yet.
+                    </div>
                 )}
              </div>
            </ScrollArea>
@@ -529,7 +596,7 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              {/* Enable Add Budget only if income is set */}
-             {isLoaded && monthlyIncome !== null && (
+             {monthlyIncome !== null && (
                 <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
                 </Button>
@@ -537,58 +604,56 @@ export default function Home() {
           </div>
 
            {/* Budget Summary Card */}
-            {isLoaded && monthlyIncome !== null && (
-                <Card className="mb-4 bg-primary/10 border-primary">
+            {monthlyIncome !== null && (
+                <Card className="mb-4 bg-primary/10 border-primary animate-fade-in">
                      <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
-                           <Info className="h-5 w-5 text-primary" /> Allocation Summary
+                           <Info className="h-5 w-5 text-primary" /> Allocation Summary ({format(new Date(currentMonth + '-01T00:00:00'), 'MMMM')})
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-3 pt-0 text-sm text-primary-foreground flex flex-col gap-1">
-                         <div className="flex justify-between text-primary">
-                             <span>Income:</span>
+                    <CardContent className="p-3 pt-0 text-sm text-primary-foreground grid grid-cols-2 gap-x-4 gap-y-1">
+                         <div className="flex justify-between text-primary col-span-2 border-b pb-1 mb-1 border-primary/20">
+                             <span>Total Income:</span>
                              <span className="font-semibold">{formatCurrency(monthlyIncome)}</span>
                          </div>
                         <div className="flex justify-between text-primary">
-                            <span>Total Allocated (% of Income):</span>
+                            <span>Expenses Allocated (%):</span>
                             <span className="font-semibold">{totalAllocatedPercentage.toFixed(1)}%</span>
                         </div>
                         <div className="flex justify-between text-primary">
-                            <span>Total Allocated Budget ($):</span>
+                            <span>Expenses Allocated ($):</span>
                             <span className="font-semibold">{formatCurrency(totalAllocatedBudgetAmount)}</span>
                         </div>
                         <div className="flex justify-between text-accent">
-                            <span>Allocated to Savings ($):</span>
+                            <span>Available for Savings (%):</span>
+                             {/* Calculate savings percentage */}
+                             <span className="font-semibold">{(100 - totalAllocatedPercentage).toFixed(1)}%</span>
+                        </div>
+                         <div className="flex justify-between text-accent">
+                            <span>Available for Savings ($):</span>
                             <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
-                        </div>
-                         {/* Remaining budget calculation */}
-                         <div className="flex justify-between text-muted-foreground">
-                            <span>Remaining to Allocate (%):</span>
-                            <span className="font-semibold">{(100 - totalAllocatedPercentage - (savingsBudgetAmount > 0 ? (savingsBudgetAmount / monthlyIncome * 100) : 0)).toFixed(1)}%</span>
-                        </div>
-                         <div className="flex justify-between text-muted-foreground">
-                            <span>Remaining to Allocate ($):</span>
-                            <span className="font-semibold">{formatCurrency(monthlyIncome - totalAllocatedBudgetAmount - savingsBudgetAmount)}</span>
                         </div>
 
                          {(totalAllocatedPercentage > 100) && (
-                            <p className="text-xs text-destructive font-semibold mt-1">Warning: Total allocation exceeds 100%!</p>
+                            <p className="text-xs text-destructive font-semibold mt-1 col-span-2">Warning: Expense allocation exceeds 100%!</p>
                          )}
                           {!hasExpenseBudgetsSet && (
-                              <p className="text-xs text-primary/80 mt-1">Add budgets for expense categories to start tracking.</p>
+                              <p className="text-xs text-primary/80 mt-1 col-span-2">Add budgets for expense categories to start tracking.</p>
                           )}
                     </CardContent>
                 </Card>
             )}
 
 
-          {!isLoaded ? (
-              <p className="text-center text-muted-foreground pt-10">Loading...</p>
-          ) : monthlyIncome === null ? (
-             <Card className="border-dashed border-muted-foreground">
+          {monthlyIncome === null ? (
+             <Card className="border-dashed border-muted-foreground animate-fade-in">
                  <CardContent className="p-6 text-center text-muted-foreground">
-                     <AlertCircle className="mx-auto h-8 w-8 mb-2" />
-                    <p>Please set your monthly income on the Dashboard tab before creating budgets.</p>
+                     <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
+                      <p className="font-semibold">Set Your Income</p>
+                    <p className="text-sm">Please set your monthly income on the Dashboard tab before creating budgets.</p>
+                     <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="dashboard"]')?.click()}>
+                        Go to Dashboard
+                     </Button>
                  </CardContent>
              </Card>
            ) : currentMonthBudgets.length > 0 ? (
@@ -597,14 +662,23 @@ export default function Home() {
                 .sort((a, b) => {
                     if (a.category === 'savings') return 1;
                     if (b.category === 'savings') return -1;
-                    return (getCategoryById(a.category)?.label ?? a.category)
-                           .localeCompare(getCategoryById(b.category)?.label ?? b.category);
+                    const labelA = getCategoryById(a.category)?.label ?? a.category;
+                    const labelB = getCategoryById(b.category)?.label ?? b.category;
+                    return labelA.localeCompare(labelB);
                 })
-                .map((budget) => (
-                   <BudgetCard key={budget.id} budget={budget} categories={categories} monthlyIncome={monthlyIncome} />
+                .map((budget, index) => (
+                    <div key={budget.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
+                         <BudgetCard budget={budget} categories={categories} monthlyIncome={monthlyIncome} />
+                    </div>
                  ))
            ) : (
-             <p className="text-center text-muted-foreground pt-10">No budgets set for this month. Click 'Add Budget' to start.</p>
+                 <Card className="border-dashed border-muted-foreground animate-fade-in">
+                     <CardContent className="p-6 text-center text-muted-foreground">
+                        <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
+                        <p className="font-semibold">No Budgets Yet</p>
+                        <p className="text-sm">Click 'Add Budget' above to allocate percentages of your income to different spending categories.</p>
+                     </CardContent>
+                 </Card>
            )}
         </TabsContent>
 
@@ -621,8 +695,8 @@ export default function Home() {
             </div>
 
               {/* Display Savings Summary */}
-             {isLoaded && monthlyIncome !== null && (
-                <Card className="mb-4 bg-accent/10 border-accent">
+             {monthlyIncome !== null && (
+                <Card className="mb-4 bg-accent/10 border-accent animate-fade-in">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                             <PiggyBank className="h-5 w-5 text-accent"/> Savings & Goals Allocation
@@ -631,8 +705,8 @@ export default function Home() {
                             Your Savings budget is automatically calculated based on leftover income after expense budgets. Allocate percentages of this savings amount to your goals.
                          </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-3 pt-0 text-sm text-accent flex flex-col gap-1">
-                         <div className="flex justify-between">
+                    <CardContent className="p-3 pt-0 text-sm text-accent grid grid-cols-2 gap-x-4 gap-y-1">
+                         <div className="flex justify-between col-span-2 border-b pb-1 mb-1 border-accent/20">
                             <span>Monthly Savings Budget:</span>
                             <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
                         </div>
@@ -640,7 +714,7 @@ export default function Home() {
                          {savingsBudgetAmount > 0 && (
                              <>
                              <div className="flex justify-between">
-                                <span>Allocated to Goals (% of Savings):</span>
+                                <span>Allocated to Goals (%):</span>
                                  <span className="font-semibold">
                                     {savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0).toFixed(1)}%
                                  </span>
@@ -651,16 +725,31 @@ export default function Home() {
                                     {formatCurrency(savingsBudgetAmount * (savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) / 100))}
                                  </span>
                             </div>
+                              <div className="flex justify-between text-accent/80">
+                                <span>Unallocated Savings (%):</span>
+                                <span className="font-semibold">
+                                    {(100 - savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0)).toFixed(1)}%
+                                </span>
+                            </div>
+                             <div className="flex justify-between text-accent/80">
+                                <span>Unallocated Savings ($):</span>
+                                 <span className="font-semibold">
+                                    {formatCurrency(savingsBudgetAmount * (1 - (savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) / 100)))}
+                                 </span>
+                            </div>
                              </>
                          )}
                          {savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) > 100 && (
-                             <p className="text-xs text-destructive font-semibold mt-1">Warning: Goal allocation exceeds 100% of savings budget!</p>
+                             <p className="text-xs text-destructive font-semibold mt-1 col-span-2">Warning: Goal allocation exceeds 100% of savings budget!</p>
                          )}
                           {savingsBudgetAmount <= 0 && (
-                             <p className="text-xs text-accent/80 mt-1">Your savings budget is currently $0. Manage goals in the dedicated page, but funding requires reducing expense budgets.</p>
+                             <p className="text-xs text-accent/80 mt-1 col-span-2">Your savings budget is currently $0. Manage goals, but funding requires reducing expense budgets.</p>
                           )}
-                           {!hasExpenseBudgetsSet && isLoaded && monthlyIncome !== null && (
-                               <p className="text-xs text-accent/80 mt-1">Set expense budgets first to determine your available savings amount.</p>
+                           {!hasExpenseBudgetsSet && monthlyIncome !== null && (
+                               <p className="text-xs text-accent/80 mt-1 col-span-2">Set expense budgets first to determine your available savings.</p>
+                           )}
+                            {monthlyIncome === null && (
+                               <p className="text-xs text-accent/80 mt-1 col-span-2">Set your income first to calculate savings.</p>
                            )}
                     </CardContent>
                 </Card>
@@ -668,51 +757,63 @@ export default function Home() {
 
 
             {/* Display Saving Goals summary */}
-            {isLoaded && savingGoals.length > 0 ? (
-                 savingGoals.map(goal => {
+            {savingGoals.length > 0 ? (
+                 savingGoals.map((goal, index) => {
                      // Calculate contribution based on the current month's savings budget limit
                      const monthlyContribution = savingsBudgetAmount > 0 && goal.percentageAllocation
                          ? (goal.percentageAllocation / 100) * savingsBudgetAmount
                          : 0;
-                     const progressPercent = goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) * 100 : 0;
+                     const progressPercent = goal.targetAmount > 0 ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100) : 0;
                      return (
-                        <Card key={goal.id}>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-base">{goal.name}</CardTitle>
-                                {goal.description && <CardDescription className="text-xs">{goal.description}</CardDescription>}
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex justify-between text-sm mb-1">
-                                    <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
-                                    <span>{progressPercent.toFixed(1)}%</span>
-                                </div>
-                                <Progress value={progressPercent} className="w-full h-2 [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:bg-accent [&::-moz-progress-bar]:bg-accent" />
-                                {/* Show allocation info if applicable */}
-                                {goal.percentageAllocation && goal.percentageAllocation > 0 && isLoaded && savingsBudgetAmount > 0 && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Receives {goal.percentageAllocation}% of Savings ({formatCurrency(monthlyContribution)}/month)
-                                    </p>
-                                )}
-                                {goal.percentageAllocation && goal.percentageAllocation > 0 && isLoaded && savingsBudgetAmount <= 0 && (
-                                      <p className="text-xs text-muted-foreground mt-1">
-                                          Receives {goal.percentageAllocation}% of Savings ($0/month)
-                                      </p>
-                                )}
-                                 {goal.targetDate && (
-                                     <p className="text-xs text-muted-foreground mt-1">Target: {format(goal.targetDate, 'MMM yyyy')}</p>
-                                 )}
-                            </CardContent>
-                        </Card>
+                         <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base">{goal.name}</CardTitle>
+                                    {goal.description && <CardDescription className="text-xs">{goal.description}</CardDescription>}
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
+                                        <span>{progressPercent.toFixed(1)}%</span>
+                                    </div>
+                                    <Progress value={progressPercent} className="w-full h-2 [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:bg-accent [&::-moz-progress-bar]:bg-accent" />
+                                    {/* Show allocation info if applicable */}
+                                    {goal.percentageAllocation && goal.percentageAllocation > 0 && savingsBudgetAmount > 0 && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Receives {goal.percentageAllocation}% of Savings ({formatCurrency(monthlyContribution)}/month)
+                                        </p>
+                                    )}
+                                    {goal.percentageAllocation && goal.percentageAllocation > 0 && savingsBudgetAmount <= 0 && (
+                                          <p className="text-xs text-muted-foreground mt-1">
+                                              Receives {goal.percentageAllocation}% of Savings ($0/month)
+                                          </p>
+                                    )}
+                                     {goal.targetDate && (
+                                         <p className="text-xs text-muted-foreground mt-1">Target: {format(goal.targetDate, 'MMM yyyy')}</p>
+                                     )}
+                                </CardContent>
+                            </Card>
+                         </div>
                      );
                  })
             ) : (
-                 isLoaded && <p className="text-center text-muted-foreground pt-10">No saving goals set yet. Go to 'Manage Goals' to create some.</p>
+                  <Card className="border-dashed border-muted-foreground animate-fade-in">
+                     <CardContent className="p-6 text-center text-muted-foreground">
+                         <PiggyBank className="mx-auto h-8 w-8 mb-2 text-accent" />
+                         <p className="font-semibold">No Saving Goals Yet</p>
+                        <p className="text-sm">Go to 'Manage Goals' to create goals and allocate your savings towards them.</p>
+                        <Link href="/saving-goals" passHref>
+                            <Button size="sm" className="mt-3" variant="outline">Manage Goals</Button>
+                        </Link>
+                     </CardContent>
+                  </Card>
             )}
 
              {/* E-Learning Link */}
-             <Card>
+             <Card className="animate-slide-up" style={{"animationDelay": `${(savingGoals.length + 1) * 0.05}s`}}>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/> Financial Planning Tips</CardTitle>
+                     <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Link href="/learn/budgeting-guide" passHref>
@@ -729,41 +830,49 @@ export default function Home() {
                  <h2 className="text-lg font-semibold">Financial Insights</h2>
                  {/* Optional actions like export? */}
              </div>
-             {!isLoaded ? (
-                 <p className="text-center text-muted-foreground pt-10">Loading insights...</p>
-             ) : monthlyIncome === null ? (
-                  <Card className="border-dashed border-muted-foreground">
+             {monthlyIncome === null ? (
+                  <Card className="border-dashed border-muted-foreground animate-fade-in">
                       <CardContent className="p-6 text-center text-muted-foreground">
-                          <AlertCircle className="mx-auto h-8 w-8 mb-2" />
-                         <p>Please set your monthly income on the Dashboard tab to view insights.</p>
+                          <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
+                           <p className="font-semibold">Set Your Income</p>
+                         <p className="text-sm">Please set your monthly income on the Dashboard tab to view insights.</p>
+                          <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="dashboard"]')?.click()}>
+                             Go to Dashboard
+                          </Button>
                       </CardContent>
                   </Card>
              ) : !hasExpenseBudgetsSet ? (
-                 <Card className="border-dashed border-muted-foreground">
+                 <Card className="border-dashed border-muted-foreground animate-fade-in">
                       <CardContent className="p-6 text-center text-muted-foreground">
-                         <BarChart3 className="mx-auto h-8 w-8 mb-2" />
-                         <p>Set your budgets in the 'Budgets' tab to generate detailed insights.</p>
+                         <BarChart3 className="mx-auto h-8 w-8 mb-2 text-primary" />
+                          <p className="font-semibold">Set Budgets First</p>
+                         <p className="text-sm">Set your budgets in the 'Budgets' tab to generate detailed spending insights.</p>
+                         <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>
+                             Go to Budgets
+                        </Button>
                       </CardContent>
                   </Card>
              ) : (
-                <InsightsView
-                    currentMonth={currentMonth}
-                    previousMonth={previousMonth}
-                    transactions={transactions}
-                    budgets={budgets} // Pass all budgets for potential cross-month comparison
-                    categories={categories}
-                    monthlyIncome={monthlyIncome}
-                />
+                 <div className="animate-fade-in">
+                    <InsightsView
+                        currentMonth={currentMonth}
+                        previousMonth={previousMonth}
+                        transactions={transactions}
+                        budgets={budgets} // Pass all budgets for potential cross-month comparison
+                        categories={categories}
+                        monthlyIncome={monthlyIncome}
+                    />
+                 </div>
              )}
          </TabsContent>
 
 
-        {/* Floating Action Button (Show only if loaded, income set, AND expense budgets exist) */}
-        {isLoaded && monthlyIncome !== null && hasExpenseBudgetsSet && (
-             <div className="fixed bottom-20 right-4 z-10">
+        {/* Floating Action Button (Show only if income set AND expense budgets exist) */}
+        {monthlyIncome !== null && hasExpenseBudgetsSet && (
+             <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
                 <Button
                     size="icon"
-                    className="rounded-full h-14 w-14 shadow-lg"
+                    className="rounded-full h-14 w-14 shadow-lg bg-primary hover:bg-primary/90"
                     onClick={() => setIsAddTransactionSheetOpen(true)}
                     aria-label="Add Transaction"
                 >
@@ -774,7 +883,7 @@ export default function Home() {
 
 
         {/* Bottom Navigation */}
-        <TabsList className="grid w-full grid-cols-5 h-16 rounded-none sticky bottom-0 bg-background border-t"> {/* Changed to grid-cols-5 */}
+        <TabsList className="grid w-full grid-cols-5 h-16 rounded-none sticky bottom-0 bg-background border-t shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.1)]"> {/* Changed to grid-cols-5 */}
           <TabsTrigger value="dashboard" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <LayoutDashboard className="h-5 w-5" />
             <span className="text-xs">Dashboard</span>
@@ -816,10 +925,9 @@ export default function Home() {
         // Pass available *spending* categories for selection (excluding parents)
         availableSpendingCategories={spendingCategoriesForSelect}
         monthlyIncome={monthlyIncome} // Pass income for calculations
-        // Pass total percentage allocated to *expense* categories
+        // Pass total percentage allocated to *other* expense categories
         totalAllocatedPercentage={totalAllocatedPercentage}
       />
     </div>
   );
 }
-

@@ -1,9 +1,10 @@
+
 "use client";
 
 import type { FC } from 'react';
 import { format } from 'date-fns';
 import type { Transaction, Category } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils'; // Import formatCurrency
 import { getCategoryIconComponent } from '@/components/category-icon'; // Use new icon getter
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -17,10 +18,6 @@ const TransactionListItem: FC<TransactionListItemProps> = ({ transaction, catego
   const isIncome = transaction.type === 'income';
   const categoryInfo = categories.find(cat => cat.id === transaction.category);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-  };
-
   // Determine which icon component to use
   let IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   if (isIncome) {
@@ -28,47 +25,45 @@ const TransactionListItem: FC<TransactionListItemProps> = ({ transaction, catego
   } else {
     // Get icon dynamically based on category info
     const iconName = categoryInfo?.icon;
-    IconComponent = getCategoryIconComponent(iconName ?? 'TrendingDown'); // Default to TrendingDown for expense if no specific icon
+    IconComponent = getCategoryIconComponent(iconName ?? 'HelpCircle'); // Default to HelpCircle for expense if no specific icon
   }
 
 
   return (
-    <div className="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-secondary/50 transition-colors">
+    <div className="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-secondary/30 transition-colors cursor-pointer">
       <div className="flex items-center gap-3 flex-1 min-w-0">
          <div className={cn(
-            "rounded-full p-2 flex-shrink-0", // Prevent icon shrinking
+            "rounded-full p-1.5 flex-shrink-0 flex items-center justify-center h-8 w-8", // Fixed size circle
              isIncome ? 'bg-accent/10 text-accent' : 'bg-primary/10 text-primary'
             )}>
-            <IconComponent className="h-5 w-5" />
+            <IconComponent className="h-4 w-4" />
          </div>
 
         <div className="flex-1 min-w-0"> {/* Allow text to truncate */}
           <p className="text-sm font-medium capitalize truncate">
             {categoryInfo?.label || transaction.category} {/* Fallback to ID */}
           </p>
-          <p className="text-xs text-muted-foreground truncate">
-             {/* Show description if available, otherwise date */}
-             {transaction.description || format(transaction.date, 'MMM d, yyyy')}
-          </p>
+           {transaction.description && (
+                <p className="text-xs text-muted-foreground truncate">
+                    {transaction.description}
+                </p>
+           )}
         </div>
       </div>
-      <div className="text-right pl-2"> {/* Add padding to prevent overlap */}
+      <div className="text-right pl-2 flex-shrink-0"> {/* Prevent amount shrinking */}
          <p className={cn(
             "text-sm font-semibold",
             isIncome ? "text-accent" : "text-foreground"
          )}>
            {isIncome ? '+' : '-'} {formatCurrency(transaction.amount)}
          </p>
-         {/* Show time only if description is also present, otherwise date was shown above */}
-          {transaction.description && (
-             <p className="text-xs text-muted-foreground">{format(transaction.date, 'p')}</p>
-          )}
-           {!transaction.description && ( // Show date here if no description
-             <p className="text-xs text-muted-foreground">{format(transaction.date, 'MMM d')}</p>
-          )}
+          {/* Always show the date */}
+          <p className="text-xs text-muted-foreground">{format(transaction.date, 'MMM d, yyyy')}</p>
       </div>
     </div>
   );
 };
 
 export default TransactionListItem;
+```
+
