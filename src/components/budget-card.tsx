@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { FC } from 'react';
@@ -84,5 +83,3 @@ const BudgetCard: FC<BudgetCardProps> = ({ budget, categories, monthlyIncome }) 
 };
 
 export default BudgetCard;
-```
-

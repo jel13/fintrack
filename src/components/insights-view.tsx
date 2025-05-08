@@ -41,6 +41,15 @@ const budgetVsActualChartConfig = {
   Spent: { label: "Spent", color: chartColors.spent },
 } satisfies ChartConfig;
 
+// Predefined ShadCN chart colors
+const CHART_COLORS_SHADCN = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+];
+
 
 export const InsightsView: React.FC<InsightsViewProps> = ({
     currentMonth,
@@ -114,7 +123,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
             .map(({ total, parentLabel, parentId }, index) => ({
                 name: parentLabel, // Use label for display
                 value: total,
-                fill: CHART_COLORS[index % CHART_COLORS.length], // Use predefined ShadCN colors
+                fill: CHART_COLORS_SHADCN[index % CHART_COLORS_SHADCN.length], // Use predefined ShadCN colors
                 category: parentId, // Keep track of original ID for config lookup if needed
             }))
             .sort((a, b) => b.value - a.value); // Sort descending by amount
@@ -319,5 +328,3 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
         </div>
     );
 };
-```
-

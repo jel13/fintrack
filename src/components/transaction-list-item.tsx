@@ -65,5 +65,3 @@ const TransactionListItem: FC<TransactionListItemProps> = ({ transaction, catego
 };
 
 export default TransactionListItem;
-```
-
