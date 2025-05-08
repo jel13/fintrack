@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import * as React from "react";
@@ -233,7 +231,7 @@ export default function SavingGoalsPage() {
                                  const monthlyContribution = (goal.percentageAllocation ?? 0) / 100 * totalSavingsBudgetLimit;
                                  return (
                                     <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
-                                        <Card className="relative group/goal overflow-hidden transition-shadow hover:shadow-md">
+                                        <Card className="relative group/goal overflow-hidden transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]">
                                             {/* Progress Bar as Background */}
                                             <div
                                                 className="absolute top-0 left-0 h-full bg-accent/10 transition-all duration-500 ease-out"
@@ -298,7 +296,7 @@ export default function SavingGoalsPage() {
                                 );
                             })
                         ) : (
-                             <Card className="border-dashed border-muted-foreground animate-fade-in">
+                             <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
                                 <CardContent className="text-center text-muted-foreground py-10">
                                     <Target className="mx-auto h-10 w-10 mb-2 text-accent" />
                                     <p className="font-semibold">No Saving Goals Yet</p>
@@ -334,6 +332,3 @@ export default function SavingGoalsPage() {
         </div>
     );
 }
-
-```
-

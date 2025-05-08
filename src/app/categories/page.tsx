@@ -1,15 +1,12 @@
-
-
 "use client";
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Briefcase, TrendingDown, Folder, FolderOpen, File } from "lucide-react"; // Added Folder icons
+import { ArrowLeft, PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Briefcase, TrendingDown, FileText, FolderOpen, Folder } from "lucide-react"; // Changed File to FileText for more distinction
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AppData, Category } from "@/types";
-import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage"; // Import default
+import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage";
 import { getCategoryIconComponent } from '@/components/category-icon';
 import { AddCategoryDialog } from "@/components/add-category-dialog";
 import {
@@ -25,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge"; // Import Badge
+import { Badge } from "@/components/ui/badge";
 
 
 export default function CategoriesPage() {
@@ -36,14 +33,12 @@ export default function CategoriesPage() {
     const [expandedCategories, setExpandedCategories] = React.useState<Record<string, boolean>>({});
     const { toast } = useToast();
 
-    // Load data from localStorage on mount (client-side only)
     React.useEffect(() => {
         const loadedData = loadAppData();
         setAppData(loadedData);
-        // Expand top-level categories by default initially
         const initialExpanded: Record<string, boolean> = {};
          loadedData.categories.forEach(cat => {
-             if (!cat.parentId) { // Only top-level
+             if (!cat.parentId) {
                  initialExpanded[cat.id] = true;
              }
          });
@@ -51,7 +46,6 @@ export default function CategoriesPage() {
         setIsLoaded(true);
     }, []);
 
-    // Persist data whenever appData changes *after* initial load
     React.useEffect(() => {
         if (isLoaded) {
             saveAppData(appData);
@@ -63,71 +57,58 @@ export default function CategoriesPage() {
             let categories = [...prev.categories];
             let toastMessage = "";
 
-            // Basic validation
             if (categoryData.parentId === categoryData.id) {
                 toast({ title: "Invalid Parent", description: "A category cannot be its own parent.", variant: "destructive" });
-                return prev; // Don't update state
+                return prev;
              }
              if (categoryData.isIncomeSource && categoryData.parentId) {
                  toast({ title: "Invalid Parent", description: "Income source categories cannot have a parent.", variant: "destructive" });
                  return prev;
              }
 
-
             if (categoryData.id) {
-                // Update existing category
                 const index = categories.findIndex(c => c.id === categoryData.id);
                 if (index > -1) {
                     const originalCategory = categories[index];
-                    // Preserve non-editable flags
                     categoryData.isDefault = originalCategory.isDefault;
                     categoryData.isDeletable = originalCategory.isDeletable;
-                    // isIncomeSource cannot be changed after creation (enforced in dialog)
                     categoryData.isIncomeSource = originalCategory.isIncomeSource;
 
-
-                     // Prevent setting parentId to one of its own children (basic check for direct children)
                      if (categoryData.parentId && categories.some(c => c.parentId === categoryData.id && c.id === categoryData.parentId)) {
                          toast({ title: "Invalid Parent", description: "Cannot set parent to a direct child.", variant: "destructive" });
                          return prev;
                      }
-
-                    categories[index] = { ...originalCategory, ...categoryData }; // Merge carefully
+                    categories[index] = { ...originalCategory, ...categoryData };
                     toastMessage = `Category "${categoryData.label}" updated.`;
                 } else {
                     toast({ title: "Error", description: "Category not found for update.", variant: "destructive" });
                     return prev;
                 }
             } else {
-                // Add new category
                 const newCategory: Category = {
                     ...categoryData,
-                    id: `cat-${categoryData.label.toLowerCase().replace(/[^a-z0-9]/g, '_')}-${Date.now()}`, // Simple ID generation
-                    isDefault: false, // Custom categories are not default
-                    isDeletable: true, // Custom categories are deletable
-                     // isIncomeSource is set from categoryData
+                    id: `cat-${categoryData.label.toLowerCase().replace(/[^a-z0-9]/g, '_')}-${Date.now()}`,
+                    isDefault: false,
+                    isDeletable: true,
                 };
-                 // Ensure parent exists if parentId is set and is not an income source
                 if (newCategory.parentId && !categories.some(c => c.id === newCategory.parentId && !c.isIncomeSource)) {
                     toast({ title: "Error", description: "Parent category not found or is an income source.", variant: "destructive" });
-                    return prev; // Don't update state
+                    return prev;
                 }
                 categories.push(newCategory);
                  toastMessage = `New category "${newCategory.label}" added.`;
             }
 
-            // Sort categories for consistent display (e.g., income first, then expense alphabetically)
             categories.sort((a, b) => {
                  if (a.isIncomeSource && !b.isIncomeSource) return -1;
                  if (!a.isIncomeSource && b.isIncomeSource) return 1;
                  return a.label.localeCompare(b.label);
              });
 
-
             toast({ title: categoryData.id ? "Category Updated" : "Category Added", description: toastMessage });
             return { ...prev, categories };
         });
-        setEditingCategory(null); // Reset editing state
+        setEditingCategory(null);
     };
 
     const handleDeleteCategory = (categoryId: string) => {
@@ -136,38 +117,29 @@ export default function CategoriesPage() {
              toast({ title: "Error", description: "Category not found.", variant: "destructive"});
              return;
          }
-         // Use isDeletable flag from the category itself
          if (categoryToDelete.isDeletable === false) {
              toast({ title: "Cannot Delete", description: `Category "${categoryToDelete.label}" cannot be deleted.`, variant: "destructive"});
              return;
          }
 
-         // Check if category has children
          const hasChildren = appData.categories.some(c => c.parentId === categoryId);
          if (hasChildren) {
               toast({ title: "Cannot Delete", description: "Please delete or reassign sub-categories first.", variant: "destructive"});
               return;
           }
 
-
-         // Check if category is used in transactions or budgets (expense categories) or saving goals
          let isInUse = false;
          let usageMessage: string[] = [];
 
-         if (!categoryToDelete.isIncomeSource) { // Only check budget/expense usage for non-income
+         if (!categoryToDelete.isIncomeSource) {
              const isInTransactions = appData.transactions.some(t => t.category === categoryId && t.type === 'expense');
              const isInBudgets = appData.budgets.some(b => b.category === categoryId);
              if (isInTransactions) { usageMessage.push("expense transactions"); isInUse = true; }
              if (isInBudgets) { usageMessage.push("budgets"); isInUse = true; }
-         } else { // Check income transaction usage for income sources
+         } else {
               const isInTransactions = appData.transactions.some(t => t.category === categoryId && t.type === 'income');
               if (isInTransactions) { usageMessage.push("income transactions"); isInUse = true; }
          }
-
-          // Check Saving Goals usage (relevant if category could be linked conceptually, though unlikely directly)
-         // Example: const isInGoals = appData.savingGoals.some(g => g.relatedCategoryId === categoryId);
-         // if (isInGoals) { usageMessage.push("saving goals"); isInUse = true; }
-
 
          if (isInUse) {
              toast({
@@ -198,22 +170,20 @@ export default function CategoriesPage() {
         }));
     };
 
-
-     // Recursive function to render categories and sub-categories
     const renderCategoryTree = (categoriesToRender: Category[], parentId: string | null = null, level = 0) => {
-        // Sort ensures consistent order
         const children = categoriesToRender
             .filter(cat => cat.parentId === parentId)
             .sort((a, b) => a.label.localeCompare(b.label));
 
-         if (children.length === 0 && level === 0) {
+         if (children.length === 0 && level === 0 && parentId === null && categoriesToRender.length > 0) { // Check if it's the root call and no top-level items for this type
+             // This specific check seems too narrow, the message below handles empty sections better.
+         } else if (children.length === 0 && parentId === null && categoriesToRender.length === 0) { // No categories of this type AT ALL
             return (
                  <p className="text-sm text-muted-foreground pl-2 py-4">
-                    {parentId === null && categoriesToRender.length === 0 ? "No categories defined in this section." : ""}
+                    No categories defined in this section.
                  </p>
             );
         }
-
 
         return children.map(cat => {
             const Icon = getCategoryIconComponent(cat.icon);
@@ -222,78 +192,74 @@ export default function CategoriesPage() {
             const isIncome = cat.isIncomeSource ?? false;
 
             return (
-                <div key={cat.id} className="flex flex-col" style={{ marginLeft: `${level * 16}px` }}>
-                   {/* Use Card for visual grouping, subtle border */}
-                   <Card className={cn(
-                        "mb-1 group/cat relative transition-all duration-150 ease-in-out hover:shadow-md",
-                        level > 0 ? "border-l-4 border-muted-foreground/10" : "border", // Indentation indicator
-                        isExpanded ? "shadow-sm" : "shadow-xs"
-                    )}>
-                      <CardContent className="p-2 flex items-center justify-between cursor-pointer" onClick={() => hasChildren && toggleExpand(cat.id)}>
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                                {/* Expand/Collapse Icon */}
-                                <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
-                                    {hasChildren ? (
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-70 group-hover/cat:opacity-100" onClick={(e) => { e.stopPropagation(); toggleExpand(cat.id); }}>
-                                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                        </Button>
-                                    ) : (
-                                         // Placeholder or different icon for leaf nodes
-                                         <File className="h-4 w-4 text-muted-foreground/50" />
-                                    )}
-                                </div>
-
-                                {/* Category Icon and Label */}
-                                <Icon className={cn("h-4 w-4 flex-shrink-0", isIncome ? "text-accent" : "text-primary")} />
-                                <span className="text-sm font-medium truncate flex-grow">{cat.label}</span>
-
-                                {/* Badges for Type and Default Status */}
-                                <div className="flex gap-1 ml-auto flex-shrink-0 mr-12"> {/* Space before actions */}
-                                     {isIncome && <Badge variant="outline" className="text-xs h-5 border-accent/50 text-accent">Income</Badge>}
-                                     {cat.isDefault && <Badge variant="secondary" className="text-xs h-5">Default</Badge>}
-                                </div>
-                            </div>
-
-                            {/* Action Buttons (Appear on Hover/Focus) */}
-                            <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex gap-1 opacity-0 group-hover/cat:opacity-100 focus-within:opacity-100 transition-opacity ml-1 flex-shrink-0">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEditDialog(cat); }} aria-label={`Edit ${cat.label}`}>
-                                    <Edit className="h-4 w-4" />
-                                </Button>
-                                {cat.isDeletable !== false ? (
-                                     <AlertDialog onOpenChange={(open) => !open && (document.activeElement as HTMLElement)?.blur()}>
-                                        <AlertDialogTrigger asChild>
-                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => e.stopPropagation()} aria-label={`Delete ${cat.label}`}>
-                                                <Trash2 className="h-4 w-4" />
-                                             </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Deleting "{cat.label}" cannot be undone. Ensure it has no sub-categories and is not used in transactions or budgets.
-                                            </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={() => handleDeleteCategory(cat.id)}
-                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                                Delete Category
-                                            </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
+                <div key={cat.id} className="flex flex-col" style={{ marginLeft: `${level * 10}px` }}> {/* Reduced indent slightly */}
+                   <div
+                        className={cn(
+                            "group/cat relative flex items-center justify-between p-2.5 mb-0.5 rounded-md border cursor-pointer transition-all duration-150 ease-in-out hover:bg-secondary/50 hover:shadow-sm active:scale-[0.98]",
+                            level > 0 ? "border-l-4 border-muted-foreground/20" : "border",
+                            isExpanded ? "bg-secondary/20 shadow-inner" : ""
+                        )}
+                        onClick={() => hasChildren && toggleExpand(cat.id)}
+                    >
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0"> {/* Increased gap slightly */}
+                            <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center"> {/* Slightly larger click area for expand */}
+                                {hasChildren ? (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-70 group-hover/cat:opacity-100" onClick={(e) => { e.stopPropagation(); toggleExpand(cat.id); }}>
+                                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                    </Button>
                                 ) : (
-                                     <span className="h-7 w-7 flex items-center justify-center text-muted-foreground/50 cursor-not-allowed" title={`Cannot delete ${cat.isDefault ? 'default' : ''} category "${cat.label}"`}>
-                                          <Trash2 className="h-4 w-4" />
+                                     <span className="w-7 h-7 flex items-center justify-center">
+                                        {level > 0 ? <FileText className="h-4 w-4 text-muted-foreground/60" /> : <Folder className="h-4 w-4 text-muted-foreground/60"/>}
                                      </span>
                                 )}
                             </div>
-                      </CardContent>
-                   </Card>
-                   {/* Recursive Call for Children */}
+
+                            <Icon className={cn("h-4 w-4 flex-shrink-0", isIncome ? "text-accent" : "text-primary")} />
+                            <span className="text-sm font-medium truncate flex-grow">{cat.label}</span>
+
+                            <div className="flex gap-1.5 ml-auto flex-shrink-0 mr-12"> {/* Badges closer */}
+                                 {isIncome && <Badge variant="outline" className="text-xs h-5 border-accent/70 text-accent bg-accent/10">Income</Badge>}
+                                 {cat.isDefault && <Badge variant="secondary" className="text-xs h-5 bg-muted/70 text-muted-foreground">Default</Badge>}
+                            </div>
+                        </div>
+
+                        <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex gap-0.5 opacity-0 group-hover/cat:opacity-100 focus-within:opacity-100 transition-opacity ml-1 flex-shrink-0">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEditDialog(cat); }} aria-label={`Edit ${cat.label}`}>
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                            {cat.isDeletable !== false ? (
+                                 <AlertDialog onOpenChange={(open) => !open && (document.activeElement as HTMLElement)?.blur()}>
+                                    <AlertDialogTrigger asChild>
+                                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => e.stopPropagation()} aria-label={`Delete ${cat.label}`}>
+                                            <Trash2 className="h-4 w-4" />
+                                         </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Deleting "{cat.label}" cannot be undone. Ensure it has no sub-categories and is not used in transactions or budgets.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={() => handleDeleteCategory(cat.id)}
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                            Delete Category
+                                        </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            ) : (
+                                 <span className="h-7 w-7 flex items-center justify-center text-muted-foreground/50 cursor-not-allowed" title={`Cannot delete ${cat.isDefault ? 'default' : ''} category "${cat.label}"`}>
+                                      <Trash2 className="h-4 w-4" />
+                                 </span>
+                            )}
+                        </div>
+                   </div>
                    {hasChildren && isExpanded && (
-                        <div className="mt-1 pl-1 border-l border-dashed border-muted-foreground/30">
+                        <div className="mt-1 pl-2 border-l-2 border-dashed border-muted-foreground/20"> {/* Slightly thicker, more subtle border */}
                            {renderCategoryTree(categoriesToRender, cat.id, level + 1)}
                         </div>
                     )}
@@ -302,14 +268,11 @@ export default function CategoriesPage() {
         });
     };
 
-    // Separate categories for rendering
     const incomeCats = appData.categories.filter(c => c.isIncomeSource);
     const expenseCats = appData.categories.filter(c => !c.isIncomeSource);
 
-
     return (
         <div className="flex flex-col h-screen bg-background">
-             {/* Header */}
             <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
                 <Link href="/" passHref>
                     <Button variant="ghost" size="icon" aria-label="Back to Home">
@@ -322,34 +285,31 @@ export default function CategoriesPage() {
                 </Button>
             </div>
 
-             {/* Categories List Area */}
             <ScrollArea className="flex-grow p-4">
                  {!isLoaded ? (
                       <div className="space-y-4">
-                        {/* Skeleton Loading State */}
                         {[...Array(3)].map((_, i) => (
-                           <Card key={`skel-inc-${i}`} className="mb-2 p-3">
+                           <div key={`skel-inc-${i}`} className="mb-2 p-3 border rounded-md animate-pulse">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-6 h-6 bg-muted rounded-full animate-pulse"></div>
-                                    <div className="h-4 bg-muted rounded w-1/2 animate-pulse"></div>
+                                    <div className="w-6 h-6 bg-muted rounded-full"></div>
+                                    <div className="h-4 bg-muted rounded w-1/2"></div>
                                 </div>
-                           </Card>
+                           </div>
                         ))}
                          {[...Array(5)].map((_, i) => (
-                           <Card key={`skel-exp-${i}`} className="mb-2 p-3">
+                           <div key={`skel-exp-${i}`} className="mb-2 p-3 border rounded-md animate-pulse">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-6 h-6 bg-muted rounded-full animate-pulse"></div>
-                                    <div className="h-4 bg-muted rounded w-3/4 animate-pulse"></div>
+                                    <div className="w-6 h-6 bg-muted rounded-full"></div>
+                                    <div className="h-4 bg-muted rounded w-3/4"></div>
                                 </div>
-                           </Card>
+                           </div>
                         ))}
                     </div>
                  ) : (
-                    <div className="space-y-4">
-                         {/* Income Sources Section */}
+                    <div className="space-y-6"> {/* Increased spacing between sections */}
                          <div>
-                             <h2 className="text-lg font-semibold mb-2 flex items-center gap-2 border-b pb-1"><Briefcase className="h-5 w-5 text-accent" /> Income Sources</h2>
-                             <div className="space-y-1 mt-2">
+                             <h2 className="text-lg font-semibold mb-2 flex items-center gap-2 border-b pb-2"><Briefcase className="h-5 w-5 text-accent" /> Income Sources</h2>
+                             <div className="space-y-0.5 mt-2"> {/* Reduced space between items in a list */}
                                  {renderCategoryTree(incomeCats, null)}
                                  {incomeCats.length === 0 && (
                                       <p className="text-sm text-muted-foreground pl-2 py-4">No income sources defined. Click 'Add Category' to create one.</p>
@@ -357,18 +317,16 @@ export default function CategoriesPage() {
                              </div>
                          </div>
 
-                        {/* Expense Categories Section */}
                          <div>
-                             <h2 className="text-lg font-semibold mb-2 flex items-center gap-2 border-b pb-1"><TrendingDown className="h-5 w-5 text-primary" /> Expense Categories</h2>
-                             <div className="space-y-1 mt-2">
+                             <h2 className="text-lg font-semibold mb-2 flex items-center gap-2 border-b pb-2"><TrendingDown className="h-5 w-5 text-primary" /> Expense Categories</h2>
+                             <div className="space-y-0.5 mt-2">
                                  {renderCategoryTree(expenseCats, null)}
-                                 {expenseCats.filter(c => c.parentId === null).length === 0 && ( // Check for top-level expenses
+                                 {expenseCats.filter(c => c.parentId === null).length === 0 && (
                                      <p className="text-sm text-muted-foreground pl-2 py-4">No expense categories defined. Click 'Add Category' to create one.</p>
                                  )}
                              </div>
                          </div>
 
-                        {/* Overall Empty State */}
                         {appData.categories.length === incomeCats.length + expenseCats.length && incomeCats.length === 0 && expenseCats.length === 0 && (
                              <p className="text-center text-muted-foreground pt-10">No categories found. Add one to get started!</p>
                         )}
@@ -376,20 +334,16 @@ export default function CategoriesPage() {
                  )}
             </ScrollArea>
 
-            {/* Add/Edit Dialog */}
             <AddCategoryDialog
                 open={isAddCategoryDialogOpen}
                 onOpenChange={(isOpen) => {
                     setIsAddCategoryDialogOpen(isOpen);
-                    if (!isOpen) setEditingCategory(null); // Reset editing state when closing
+                    if (!isOpen) setEditingCategory(null);
                 }}
                 onSaveCategory={handleAddOrUpdateCategory}
                 existingCategory={editingCategory}
-                // Pass all categories for parent selection logic within the dialog
                 categories={appData.categories}
             />
         </div>
     );
 }
-```
-

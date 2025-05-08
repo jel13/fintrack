@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link"; // Import Link for navigation
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -184,7 +184,7 @@ export default function Home() {
         return prevData; // No changes, return previous state
 
      });
-  }, [transactions, monthlyIncome, currentMonth, isLoaded]); // Recalculate when these change
+  }, [transactions, monthlyIncome, currentMonth, isLoaded, categories]); // Added categories dependency
 
 
   const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
@@ -463,7 +463,7 @@ export default function Home() {
              {monthlyIncome !== null && (
                 <>
                  <div className="grid gap-4 grid-cols-2 animate-slide-up">
-                    <Card>
+                    <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Income</CardTitle>
                         <Wallet className="h-4 w-4 text-muted-foreground" />
@@ -473,7 +473,7 @@ export default function Home() {
                         <p className="text-xs text-muted-foreground">Set for this month</p>
                     </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Expenses Logged</CardTitle>
                         <TrendingDown className="h-4 w-4 text-muted-foreground" />
@@ -489,7 +489,7 @@ export default function Home() {
                     </CardContent>
                     </Card>
                 </div>
-                <Card className="animate-slide-up" style={{"animationDelay": "0.1s"}}>
+                <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]" style={{"animationDelay": "0.1s"}}>
                     <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Remaining Balance</CardTitle>
                     <CardDescription>Estimated income vs logged expenses this month</CardDescription>
@@ -512,7 +512,7 @@ export default function Home() {
 
           {/* Recent Transactions (Show if income set) */}
           {monthlyIncome !== null && (
-            <Card className="animate-slide-up" style={{"animationDelay": "0.3s"}}>
+            <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]" style={{"animationDelay": "0.3s"}}>
                 <CardHeader>
                 <CardTitle>Recent Transactions</CardTitle>
                  <CardDescription>Your latest financial activity.</CardDescription>
@@ -540,7 +540,7 @@ export default function Home() {
             </Card>
           )}
            {!hasExpenseBudgetsSet && monthlyIncome !== null && (
-                <Card className="border-dashed border-muted-foreground animate-fade-in">
+                <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
                     <CardContent className="p-6 text-center text-muted-foreground">
                         <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                         <p className="font-semibold">Ready to Budget?</p>
@@ -552,7 +552,7 @@ export default function Home() {
                 </Card>
            )}
            {monthlyIncome === null && (
-                <Card className="border-dashed border-muted-foreground animate-fade-in">
+                <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
                     <CardContent className="p-6 text-center text-muted-foreground">
                          <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                          <p className="font-semibold">Set Your Income</p>
@@ -568,7 +568,7 @@ export default function Home() {
               <h2 className="text-lg font-semibold mb-2">All Transactions</h2>
                {/* Show message if no budget set and trying to view transactions */}
                {!hasExpenseBudgetsSet && monthlyIncome !== null && transactions.filter(t => t.type === 'expense').length === 0 ? (
-                    <Card className="border-dashed border-muted-foreground">
+                    <Card className="border-dashed border-muted-foreground bg-secondary/30">
                          <CardContent className="p-6 text-center text-muted-foreground">
                             <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                              <p className="font-semibold">Set Budgets First</p>
@@ -646,7 +646,7 @@ export default function Home() {
 
 
           {monthlyIncome === null ? (
-             <Card className="border-dashed border-muted-foreground animate-fade-in">
+             <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
                  <CardContent className="p-6 text-center text-muted-foreground">
                      <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                       <p className="font-semibold">Set Your Income</p>
@@ -672,7 +672,7 @@ export default function Home() {
                     </div>
                  ))
            ) : (
-                 <Card className="border-dashed border-muted-foreground animate-fade-in">
+                 <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
                      <CardContent className="p-6 text-center text-muted-foreground">
                         <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                         <p className="font-semibold">No Budgets Yet</p>
@@ -766,7 +766,7 @@ export default function Home() {
                      const progressPercent = goal.targetAmount > 0 ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100) : 0;
                      return (
                          <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
-                            <Card>
+                            <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01]">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-base">{goal.name}</CardTitle>
                                     {goal.description && <CardDescription className="text-xs">{goal.description}</CardDescription>}
@@ -797,7 +797,7 @@ export default function Home() {
                      );
                  })
             ) : (
-                  <Card className="border-dashed border-muted-foreground animate-fade-in">
+                  <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
                      <CardContent className="p-6 text-center text-muted-foreground">
                          <PiggyBank className="mx-auto h-8 w-8 mb-2 text-accent" />
                          <p className="font-semibold">No Saving Goals Yet</p>
@@ -810,7 +810,7 @@ export default function Home() {
             )}
 
              {/* E-Learning Link */}
-             <Card className="animate-slide-up" style={{"animationDelay": `${(savingGoals.length + 1) * 0.05}s`}}>
+             <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01]" style={{"animationDelay": `${(savingGoals.length + 1) * 0.05}s`}}>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/> Financial Planning Tips</CardTitle>
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
@@ -831,7 +831,7 @@ export default function Home() {
                  {/* Optional actions like export? */}
              </div>
              {monthlyIncome === null ? (
-                  <Card className="border-dashed border-muted-foreground animate-fade-in">
+                  <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
                       <CardContent className="p-6 text-center text-muted-foreground">
                           <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                            <p className="font-semibold">Set Your Income</p>
@@ -842,7 +842,7 @@ export default function Home() {
                       </CardContent>
                   </Card>
              ) : !hasExpenseBudgetsSet ? (
-                 <Card className="border-dashed border-muted-foreground animate-fade-in">
+                 <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
                       <CardContent className="p-6 text-center text-muted-foreground">
                          <BarChart3 className="mx-auto h-8 w-8 mb-2 text-primary" />
                           <p className="font-semibold">Set Budgets First</p>
@@ -872,7 +872,7 @@ export default function Home() {
              <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
                 <Button
                     size="icon"
-                    className="rounded-full h-14 w-14 shadow-lg bg-primary hover:bg-primary/90"
+                    className="rounded-full h-14 w-14 shadow-lg bg-primary hover:bg-primary/90 active:scale-95 transition-transform"
                     onClick={() => setIsAddTransactionSheetOpen(true)}
                     aria-label="Add Transaction"
                 >
