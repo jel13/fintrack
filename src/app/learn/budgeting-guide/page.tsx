@@ -14,7 +14,7 @@ export default function BudgetingGuidePage() {
       <div className="flex items-center mb-4">
         <Link href="/" passHref>
             <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
-                <a><ArrowLeft className="h-5 w-5" /></a>
+                <ArrowLeft className="h-5 w-5" />
             </Button>
         </Link>
         <h1 className="text-xl font-semibold ml-2">How to Budget Guide</h1>
