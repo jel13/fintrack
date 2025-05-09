@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -558,7 +559,7 @@ export default function Home() {
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
                  <Link href="/categories" passHref legacyBehavior>
-                    <a className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex items-center justify-center gap-2")}>
+                    <a className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
                       <FolderCog className="h-4 w-4" /> Manage Categories
                     </a>
                   </Link>
@@ -656,7 +657,7 @@ export default function Home() {
             <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">Saving Goals</h2>
                 <Link href="/saving-goals" passHref legacyBehavior>
-                    <a className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex items-center justify-center gap-2")}>
+                    <a className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
                          Manage Goals <Settings className="h-4 w-4" />
                     </a>
                 </Link>
@@ -886,3 +887,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
