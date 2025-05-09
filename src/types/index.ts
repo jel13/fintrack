@@ -9,6 +9,7 @@ export interface Transaction {
   category: string; // Corresponds to Category id (e.g., 'groceries', 'salary')
   date: Date;
   description?: string;
+  receiptDataUrl?: string; // Optional Data URL for the receipt image
 }
 
 export interface Budget {

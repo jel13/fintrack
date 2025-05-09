@@ -1,7 +1,8 @@
+
 "use client";
 
 import * as React from "react";
-import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity } from "lucide-react"; // Added BarChart3/Activity for Insights
+import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip } from "lucide-react"; // Added BarChart3/Activity for Insights, Paperclip
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,8 +55,9 @@ export default function Home() {
     setAppData(loadedData);
     setTempIncome(loadedData.monthlyIncome?.toString() ?? ''); // Update tempIncome after loading
     // Pre-select the first income category if none is stored/selected (improved UX)
-    const firstIncomeCat = loadedData.categories.find(c => c.isIncomeSource)?.id ?? '';
-    setSelectedIncomeCategory(firstIncomeCat);
+    // No pre-selection, user must choose.
+    // const firstIncomeCat = loadedData.categories.find(c => c.isIncomeSource)?.id ?? '';
+    // setSelectedIncomeCategory(firstIncomeCat);
     setIsLoaded(true); // Mark data as loaded
   }, []); // Empty dependency array ensures this runs only once on mount
 
@@ -251,7 +253,7 @@ export default function Home() {
             description: `Your 'Needs' categories now represent ${currentNeedsPercentage.toFixed(1)}% of your income, exceeding the recommended 50%. Consider reviewing your allocations.`,
             variant: "default", // Use default or a custom 'warning' variant
             duration: 7000, // Longer duration
-            action: <Info className="h-5 w-5 text-blue-500" />, // Example using Info icon
+            // action: <Info className="h-5 w-5 text-blue-500" />, // Example using Info icon
          });
          // NOTE: We DO NOT return here, allowing the user to proceed.
     }
@@ -308,6 +310,7 @@ export default function Home() {
          category: selectedIncomeCategory, // Use selected category
          date: new Date(),
          description: `Monthly income set`, // Simplified description
+         receiptDataUrl: undefined, // No receipt for income setting
      };
 
      // Update AppData: set monthlyIncome and recalculate budget limits based on FIXED percentages
@@ -384,7 +387,7 @@ export default function Home() {
 
   // Determine if any NON-SAVINGS budget has been set for the current month
   const hasExpenseBudgetsSet = React.useMemo(() => {
-    return currentMonthBudgets.some(b => b.category !== 'savings');
+    return currentMonthBudgets.some(b => b.category !== 'savings' && b.limit > 0); // Check if limit > 0 too
   }, [currentMonthBudgets]);
 
 
@@ -506,7 +509,7 @@ export default function Home() {
           {/* Spending Chart (Show if income set, and expense budgets exist) */}
           {monthlyIncome !== null && hasExpenseBudgetsSet && (
              <div className="animate-slide-up" style={{"animationDelay": "0.2s"}}>
-                 <SpendingChart transactions={transactions} month={currentMonth} categories={expenseCategories} />
+                 <SpendingChart transactions={transactions} month={currentMonth} categories={categories} />
              </div>
            )}
 
@@ -867,8 +870,8 @@ export default function Home() {
          </TabsContent>
 
 
-        {/* Floating Action Button (Show only if income set AND expense budgets exist) */}
-        {monthlyIncome !== null && hasExpenseBudgetsSet && (
+        {/* Floating Action Button (Show only if income set AND expense budgets exist OR income is set and income categories exist for logging income) */}
+        {(monthlyIncome !== null && (hasExpenseBudgetsSet || incomeCategories.length > 0)) && (
              <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
                 <Button
                     size="icon"
@@ -912,22 +915,20 @@ export default function Home() {
         open={isAddTransactionSheetOpen}
         onOpenChange={setIsAddTransactionSheetOpen}
         onAddTransaction={handleAddTransaction}
-        // Pass only categories relevant for selection (exclude parents, include income sources)
         categoriesForSelect={[...incomeCategories, ...spendingCategoriesForSelect]}
-        canAddExpense={hasExpenseBudgetsSet} // Pass flag to enable/disable expense option
+        canAddExpense={hasExpenseBudgetsSet}
+        currentMonthBudgetCategoryIds={currentMonthBudgets.map(b => b.category)}
       />
        <AddBudgetDialog
         open={isAddBudgetDialogOpen}
         onOpenChange={setIsAddBudgetDialogOpen}
         onAddBudget={handleAddBudget}
-        // Pass IDs of categories that *already* have a non-savings budget this month
         existingBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)}
-        // Pass available *spending* categories for selection (excluding parents)
         availableSpendingCategories={spendingCategoriesForSelect}
-        monthlyIncome={monthlyIncome} // Pass income for calculations
-        // Pass total percentage allocated to *other* expense categories
+        monthlyIncome={monthlyIncome} 
         totalAllocatedPercentage={totalAllocatedPercentage}
       />
     </div>
   );
 }
+
