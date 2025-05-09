@@ -286,5 +286,3 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
     </Dialog>
   );
 }
-```
-

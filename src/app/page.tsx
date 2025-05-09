@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip } from "lucide-react"; // Added BarChart3/Activity for Insights, Paperclip
+import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip, FolderCog } from "lucide-react"; // Added BarChart3/Activity for Insights, Paperclip, FolderCog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,10 +54,6 @@ export default function Home() {
     const loadedData = loadAppData();
     setAppData(loadedData);
     setTempIncome(loadedData.monthlyIncome?.toString() ?? ''); // Update tempIncome after loading
-    // Pre-select the first income category if none is stored/selected (improved UX)
-    // No pre-selection, user must choose.
-    // const firstIncomeCat = loadedData.categories.find(c => c.isIncomeSource)?.id ?? '';
-    // setSelectedIncomeCategory(firstIncomeCat);
     setIsLoaded(true); // Mark data as loaded
   }, []); // Empty dependency array ensures this runs only once on mount
 
@@ -253,31 +249,22 @@ export default function Home() {
             description: `Your 'Needs' categories now represent ${currentNeedsPercentage.toFixed(1)}% of your income, exceeding the recommended 50%. Consider reviewing your allocations.`,
             variant: "default", // Use default or a custom 'warning' variant
             duration: 7000, // Longer duration
-            // action: <Info className="h-5 w-5 text-blue-500" />, // Example using Info icon
          });
-         // NOTE: We DO NOT return here, allowing the user to proceed.
     }
 
 
     setAppData(prev => {
-        // Replace if budget for this category exists for the month, otherwise add
         const existingBudgetIndex = prev.budgets.findIndex(b => b.category === newBudget.category && b.month === currentMonth);
         let updatedBudgets;
         if (existingBudgetIndex > -1) {
             updatedBudgets = [...prev.budgets];
-            updatedBudgets[existingBudgetIndex] = budgetWithDetails; // Replace with new details (including potentially updated percentage)
+            updatedBudgets[existingBudgetIndex] = budgetWithDetails; 
         } else {
             updatedBudgets = [...prev.budgets, budgetWithDetails];
         }
 
-        // --- Recalculate Savings budget AFTER adding/updating ---
-        // This logic is now handled by the useEffect hook, ensuring it runs
-        // after the state update with the new/updated budget.
-        // ---
-
-        // Sort budgets for consistent display (e.g., by category label)
         updatedBudgets.sort((a, b) => {
-             if (a.category === 'savings') return 1; // Savings last
+             if (a.category === 'savings') return 1; 
              if (b.category === 'savings') return -1;
              const labelA = getCategoryById(a.category)?.label ?? a.category;
              const labelB = getCategoryById(b.category)?.label ?? b.category;
@@ -293,47 +280,35 @@ export default function Home() {
 
  const handleSetIncome = () => {
     const incomeValue = parseFloat(tempIncome);
-    if (isNaN(incomeValue) || incomeValue <= 0) { // Income must be positive
+    if (isNaN(incomeValue) || incomeValue <= 0) { 
         toast({ title: "Invalid Income", description: "Please enter a valid positive number for income.", variant: "destructive" });
         return;
     }
-    // Ensure an income category is selected
     if (!selectedIncomeCategory) {
          toast({ title: "Select Income Source", description: "Please select an income source category.", variant: "destructive" });
          return;
     }
 
-     // Log the income setting as a transaction
      const incomeTransaction: Omit<Transaction, 'id'> = {
          type: 'income',
          amount: incomeValue,
-         category: selectedIncomeCategory, // Use selected category
+         category: selectedIncomeCategory, 
          date: new Date(),
-         description: `Monthly income set`, // Simplified description
-         receiptDataUrl: undefined, // No receipt for income setting
+         description: `Monthly income set`, 
+         receiptDataUrl: undefined, 
      };
 
-     // Update AppData: set monthlyIncome and recalculate budget limits based on FIXED percentages
      setAppData(prev => {
             const newIncome = incomeValue;
-            // Keep existing budgets, update their LIMITS based on FIXED percentages
             const updatedBudgets = prev.budgets.map(budget => {
                 let newLimit = budget.limit;
-                // Recalculate LIMIT based on FIXED percentage and NEW income
                 if (budget.category !== 'savings' && budget.percentage !== undefined && budget.percentage > 0) {
                     newLimit = parseFloat(((budget.percentage / 100) * newIncome).toFixed(2));
                 }
-                // Do NOT recalculate spent here, let the useEffect handle it based on transactions
                 return { ...budget, limit: newLimit };
             });
 
-            // --- Recalculate Savings budget after updating income ---
-            // This logic is now handled by the useEffect hook, ensuring it runs
-            // after the state update with the new income and recalculated limits.
-            // ---
 
-
-            // Add the income setting transaction
             const transactionWithId: Transaction = { ...incomeTransaction, id: `inc-${Date.now()}` };
             const updatedTransactions = [transactionWithId, ...prev.transactions]
                 .sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -348,9 +323,6 @@ export default function Home() {
        });
 
       toast({ title: "Income Updated", description: `Monthly income set to ${formatCurrency(incomeValue)}. Budget limits updated.` });
-      // Optionally clear tempIncome here if desired after successful set
-      // setTempIncome('');
-      // setSelectedIncomeCategory(''); // Reset category selection to force selection next time
   };
 
    const getCategoryById = (id: string): Category | undefined => {
@@ -365,33 +337,28 @@ export default function Home() {
     }));
   }
 
-  // Calculate total allocated percentage EXCLUDING savings
   const totalAllocatedPercentage = React.useMemo(() => {
      return currentMonthBudgets
-         .filter(b => b.category !== 'savings' && b.percentage !== undefined) // Exclude savings & ensure percentage exists
+         .filter(b => b.category !== 'savings' && b.percentage !== undefined) 
          .reduce((sum, b) => sum + (b.percentage ?? 0), 0);
   }, [currentMonthBudgets]);
 
-  // Calculate total allocated budget amount EXCLUDING savings
   const totalAllocatedBudgetAmount = React.useMemo(() => {
       return currentMonthBudgets
           .filter(b => b.category !== 'savings')
           .reduce((sum, b) => sum + b.limit, 0);
   }, [currentMonthBudgets]);
 
-  // Get the current Savings budget amount (limit)
   const savingsBudgetAmount = React.useMemo(() => {
       const savings = currentMonthBudgets.find(b => b.category === 'savings');
       return savings?.limit ?? 0;
   }, [currentMonthBudgets]);
 
-  // Determine if any NON-SAVINGS budget has been set for the current month
   const hasExpenseBudgetsSet = React.useMemo(() => {
-    return currentMonthBudgets.some(b => b.category !== 'savings' && b.limit > 0); // Check if limit > 0 too
+    return currentMonthBudgets.some(b => b.category !== 'savings' && b.limit > 0); 
   }, [currentMonthBudgets]);
 
 
-  // Loading State UI
     if (!isLoaded) {
         return (
             <div className="flex flex-col h-screen p-4 bg-background items-center justify-center">
@@ -408,7 +375,6 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-background">
       <Tabs defaultValue="dashboard" className="flex-grow flex flex-col">
         <TabsContent value="dashboard" className="flex-grow overflow-y-auto p-4 space-y-4">
-           {/* Set Income Card - Show if income is null */}
             {monthlyIncome === null ? (
               <Card className="border-primary border-2 shadow-lg animate-fade-in">
                 <CardHeader>
@@ -432,7 +398,6 @@ export default function Home() {
                              <Label htmlFor="income-category">Source Category</Label>
                              <Select value={selectedIncomeCategory} onValueChange={setSelectedIncomeCategory}>
                                 <SelectTrigger id="income-category">
-                                    {/* Display placeholder only if no category is selected */}
                                     <SelectValue placeholder="Select source" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -462,7 +427,6 @@ export default function Home() {
               </Card>
             ) : null}
 
-            {/* Monthly Summary Cards (Show only if income is set) */}
              {monthlyIncome !== null && (
                 <>
                  <div className="grid gap-4 grid-cols-2 animate-slide-up">
@@ -482,11 +446,10 @@ export default function Home() {
                         <TrendingDown className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                         {/* Hide expenses until budget is set */}
                          {hasExpenseBudgetsSet ? (
                             <div className="text-2xl font-bold">{formatCurrency(monthlySummary.expenses)}</div>
                          ) : (
-                             <Skeleton className="h-8 w-24" /> // Skeleton for loading feel
+                             <Skeleton className="h-8 w-24" /> 
                          )}
                          <p className="text-xs text-muted-foreground">{hasExpenseBudgetsSet ? "This month" : "Set budgets first"}</p>
                     </CardContent>
@@ -498,7 +461,6 @@ export default function Home() {
                     <CardDescription>Estimated income vs logged expenses this month</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {/* Show balance regardless of budget setting, based on income vs logged expenses */}
                       <div className="text-3xl font-bold text-primary">{formatCurrency(monthlySummary.balance)}</div>
                     </CardContent>
                 </Card>
@@ -506,14 +468,12 @@ export default function Home() {
              )}
 
 
-          {/* Spending Chart (Show if income set, and expense budgets exist) */}
           {monthlyIncome !== null && hasExpenseBudgetsSet && (
              <div className="animate-slide-up" style={{"animationDelay": "0.2s"}}>
                  <SpendingChart transactions={transactions} month={currentMonth} categories={categories} />
              </div>
            )}
 
-          {/* Recent Transactions (Show if income set) */}
           {monthlyIncome !== null && (
             <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]" style={{"animationDelay": "0.3s"}}>
                 <CardHeader>
@@ -522,7 +482,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="p-0">
                 <ScrollArea className="h-[200px]">
-                    {transactions.slice(0, 5).map((t) => ( // Show latest 5
+                    {transactions.slice(0, 5).map((t) => ( 
                         <TransactionListItem key={t.id} transaction={t} categories={categories} />
                     ))}
                     {transactions.length === 0 && (
@@ -569,7 +529,6 @@ export default function Home() {
            <ScrollArea className="h-full">
              <div className="p-4 space-y-2">
               <h2 className="text-lg font-semibold mb-2">All Transactions</h2>
-               {/* Show message if no budget set and trying to view transactions */}
                {!hasExpenseBudgetsSet && monthlyIncome !== null && transactions.filter(t => t.type === 'expense').length === 0 ? (
                     <Card className="border-dashed border-muted-foreground bg-secondary/30">
                          <CardContent className="p-6 text-center text-muted-foreground">
@@ -598,15 +557,20 @@ export default function Home() {
         <TabsContent value="budgets" className="flex-grow overflow-y-auto p-4 space-y-4">
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
-             {/* Enable Add Budget only if income is set */}
-             {monthlyIncome !== null && (
-                <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
-                </Button>
-             )}
+             <div className="flex gap-2">
+                 <Link href="/categories" passHref>
+                     <Button size="sm" variant="outline">
+                         <FolderCog className="mr-2 h-4 w-4" /> Manage Categories
+                     </Button>
+                 </Link>
+                 {monthlyIncome !== null && (
+                    <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
+                    </Button>
+                 )}
+             </div>
           </div>
 
-           {/* Budget Summary Card */}
             {monthlyIncome !== null && (
                 <Card className="mb-4 bg-primary/10 border-primary animate-fade-in">
                      <CardHeader className="pb-2">
@@ -629,7 +593,6 @@ export default function Home() {
                         </div>
                         <div className="flex justify-between text-accent">
                             <span>Available for Savings (%):</span>
-                             {/* Calculate savings percentage */}
                              <span className="font-semibold">{(100 - totalAllocatedPercentage).toFixed(1)}%</span>
                         </div>
                          <div className="flex justify-between text-accent">
@@ -660,8 +623,7 @@ export default function Home() {
                  </CardContent>
              </Card>
            ) : currentMonthBudgets.length > 0 ? (
-              // Sort budgets: Savings last, others alphabetically
-             [...currentMonthBudgets] // Create a copy before sorting
+             [...currentMonthBudgets] 
                 .sort((a, b) => {
                     if (a.category === 'savings') return 1;
                     if (b.category === 'savings') return -1;
@@ -689,7 +651,6 @@ export default function Home() {
         <TabsContent value="goals" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">Saving Goals</h2>
-                {/* Link to a dedicated Saving Goals page */}
                 <Link href="/saving-goals" passHref>
                      <Button size="sm" variant="outline">
                         Manage Goals <Settings className="ml-2 h-4 w-4" />
@@ -697,7 +658,6 @@ export default function Home() {
                 </Link>
             </div>
 
-              {/* Display Savings Summary */}
              {monthlyIncome !== null && (
                 <Card className="mb-4 bg-accent/10 border-accent animate-fade-in">
                     <CardHeader className="pb-2">
@@ -705,7 +665,7 @@ export default function Home() {
                             <PiggyBank className="h-5 w-5 text-accent"/> Savings & Goals Allocation
                         </CardTitle>
                          <CardDescription className="text-xs">
-                            Your Savings budget is automatically calculated based on leftover income after expense budgets. Allocate percentages of this savings amount to your goals.
+                            Your Savings budget is automatically calculated. Allocate percentages of this to your goals.
                          </CardDescription>
                     </CardHeader>
                     <CardContent className="p-3 pt-0 text-sm text-accent grid grid-cols-2 gap-x-4 gap-y-1">
@@ -713,7 +673,6 @@ export default function Home() {
                             <span>Monthly Savings Budget:</span>
                             <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
                         </div>
-                         {/* Show allocation only if savings budget > 0 */}
                          {savingsBudgetAmount > 0 && (
                              <>
                              <div className="flex justify-between">
@@ -759,10 +718,8 @@ export default function Home() {
             )}
 
 
-            {/* Display Saving Goals summary */}
             {savingGoals.length > 0 ? (
                  savingGoals.map((goal, index) => {
-                     // Calculate contribution based on the current month's savings budget limit
                      const monthlyContribution = savingsBudgetAmount > 0 && goal.percentageAllocation
                          ? (goal.percentageAllocation / 100) * savingsBudgetAmount
                          : 0;
@@ -780,7 +737,6 @@ export default function Home() {
                                         <span>{progressPercent.toFixed(1)}%</span>
                                     </div>
                                     <Progress value={progressPercent} className="w-full h-2 [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:bg-accent [&::-moz-progress-bar]:bg-accent" />
-                                    {/* Show allocation info if applicable */}
                                     {goal.percentageAllocation && goal.percentageAllocation > 0 && savingsBudgetAmount > 0 && (
                                         <p className="text-xs text-muted-foreground mt-1">
                                             Receives {goal.percentageAllocation}% of Savings ({formatCurrency(monthlyContribution)}/month)
@@ -812,7 +768,6 @@ export default function Home() {
                   </Card>
             )}
 
-             {/* E-Learning Link */}
              <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01]" style={{"animationDelay": `${(savingGoals.length + 1) * 0.05}s`}}>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/> Financial Planning Tips</CardTitle>
@@ -822,16 +777,13 @@ export default function Home() {
                     <Link href="/learn/budgeting-guide" passHref>
                         <Button variant="link" className="p-0 h-auto">How to Budget Guide</Button>
                     </Link>
-                     {/* Add more links later */}
                 </CardContent>
              </Card>
         </TabsContent>
 
-         {/* Insights Tab */}
          <TabsContent value="insights" className="flex-grow overflow-y-auto p-4 space-y-4">
              <div className="flex justify-between items-center mb-4">
                  <h2 className="text-lg font-semibold">Financial Insights</h2>
-                 {/* Optional actions like export? */}
              </div>
              {monthlyIncome === null ? (
                   <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
@@ -861,7 +813,7 @@ export default function Home() {
                         currentMonth={currentMonth}
                         previousMonth={previousMonth}
                         transactions={transactions}
-                        budgets={budgets} // Pass all budgets for potential cross-month comparison
+                        budgets={budgets} 
                         categories={categories}
                         monthlyIncome={monthlyIncome}
                     />
@@ -870,7 +822,6 @@ export default function Home() {
          </TabsContent>
 
 
-        {/* Floating Action Button (Show only if income set AND expense budgets exist OR income is set and income categories exist for logging income) */}
         {(monthlyIncome !== null && (hasExpenseBudgetsSet || incomeCategories.length > 0)) && (
              <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
                 <Button
@@ -885,8 +836,7 @@ export default function Home() {
         )}
 
 
-        {/* Bottom Navigation */}
-        <TabsList className="grid w-full grid-cols-5 h-16 rounded-none sticky bottom-0 bg-background border-t shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.1)]"> {/* Changed to grid-cols-5 */}
+        <TabsList className="grid w-full grid-cols-5 h-16 rounded-none sticky bottom-0 bg-background border-t shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.1)]"> 
           <TabsTrigger value="dashboard" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <LayoutDashboard className="h-5 w-5" />
             <span className="text-xs">Dashboard</span>
@@ -903,14 +853,13 @@ export default function Home() {
             <PiggyBank className="h-5 w-5" />
              <span className="text-xs">Goals</span>
           </TabsTrigger>
-           <TabsTrigger value="insights" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary"> {/* Added Insights Trigger */}
-            <Activity className="h-5 w-5" /> {/* Using Activity icon */}
+           <TabsTrigger value="insights" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary"> 
+            <Activity className="h-5 w-5" /> 
              <span className="text-xs">Insights</span>
           </TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {/* Modals/Sheets */}
       <AddTransactionSheet
         open={isAddTransactionSheetOpen}
         onOpenChange={setIsAddTransactionSheetOpen}

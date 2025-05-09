@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -70,16 +71,21 @@ export default function CategoriesPage() {
                 const index = categories.findIndex(c => c.id === categoryData.id);
                 if (index > -1) {
                     const originalCategory = categories[index];
-                    categoryData.isDefault = originalCategory.isDefault;
-                    categoryData.isDeletable = originalCategory.isDeletable;
-                    categoryData.isIncomeSource = originalCategory.isIncomeSource;
+                    // Preserve non-editable properties from original if needed
+                    const updatedCategoryData = {
+                        ...categoryData,
+                        isDefault: originalCategory.isDefault,
+                        isDeletable: originalCategory.isDeletable,
+                        isIncomeSource: originalCategory.isIncomeSource, // Type cannot be changed
+                    };
 
-                     if (categoryData.parentId && categories.some(c => c.parentId === categoryData.id && c.id === categoryData.parentId)) {
+
+                     if (updatedCategoryData.parentId && categories.some(c => c.parentId === updatedCategoryData.id && c.id === updatedCategoryData.parentId)) {
                          toast({ title: "Invalid Parent", description: "Cannot set parent to a direct child.", variant: "destructive" });
                          return prev;
                      }
-                    categories[index] = { ...originalCategory, ...categoryData };
-                    toastMessage = `Category "${categoryData.label}" updated.`;
+                    categories[index] = { ...originalCategory, ...updatedCategoryData };
+                    toastMessage = `Category "${updatedCategoryData.label}" updated.`;
                 } else {
                     toast({ title: "Error", description: "Category not found for update.", variant: "destructive" });
                     return prev;
@@ -92,6 +98,7 @@ export default function CategoriesPage() {
                     isDeletable: true,
                 };
                 if (newCategory.parentId && !categories.some(c => c.id === newCategory.parentId && !c.isIncomeSource)) {
+                     // Check if parent exists and is not an income source
                     toast({ title: "Error", description: "Parent category not found or is an income source.", variant: "destructive" });
                     return prev;
                 }
@@ -175,9 +182,7 @@ export default function CategoriesPage() {
             .filter(cat => cat.parentId === parentId)
             .sort((a, b) => a.label.localeCompare(b.label));
 
-         if (children.length === 0 && level === 0 && parentId === null && categoriesToRender.length > 0) { // Check if it's the root call and no top-level items for this type
-             // This specific check seems too narrow, the message below handles empty sections better.
-         } else if (children.length === 0 && parentId === null && categoriesToRender.length === 0) { // No categories of this type AT ALL
+         if (children.length === 0 && parentId === null && categoriesToRender.length === 0) { 
             return (
                  <p className="text-sm text-muted-foreground pl-2 py-4">
                     No categories defined in this section.
@@ -192,7 +197,7 @@ export default function CategoriesPage() {
             const isIncome = cat.isIncomeSource ?? false;
 
             return (
-                <div key={cat.id} className="flex flex-col" style={{ marginLeft: `${level * 10}px` }}> {/* Reduced indent slightly */}
+                <div key={cat.id} className="flex flex-col" style={{ marginLeft: `${level * 10}px` }}> 
                    <div
                         className={cn(
                             "group/cat relative flex items-center justify-between p-2.5 mb-0.5 rounded-md border cursor-pointer transition-all duration-150 ease-in-out hover:bg-secondary/50 hover:shadow-sm active:scale-[0.98]",
@@ -201,8 +206,8 @@ export default function CategoriesPage() {
                         )}
                         onClick={() => hasChildren && toggleExpand(cat.id)}
                     >
-                        <div className="flex items-center gap-2.5 flex-1 min-w-0"> {/* Increased gap slightly */}
-                            <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center"> {/* Slightly larger click area for expand */}
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0"> 
+                            <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center"> 
                                 {hasChildren ? (
                                     <Button variant="ghost" size="icon" className="h-7 w-7 opacity-70 group-hover/cat:opacity-100" onClick={(e) => { e.stopPropagation(); toggleExpand(cat.id); }}>
                                         {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -217,7 +222,7 @@ export default function CategoriesPage() {
                             <Icon className={cn("h-4 w-4 flex-shrink-0", isIncome ? "text-accent" : "text-primary")} />
                             <span className="text-sm font-medium truncate flex-grow">{cat.label}</span>
 
-                            <div className="flex gap-1.5 ml-auto flex-shrink-0 mr-12"> {/* Badges closer */}
+                            <div className="flex gap-1.5 ml-auto flex-shrink-0 mr-12"> 
                                  {isIncome && <Badge variant="outline" className="text-xs h-5 border-accent/70 text-accent bg-accent/10">Income</Badge>}
                                  {cat.isDefault && <Badge variant="secondary" className="text-xs h-5 bg-muted/70 text-muted-foreground">Default</Badge>}
                             </div>
@@ -259,7 +264,7 @@ export default function CategoriesPage() {
                         </div>
                    </div>
                    {hasChildren && isExpanded && (
-                        <div className="mt-1 pl-2 border-l-2 border-dashed border-muted-foreground/20"> {/* Slightly thicker, more subtle border */}
+                        <div className="mt-1 pl-2 border-l-2 border-dashed border-muted-foreground/20"> 
                            {renderCategoryTree(categoriesToRender, cat.id, level + 1)}
                         </div>
                     )}
@@ -306,10 +311,10 @@ export default function CategoriesPage() {
                         ))}
                     </div>
                  ) : (
-                    <div className="space-y-6"> {/* Increased spacing between sections */}
+                    <div className="space-y-6"> 
                          <div>
                              <h2 className="text-lg font-semibold mb-2 flex items-center gap-2 border-b pb-2"><Briefcase className="h-5 w-5 text-accent" /> Income Sources</h2>
-                             <div className="space-y-0.5 mt-2"> {/* Reduced space between items in a list */}
+                             <div className="space-y-0.5 mt-2"> 
                                  {renderCategoryTree(incomeCats, null)}
                                  {incomeCats.length === 0 && (
                                       <p className="text-sm text-muted-foreground pl-2 py-4">No income sources defined. Click 'Add Category' to create one.</p>
@@ -321,13 +326,13 @@ export default function CategoriesPage() {
                              <h2 className="text-lg font-semibold mb-2 flex items-center gap-2 border-b pb-2"><TrendingDown className="h-5 w-5 text-primary" /> Expense Categories</h2>
                              <div className="space-y-0.5 mt-2">
                                  {renderCategoryTree(expenseCats, null)}
-                                 {expenseCats.filter(c => c.parentId === null).length === 0 && (
+                                 {expenseCats.filter(c => c.parentId === null).length === 0 && ( // Check only top-level expense categories
                                      <p className="text-sm text-muted-foreground pl-2 py-4">No expense categories defined. Click 'Add Category' to create one.</p>
                                  )}
                              </div>
                          </div>
 
-                        {appData.categories.length === incomeCats.length + expenseCats.length && incomeCats.length === 0 && expenseCats.length === 0 && (
+                        {appData.categories.length === (incomeCats.length + expenseCats.length) && incomeCats.length === 0 && expenseCats.length === 0 && (
                              <p className="text-center text-muted-foreground pt-10">No categories found. Add one to get started!</p>
                         )}
                     </div>
@@ -347,3 +352,4 @@ export default function CategoriesPage() {
         </div>
     );
 }
+

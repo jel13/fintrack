@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
       {
         source: '/categories',
         destination: '/categories', // Route to the actual categories page
-        permanent: true, // Or false if you might change it later
+        permanent: true, 
       },
         {
         source: '/saving-goals',

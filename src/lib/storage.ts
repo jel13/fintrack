@@ -14,41 +14,37 @@ const defaultCategories: AppData['categories'] = [
   { id: 'other_income', label: 'Other Income', icon: 'TrendingUp', isDefault: true, isDeletable: true, isIncomeSource: true },
 
   // Core Non-Deletable Categories
-  // 'income' category is conceptual for transaction type, not selectable as source/expense category
-  // { id: 'income', label: 'Income', icon: 'TrendingUp', isDefault: true, isDeletable: false },
-  { id: 'savings', label: 'Savings', icon: 'PiggyBank', isDefault: true, isDeletable: false }, // For budgeting savings allocation
+  { id: 'savings', label: 'Savings', icon: 'PiggyBank', isDefault: true, isDeletable: false, isIncomeSource: false }, // For budgeting savings allocation
 
   // Default Expense Categories (Top Level)
-  { id: 'groceries', label: 'Groceries', icon: 'ShoppingCart', isDefault: true, isDeletable: true },
-  { id: 'housing', label: 'Housing', icon: 'Home', isDefault: true, isDeletable: true },
-  { id: 'food', label: 'Food & Dining', icon: 'Utensils', isDefault: true, isDeletable: true },
-  { id: 'transport', label: 'Transport', icon: 'Car', isDefault: true, isDeletable: true },
-  { id: 'bills', label: 'Bills', icon: 'Receipt', isDefault: true, isDeletable: true }, // Parent Category
-  { id: 'clothing', label: 'Clothing', icon: 'Shirt', isDefault: true, isDeletable: true },
-  { id: 'gifts', label: 'Gifts', icon: 'Gift', isDefault: true, isDeletable: true },
-  { id: 'health', label: 'Health', icon: 'HeartPulse', isDefault: true, isDeletable: true },
-  { id: 'travel', label: 'Travel', icon: 'Plane', isDefault: true, isDeletable: true },
-  { id: 'entertainment', label: 'Entertainment', icon: 'Gamepad2', isDefault: true, isDeletable: true },
-  { id: 'personal_care', label: 'Personal Care', icon: 'Smile', isDefault: true, isDeletable: true },
-  { id: 'education', label: 'Education', icon: 'BookOpen', isDefault: true, isDeletable: true },
-  { id: 'other_expense', label: 'Other Expense', icon: 'HelpCircle', isDefault: true, isDeletable: true }, // Renamed icon
+  { id: 'groceries', label: 'Groceries', icon: 'ShoppingCart', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'housing', label: 'Housing', icon: 'Home', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'food', label: 'Food & Dining', icon: 'Utensils', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'transport', label: 'Transport', icon: 'Car', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'bills', label: 'Bills & Utilities', icon: 'Receipt', isDefault: true, isDeletable: true, isIncomeSource: false }, // Parent Category
+  { id: 'clothing', label: 'Clothing', icon: 'Shirt', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'gifts', label: 'Gifts', icon: 'Gift', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'health', label: 'Health & Wellness', icon: 'HeartPulse', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'travel', label: 'Travel', icon: 'Plane', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'entertainment', label: 'Entertainment', icon: 'Gamepad2', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'personal_care', label: 'Personal Care', icon: 'Smile', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'education', label: 'Education', icon: 'BookOpen', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'other_expense', label: 'Other Expense', icon: 'Archive', isDefault: true, isDeletable: true, isIncomeSource: false },
 
   // Default Expense Sub-Categories
-  { id: 'water_bill', label: 'Water Bill', icon: 'Droplet', parentId: 'bills', isDefault: true, isDeletable: true },
-  { id: 'electric_bill', label: 'Electric Bill', icon: 'Zap', parentId: 'bills', isDefault: true, isDeletable: true },
-  { id: 'internet_bill', label: 'Internet Bill', icon: 'Wifi', parentId: 'bills', isDefault: true, isDeletable: true },
-  { id: 'phone_bill', label: 'Phone Bill', icon: 'Smartphone', parentId: 'bills', isDefault: true, isDeletable: true },
-
-  // Example sub-categories (add more as needed)
-  { id: 'rent', label: 'Rent/Mortgage', icon: 'Home', parentId: 'housing', isDefault: true, isDeletable: true },
-  { id: 'fuel', label: 'Fuel', icon: 'Fuel', parentId: 'transport', isDefault: true, isDeletable: true },
-  { id: 'public_transport', label: 'Public Transport', icon: 'Train', parentId: 'transport', isDefault: true, isDeletable: true },
-  { id: 'restaurants', label: 'Restaurants', icon: 'UtensilsCrossed', parentId: 'food', isDefault: true, isDeletable: true },
-
+  { id: 'rent_mortgage', label: 'Rent/Mortgage', icon: 'Home', parentId: 'housing', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'fuel_car', label: 'Fuel/Car Maintenance', icon: 'Fuel', parentId: 'transport', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'public_transit', label: 'Public Transit', icon: 'Train', parentId: 'transport', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'restaurants_dining', label: 'Restaurants/Dining Out', icon: 'UtensilsCrossed', parentId: 'food', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'water_bill', label: 'Water Bill', icon: 'Droplet', parentId: 'bills', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'electric_bill', label: 'Electric Bill', icon: 'Zap', parentId: 'bills', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'internet_bill', label: 'Internet Bill', icon: 'Wifi', parentId: 'bills', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'phone_bill', label: 'Phone Bill', icon: 'Smartphone', parentId: 'bills', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'subscriptions_bills', label: 'Subscriptions', icon: 'Youtube', parentId: 'bills', isDefault: true, isDeletable: true, isIncomeSource: false },
 ];
 
 
-export const defaultAppData: AppData = { // Export the default data
+export const defaultAppData: AppData = { 
   monthlyIncome: null,
   transactions: [],
   budgets: [],
@@ -58,7 +54,7 @@ export const defaultAppData: AppData = { // Export the default data
 
 export const loadAppData = (): AppData => {
   if (typeof window === 'undefined') {
-    return { ...defaultAppData }; // Return a copy of default if on server-side
+    return { ...defaultAppData }; 
   }
   try {
     const storedData = localStorage.getItem(APP_DATA_KEY);
@@ -66,7 +62,6 @@ export const loadAppData = (): AppData => {
       const parsedData: AppData = JSON.parse(storedData);
       const currentMonth = format(new Date(), 'yyyy-MM');
 
-      // Ensure dates are parsed correctly
       parsedData.transactions = parsedData.transactions.map(t => ({
         ...t,
         date: new Date(t.date),
@@ -76,79 +71,74 @@ export const loadAppData = (): AppData => {
         targetDate: g.targetDate ? new Date(g.targetDate) : null,
       }));
 
-      // Ensure budgets have month and spent initialized if missing
       parsedData.budgets = parsedData.budgets.map(b => {
-          // Recalculate spent based on current transactions for accuracy
            const spent = parsedData.transactions
               .filter(t => t.type === 'expense' && t.category === b.category && format(t.date, 'yyyy-MM') === (b.month || currentMonth))
               .reduce((sum, t) => sum + t.amount, 0);
           return {
             ...b,
-            month: b.month || currentMonth, // Default to current month if missing
-            spent: spent, // Always recalculate spent on load for accuracy
-            // limit will be recalculated based on income and percentage later if needed
+            month: b.month || currentMonth, 
+            spent: spent, 
           };
       });
 
-       // Merge categories: Start with defaults, then update/add from storage
-       const finalCategories = [...defaultCategories]; // Start with defaults
-       const defaultIds = new Set(defaultCategories.map(c => c.id));
+       const finalCategories = [...defaultCategories.map(c => ({...c}))]; // Deep copy defaults
 
-       parsedData.categories.forEach(storedCat => {
-            const existingIndex = finalCategories.findIndex(fc => fc.id === storedCat.id);
-            if (existingIndex > -1) {
-                // Update existing default category, but preserve non-editable flags and income source flag
-                 finalCategories[existingIndex] = {
-                    ...storedCat, // Use stored label, icon, parentId
-                    isDefault: finalCategories[existingIndex].isDefault, // Keep original default flag
-                    isDeletable: finalCategories[existingIndex].isDeletable, // Keep original deletable flag
-                    isIncomeSource: finalCategories[existingIndex].isIncomeSource, // Keep original income source flag
-                 };
-            } else {
-                // Add custom category from storage
-                 finalCategories.push({
-                     ...storedCat,
-                     isDefault: false, // Custom categories are not default
-                     isDeletable: true, // Custom categories are deletable by default
-                     isIncomeSource: storedCat.isIncomeSource ?? false, // Assume false if missing
-                 });
-            }
-       });
+       if (parsedData.categories && Array.isArray(parsedData.categories)) {
+           parsedData.categories.forEach(storedCat => {
+                const existingIndex = finalCategories.findIndex(fc => fc.id === storedCat.id);
+                if (existingIndex > -1) {
+                    // Update existing default category, preserving certain flags
+                     finalCategories[existingIndex] = {
+                        ...finalCategories[existingIndex], // Start with default properties
+                        label: storedCat.label, // Update mutable properties
+                        icon: storedCat.icon,
+                        parentId: storedCat.parentId,
+                        // isDefault, isDeletable, isIncomeSource are preserved from default
+                     };
+                } else {
+                    // Add custom category from storage
+                     finalCategories.push({
+                         ...storedCat,
+                         isDefault: storedCat.isDefault === undefined ? false : storedCat.isDefault,
+                         isDeletable: storedCat.isDeletable === undefined ? true : storedCat.isDeletable,
+                         isIncomeSource: storedCat.isIncomeSource === undefined ? false : storedCat.isIncomeSource,
+                     });
+                }
+           });
+       }
 
 
-       // Ensure 'Savings' category exists, is non-deletable, and NOT an income source
        let savingsCategoryIndex = finalCategories.findIndex(c => c.id === 'savings');
        if (savingsCategoryIndex === -1) {
            finalCategories.push({ id: 'savings', label: 'Savings', icon: 'PiggyBank', isDefault: true, isDeletable: false, isIncomeSource: false });
        } else {
            finalCategories[savingsCategoryIndex] = {
                ...finalCategories[savingsCategoryIndex],
-               isDeletable: false, // Force non-deletable
-               isIncomeSource: false // Ensure not an income source
+               label: finalCategories[savingsCategoryIndex].label || 'Savings',
+               icon: finalCategories[savingsCategoryIndex].icon || 'PiggyBank',
+               isDefault: true,
+               isDeletable: false, 
+               isIncomeSource: false 
            };
        }
+        const categoriesToReturn = finalCategories.filter(c => c.id !== 'income'); // Remove conceptual 'income' if it exists
 
-       // Ensure 'income' id is NOT used for selectable categories
-        parsedData.categories = finalCategories.filter(c => c.id !== 'income');
-
-
-      return { ...parsedData, categories: finalCategories }; // Use the merged categories
+        return { ...defaultAppData, ...parsedData, categories: categoriesToReturn }; 
     }
   } catch (error) {
     console.error("Failed to load app data from localStorage:", error);
   }
-  return { ...defaultAppData }; // Return a copy on error
+  return { ...defaultAppData, categories: [...defaultAppData.categories.map(c => ({...c}))] }; // Return a deep copy of defaults on error
 };
 
 export const saveAppData = (data: AppData) => {
    if (typeof window === 'undefined') return;
   try {
-    // Ensure dates are stored in a serializable format (ISO string)
     const dataToStore = {
       ...data,
       transactions: data.transactions.map(t => ({
         ...t,
-        // Check if date is already a string (might happen during rapid updates)
         date: typeof t.date === 'string' ? t.date : t.date.toISOString(),
       })),
       savingGoals: data.savingGoals.map(g => ({
@@ -162,9 +152,9 @@ export const saveAppData = (data: AppData) => {
   }
 };
 
-// Clear data function (useful for debugging or reset)
 export const clearAppData = () => {
    if (typeof window === 'undefined') return;
   localStorage.removeItem(APP_DATA_KEY);
-  window.location.reload(); // Reload to apply default state
+  window.location.reload(); 
 };
+
