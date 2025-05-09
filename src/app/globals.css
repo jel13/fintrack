@@ -42,7 +42,7 @@ body {
     --chart-3: 43 74% 66%; /* Yellowish */
     --chart-4: 27 87% 67%; /* Orangish */
     --chart-5: 340 75% 55%; /* Reddish */
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* Increased for more curved UI */
 
     /* Sidebar vars are less relevant for mobile-first, but keep for consistency */
     --sidebar-background: 210 17% 98%;
