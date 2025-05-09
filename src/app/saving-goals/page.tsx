@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -110,7 +111,10 @@ export default function SavingGoalsPage() {
             
             if (toastMessageTitle) {
                  // Schedule toast after current render cycle
-                setTimeout(() => toast({ title: toastMessageTitle, description: toastMessageDescription }), 0);
+                 // Use requestAnimationFrame to ensure toast call is outside of render cycle
+                requestAnimationFrame(() => {
+                    toast({ title: toastMessageTitle, description: toastMessageDescription });
+                });
             }
             return { ...prev, savingGoals: goals };
         });
@@ -126,7 +130,9 @@ export default function SavingGoalsPage() {
             savingGoals: prev.savingGoals.filter(g => g.id !== goalId)
         }));
          // Schedule toast after current render cycle
-        setTimeout(() => toast({ title: "Goal Deleted", description: `Saving goal "${goalToDelete.name}" removed.` }), 0);
+         requestAnimationFrame(() => {
+            toast({ title: "Goal Deleted", description: `Saving goal "${goalToDelete.name}" removed.` });
+        });
     };
 
     const openEditDialog = (goal: SavingGoal) => {
@@ -137,12 +143,13 @@ export default function SavingGoalsPage() {
 
     return (
         <div className="flex flex-col h-screen bg-background">
+             {/* Header */}
              <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
-                <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
-                    <Link href="/">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
+                <Link href="/" passHref>
+                    <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
+                        <a><ArrowLeft className="h-5 w-5" /></a>
+                    </Button>
+                </Link>
                 <h1 className="text-xl font-semibold ml-2">Manage Saving Goals</h1>
                  <Button size="sm" className="ml-auto" onClick={() => { setEditingGoal(null); setIsAddGoalDialogOpen(true); }} disabled={!isLoaded || totalSavingsBudgetLimit <= 0}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Goal
@@ -270,7 +277,7 @@ export default function SavingGoalsPage() {
                                                         <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
                                                         <span>{progressValue.toFixed(1)}%</span>
                                                     </div>
-                                                    <Progress value={progressValue} className="h-1.5 [&gt;div]:bg-accent" />
+                                                    <Progress value={progressValue} className="h-1.5 [&>div]:bg-accent" />
                                                     {goal.percentageAllocation !== undefined && goal.percentageAllocation > 0 && (
                                                         <p className="text-xs text-muted-foreground mt-1.5">
                                                             Alloc: {goal.percentageAllocation}% of Savings
@@ -321,3 +328,4 @@ export default function SavingGoalsPage() {
         </div>
     );
 }
+

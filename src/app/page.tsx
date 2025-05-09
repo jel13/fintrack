@@ -1,7 +1,8 @@
+
 "use client";
 
 import * as React from "react";
-import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip, FolderCog } from "lucide-react";
+import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip, FolderCog, UserCircle } from "lucide-react"; // Added UserCircle
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,29 +66,15 @@ export default function Home() {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0, incomeTransactions: 0 };
     const currentMonthTransactions = transactions.filter(t => format(t.date, 'yyyy-MM') === currentMonth);
     
-    // Calculate income from actual transactions for the current month
     const incomeFromTransactionsThisMonth = currentMonthTransactions
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
 
-    // Use appData.monthlyIncome if set, otherwise use incomeFromTransactionsThisMonth
-    // However, appData.monthlyIncome is the *budgeted* income. The dashboard summary should reflect actuals.
-    // Let's consider `appData.monthlyIncome` as the primary source for "Total Income" display on dashboard if set.
-    // But balance should ideally be actual income transactions minus expenses.
-    // For now, sticking to: `monthlyIncome` from AppData is the basis for budget calculations and displayed total.
-    // Balance = monthlyIncome (from AppData) - expenses.
-    // `incomeTransactions` field in summary is the sum of 'income' type transactions for the month for record.
-
-    const effectiveIncome = monthlyIncome ?? 0; // This is appData.monthlyIncome, the budgeted total.
+    const effectiveIncome = monthlyIncome ?? 0; 
     const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
     
-    // Calculate balance based on *actual* income transactions for the month MINUS expenses for the month
-    // This ensures balance reflects money received vs money spent.
+    // Balance is now calculated based on ALL income transactions this month vs all expenses this month
     const actualBalance = incomeFromTransactionsThisMonth - expenses;
-
-    // So, monthlySummary.income will show appData.monthlyIncome (budgeted)
-    // monthlySummary.balance will show actualBalance (transaction-based)
-    // monthlySummary.incomeTransactions tracks the sum of 'income' type transactions this month.
 
     return { income: effectiveIncome, expenses, balance: actualBalance, incomeTransactions: incomeFromTransactionsThisMonth };
   }, [transactions, monthlyIncome, currentMonth, isLoaded]);
@@ -206,13 +193,16 @@ export default function Home() {
     setAppData(prev => {
         const updatedTransactions = [transactionWithId, ...prev.transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
         
-        // If it's an income transaction, this might affect the `monthlySummary.balance` immediately,
-        // as `monthlySummary` calculates balance from `incomeTransactionsThisMonth - expenses`.
-        // `appData.monthlyIncome` (the budgeted income) is NOT changed here.
+        let updatedMonthlyIncome = prev.monthlyIncome;
+        if (transactionWithId.type === 'income') {
+             // Do not add to monthlyIncome here, as it's user-set budget.
+             // The monthlySummary.balance will update due to incomeFromTransactionsThisMonth changing.
+        }
         
         return {
             ...prev,
             transactions: updatedTransactions,
+            monthlyIncome: updatedMonthlyIncome,
         };
     });
     toast({ 
@@ -386,6 +376,15 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-background">
       <Tabs defaultValue="dashboard" className="flex-grow flex flex-col">
         <TabsContent value="dashboard" className="flex-grow overflow-y-auto p-4 space-y-4">
+            <div className="flex justify-between items-center mb-2">
+                <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+                <Link href="/profile" passHref>
+                  <Button variant="ghost" size="icon" aria-label="Profile">
+                    <UserCircle className="h-6 w-6 text-primary" />
+                  </Button>
+                </Link>
+            </div>
+
             {monthlyIncome === null || monthlyIncome === 0 ? (
               <Card className="border-primary border-2 shadow-lg animate-fade-in">
                 <CardHeader>
@@ -584,11 +583,11 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Button asChild variant="outline" size="sm">
-                    <Link href="/categories">
-                       <FolderCog className="h-4 w-4" /> Manage Categories
-                    </Link>
-                 </Button>
+                 <Link href="/categories" passHref>
+                     <Button asChild variant="outline" size="sm">
+                        <a><FolderCog className="h-4 w-4" /> Manage Categories</a>
+                     </Button>
+                 </Link>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
                     <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
@@ -686,11 +685,11 @@ export default function Home() {
         <TabsContent value="goals" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">Saving Goals</h2>
-                <Button asChild variant="outline" size="sm">
-                    <Link href="/saving-goals">
-                         Manage Goals <Settings className="h-4 w-4 ml-2" />
-                    </Link>
-                </Button>
+                <Link href="/saving-goals" passHref>
+                     <Button asChild variant="outline" size="sm">
+                        <a> Manage Goals <Settings className="h-4 w-4 ml-2" /></a>
+                     </Button>
+                </Link>
             </div>
 
              {monthlyIncome !== null && monthlyIncome > 0 && (
@@ -776,7 +775,7 @@ export default function Home() {
                                             <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
                                             <span>{progressPercent.toFixed(1)}%</span>
                                         </div>
-                                        <Progress value={progressPercent} className="w-full h-2 [&gt;div]:bg-accent" />
+                                        <Progress value={progressPercent} className="w-full h-2 [&>div]:bg-accent" />
                                         {goal.percentageAllocation && goal.percentageAllocation > 0 && (
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 Alloc: {goal.percentageAllocation}% of Savings
@@ -799,9 +798,11 @@ export default function Home() {
                          <PiggyBank className="mx-auto h-8 w-8 mb-2 text-accent" />
                          <p className="font-semibold">No Saving Goals Yet</p>
                         <p className="text-sm">Go to 'Manage Goals' to create goals and allocate your savings towards them.</p>
-                        <Button asChild variant="outline" size="sm" className="mt-3">
-                           <Link href="/saving-goals">Manage Goals</Link>
-                        </Button>
+                        <Link href="/saving-goals" passHref>
+                            <Button asChild variant="outline" size="sm" className="mt-3">
+                                <a>Manage Goals</a>
+                            </Button>
+                        </Link>
                      </CardContent>
                   </Card>
             )}
@@ -812,9 +813,11 @@ export default function Home() {
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button asChild variant="link" className="p-0 h-auto text-primary">
-                        <Link href="/learn/budgeting-guide">How to Budget Guide</Link>
-                    </Button>
+                    <Link href="/learn/budgeting-guide" passHref>
+                        <Button asChild variant="link" className="p-0 h-auto">
+                            <a>How to Budget Guide</a>
+                        </Button>
+                    </Link>
                 </CardContent>
              </Card>
         </TabsContent>
@@ -918,3 +921,4 @@ export default function Home() {
     </div>
   );
 }
+

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -11,11 +12,11 @@ export default function BudgetingGuidePage() {
     <div className="flex flex-col h-screen p-4 bg-background">
       {/* Header */}
       <div className="flex items-center mb-4">
-        <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
-            <Link href="/">
-                <ArrowLeft className="h-5 w-5" />
-            </Link>
-        </Button>
+        <Link href="/" passHref>
+            <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
+                <a><ArrowLeft className="h-5 w-5" /></a>
+            </Button>
+        </Link>
         <h1 className="text-xl font-semibold ml-2">How to Budget Guide</h1>
       </div>
 
@@ -90,3 +91,4 @@ export default function BudgetingGuidePage() {
     </div>
   );
 }
+
