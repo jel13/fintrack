@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import * as React from 'react';
@@ -264,7 +262,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                          <ChartContainer config={budgetVsActualChartConfig} className="aspect-video max-h-[300px]">
                             <BarChart data={budgetVsActualData} layout="vertical" barSize={15} margin={{ right: 20 }}>
                                 <CartesianGrid horizontal={false} />
-                                <XAxis type="number" dataKey="value" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value)} />
+                                <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value)} />
                                 <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} fontSize={12} width={80} interval={0} />
                                 <ChartTooltip
                                      cursor={false}
@@ -272,7 +270,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                                      formatter={(value) => formatCurrency(value as number)}
                                  />
                                 <ChartLegend content={<ChartLegendContent />} />
-                                <Bar dataKey="Budgeted" fill={chartColors.budgeted} radius={4} background={{ fill: 'hsl(var(--muted)/0.3)', radius: 4 }} />
+                                <Bar dataKey="Budgeted" fill={chartColors.budgeted} radius={4} />
                                 <Bar dataKey="Spent" fill={chartColors.spent} radius={4}/>
                             </BarChart>
                         </ChartContainer>
