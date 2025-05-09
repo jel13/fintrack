@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -200,9 +201,7 @@ export default function Home() {
         let updatedMonthlyIncome = prev.monthlyIncome;
 
         // If it's an income transaction, update the monthlyIncome
-        // This assumes subsequent income transactions should add to the total user-defined monthly income.
-        // If `monthlyIncome` is meant to be a static budget figure set only once, this logic would change.
-        if (newTransaction.type === 'income' && (prev.monthlyIncome !== null)) {
+        if (newTransaction.type === 'income') {
              updatedMonthlyIncome = (prev.monthlyIncome ?? 0) + newTransaction.amount;
         }
 
@@ -540,7 +539,7 @@ export default function Home() {
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Link href="/learn/budgeting-guide" passHref legacyBehavior>
+                    <Link href="/learn/budgeting-guide" passHref>
                         <Button asChild variant="link" className="p-0 h-auto text-base">
                            <a>How to Budget Guide</a>
                         </Button>
@@ -593,7 +592,7 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Link href="/saving-goals" passHref legacyBehavior>
+                 <Link href="/saving-goals" passHref>
                       <Button asChild variant="outline" size="sm">
                         <a><PiggyBank className="h-4 w-4" /> Manage Goals</a>
                       </Button>
@@ -605,56 +604,6 @@ export default function Home() {
                  )}
              </div>
           </div>
-
-            {monthlyIncome !== null && monthlyIncome > 0 && (
-                <Card className="mb-4 bg-primary/10 border-primary/30 animate-fade-in">
-                     <CardHeader className="pb-2">
-                        <CardTitle className="text-base flex items-center gap-2">
-                           <Info className="h-5 w-5 text-primary" /> Allocation Summary ({format(new Date(currentMonth + '-01T00:00:00'), 'MMMM')})
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0 text-sm grid grid-cols-2 gap-x-4 gap-y-1">
-                         <div className="flex justify-between text-primary col-span-2 border-b pb-1 mb-1 border-primary/20">
-                             <span>Total Budgeted Income:</span>
-                             <span className="font-semibold">{formatCurrency(monthlyIncome)}</span>
-                         </div>
-                        <div className="flex justify-between text-primary">
-                            <span>Expenses Allocated (%):</span>
-                            <span className="font-semibold">{totalAllocatedPercentage.toFixed(1)}%</span>
-                        </div>
-                        <div className="flex justify-between text-primary">
-                            <span>Expenses Allocated (₱):</span>
-                            <span className="font-semibold">{formatCurrency(totalAllocatedBudgetAmount)}</span>
-                        </div>
-                        <div className="flex justify-between text-accent">
-                            <span>Available for Savings (%):</span>
-                             <span className="font-semibold">{(100 - totalAllocatedPercentage).toFixed(1)}%</span>
-                        </div>
-                         <div className="flex justify-between text-accent">
-                            <span>Available for Savings (₱):</span>
-                            <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
-                        </div>
-                        <div className="flex justify-between text-primary col-span-2 pt-1 mt-1 border-t border-primary/20">
-                            <span>Total Allocated Budget (₱):</span>
-                            <span className="font-semibold">{formatCurrency(totalAllocatedBudgetAmount + savingsBudgetAmount)}</span>
-                        </div>
-                        <div className="flex justify-between text-foreground col-span-2">
-                            <span>Remaining Unbudgeted (₱):</span>
-                             <span className="font-semibold">{formatCurrency(monthlyIncome - (totalAllocatedBudgetAmount + savingsBudgetAmount))}</span>
-                        </div>
-
-
-                         {(totalAllocatedPercentage > 100) && (
-                            <p className="text-xs text-destructive font-semibold mt-1 col-span-2">Warning: Expense allocation exceeds 100%!</p>
-                         )}
-                          {!hasExpenseBudgetsSet && (
-                              <p className="text-xs text-primary/80 mt-1 col-span-2">Add budgets for expense categories to start tracking.</p>
-                          )}
-                    </CardContent>
-                </Card>
-            )}
-
-
           {(monthlyIncome === null || monthlyIncome === 0) ? (
             <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
                 <CardContent className="p-6 text-center">
@@ -798,4 +747,5 @@ export default function Home() {
     </div>
   );
 }
+
 
