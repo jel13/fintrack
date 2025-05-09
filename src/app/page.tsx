@@ -190,16 +190,31 @@ export default function Home() {
         const updatedTransactions = [transactionWithId, ...prev.transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
         let updatedMonthlyIncome = prev.monthlyIncome;
 
-        if (newTransaction.type === 'income') {
-            updatedMonthlyIncome = (prev.monthlyIncome ?? 0) + newTransaction.amount;
-        }
-        // For expenses, appData.monthlyIncome (the basis for budgeting) does not change.
-        // The expense will reduce the balance via the 'spent' amount in budgets and overall summary.
+        // If it's a new income transaction, it adds to the overall monthlyIncome setting
+        // The monthlyIncome state variable is the primary source for total income.
+        // This transaction is just a record of one income event.
+        // The handleSetIncome function is responsible for setting the appData.monthlyIncome.
+        // Here, we're just logging a transaction. It doesn't directly change appData.monthlyIncome.
+        // Balance calculation in monthlySummary will reflect income from transactions if appData.monthlyIncome is not set.
+        // However, with the current flow, appData.monthlyIncome IS set first.
+        // So, income transactions are records, but budgeting is based on the manually set appData.monthlyIncome.
+        // Let's adjust to ensure income transactions update the *recorded* income if no fixed monthly income is set,
+        // or simply add to a pool of "received income" if a fixed income *is* set.
+        // For simplicity now: we assume appData.monthlyIncome is the single source of truth for budgeting.
+        // Individual income transactions are just records.
+        
+        // No, if an income transaction is added, it should reflect immediately in the available balance and total logged income.
+        // The `monthlyIncome` field in AppData represents the *budgeted* income.
+        // The `monthlySummary.income` should perhaps be the sum of actual income transactions for the month.
+        // Or, `monthlyIncome` from AppData is the *target/estimated* income, and `monthlySummary.incomeTransactions` is actual.
+        // Let's make `monthlySummary.income` use `appData.monthlyIncome`.
+        // And balance should be `appData.monthlyIncome - expenses`.
+        // So, adding an income transaction doesn't change `appData.monthlyIncome`. It's a record.
 
         return {
             ...prev,
             transactions: updatedTransactions,
-            monthlyIncome: updatedMonthlyIncome, // Update if it's an income transaction
+            // monthlyIncome: updatedMonthlyIncome, // DO NOT update monthlyIncome here. It's set via "Set Monthly Income".
         };
     });
     toast({ 
@@ -220,8 +235,8 @@ export default function Home() {
         return;
      }
      if (calculatedLimit <= 0 && newBudget.percentage > 0 && currentMonthlyIncome > 0) {
-         toast({ title: "Invalid Budget", description: "Calculated budget limit is zero or negative. Check income and percentage.", variant: "destructive" });
-         return;
+         // This case might be valid if percentage is tiny, allow it for now.
+         // toast({ title: "Warning", description: "Calculated budget limit is zero. Check income and percentage.", variant: "default" });
      }
 
 
@@ -292,19 +307,22 @@ export default function Home() {
          return;
     }
 
+     // This function sets the appData.monthlyIncome which is the basis for budget calculations.
+     // It also logs an initial transaction for this income setting.
      const incomeTransaction: Omit<Transaction, 'id'> = {
          type: 'income',
          amount: incomeValue,
          category: selectedIncomeCategory,
          date: new Date(), // Transaction date is now
-         description: `Monthly income set/updated`, // General description
+         description: `Initial monthly income set via Dashboard`,
          receiptDataUrl: undefined,
      };
 
      setAppData(prev => {
-            const newTotalIncome = incomeValue; // This is the new total monthly income.
+            const newTotalIncome = incomeValue; // This becomes the new appData.monthlyIncome
             
             // Budget limits will be recalculated by the useEffect hook watching monthlyIncome
+            // Percentages remain fixed.
             const updatedBudgets = prev.budgets.map(budget => {
                 let newLimit = budget.limit;
                 if (budget.category !== 'savings' && budget.percentage !== undefined && budget.percentage > 0) {
@@ -314,20 +332,19 @@ export default function Home() {
             });
 
 
-            const transactionWithId: Transaction = { ...incomeTransaction, id: `inc-${Date.now()}` };
+            const transactionWithId: Transaction = { ...incomeTransaction, id: `initial-inc-${Date.now()}` };
             const updatedTransactions = [transactionWithId, ...prev.transactions]
                 .sort((a, b) => b.date.getTime() - a.date.getTime());
 
             return {
                 ...prev,
-                monthlyIncome: newTotalIncome, // Update appData.monthlyIncome to the new total
-                budgets: updatedBudgets, // Pass budgets with potentially updated limits
+                monthlyIncome: newTotalIncome,
+                budgets: updatedBudgets,
                 transactions: updatedTransactions
             };
        });
 
-      toast({ title: "Income Updated", description: `Monthly income set to ${formatCurrency(incomeValue)}. Budget limits updated.` });
-      // No need to set tempIncome or selectedIncomeCategory here, as the main income UI will hide.
+      toast({ title: "Income Updated", description: `Monthly income set to ${formatCurrency(incomeValue)}. Budgets using percentages will update.` });
   };
 
    const getCategoryById = (id: string): Category | undefined => {
@@ -579,7 +596,9 @@ export default function Home() {
              <div className="flex gap-2">
                  <Link href="/categories" passHref>
                      <Button asChild variant="outline" size="sm">
-                        <a><FolderCog className="h-4 w-4" /> Manage Categories</a>
+                        <>
+                           <FolderCog className="h-4 w-4" /> Manage Categories
+                        </>
                      </Button>
                  </Link>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
@@ -681,7 +700,9 @@ export default function Home() {
                 <h2 className="text-lg font-semibold">Saving Goals</h2>
                 <Link href="/saving-goals" passHref>
                     <Button asChild variant="outline" size="sm">
-                        <a><Settings className="h-4 w-4" /> Manage Goals</a>
+                        <>
+                           <Settings className="h-4 w-4" /> Manage Goals
+                        </>
                     </Button>
                 </Link>
             </div>
@@ -794,7 +815,7 @@ export default function Home() {
                         <p className="text-sm">Go to 'Manage Goals' to create goals and allocate your savings towards them.</p>
                          <Link href="/saving-goals" passHref>
                             <Button asChild variant="outline" size="sm" className="mt-3">
-                                <a>Manage Goals</a>
+                                <>Manage Goals</>
                             </Button>
                          </Link>
                      </CardContent>
@@ -809,7 +830,7 @@ export default function Home() {
                 <CardContent>
                     <Link href="/learn/budgeting-guide" passHref>
                         <Button asChild variant="link" className="p-0 h-auto text-primary">
-                            <a>How to Budget Guide</a>
+                            <>How to Budget Guide</>
                         </Button>
                     </Link>
                 </CardContent>
