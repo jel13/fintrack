@@ -72,9 +72,12 @@ export default function Home() {
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
 
+    // Use the set monthlyIncome as the primary income source for budget calculations
+    // but also track actual income transactions for the balance.
     const effectiveIncome = monthlyIncome ?? 0; 
     const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
     
+    // Balance should reflect actual cash flow: income transactions - expense transactions
     const actualBalance = incomeFromTransactionsThisMonth - expenses;
 
     return { income: effectiveIncome, expenses, balance: actualBalance, incomeTransactions: incomeFromTransactionsThisMonth };
@@ -195,6 +198,19 @@ export default function Home() {
         const updatedTransactions = [transactionWithId, ...prev.transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
         
         let updatedMonthlyIncome = prev.monthlyIncome;
+        // If this new transaction is an income transaction and matches the *selectedIncomeCategory*
+        // for the initial monthly income setup, update monthlyIncome.
+        // This logic might need refinement if users can log multiple "main" income sources
+        // or if 'monthlyIncome' represents something other than a single main income stream.
+        // For now, let's assume 'monthlyIncome' reflects the primary source value.
+        if (newTransaction.type === 'income' && newTransaction.category === prev.categories.find(c => c.isIncomeSource && c.label === 'Salary')?.id /* Example, adjust if needed */ ) {
+            // This part is tricky. If monthlyIncome is a manually set budget,
+            // should individual income transactions automatically update it?
+            // For simplicity now, individual income transactions will affect the *balance*
+            // but 'monthlyIncome' for budgeting purposes remains as set by the user.
+            // If 'monthlyIncome' should be dynamic based on all income transactions:
+            // updatedMonthlyIncome = updatedTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+        }
       
         return {
             ...prev,
@@ -297,17 +313,20 @@ export default function Home() {
      };
 
      setAppData(prev => {
+            // The `monthlyIncome` field should be the single source of truth for the budgeted income.
             const newTotalIncome = incomeValue; 
             
+            // When new income is set, update budget limits based on *fixed percentages*.
             const updatedBudgets = prev.budgets.map(budget => {
                 let newLimit = budget.limit;
+                // Only recalculate for budgets with a defined percentage (i.e., not 'savings')
                 if (budget.category !== 'savings' && budget.percentage !== undefined && budget.percentage > 0) {
                     newLimit = parseFloat(((budget.percentage / 100) * newTotalIncome).toFixed(2));
                 }
                 return { ...budget, limit: newLimit };
             });
 
-
+            // Add the initial income setting as a transaction for record-keeping
             const transactionWithId: Transaction = { ...incomeTransaction, id: `initial-inc-${Date.now()}` };
             const updatedTransactions = [transactionWithId, ...prev.transactions]
                 .sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -427,7 +446,7 @@ export default function Home() {
                    </div>
                    <Button onClick={handleSetIncome} className="w-full">Set Monthly Income</Button>
                    {incomeCategories.length === 0 && (
-                        <p className="text-xs text-muted-foreground text-center">No income source categories found. Please add some in 'Manage Categories' via the Budgets tab.</p>
+                        <p className="text-xs text-muted-foreground text-center">No income source categories found. Please add some in 'Manage Categories' via the Profile page.</p>
                    )}
                 </CardContent>
               </Card>
@@ -538,7 +557,7 @@ export default function Home() {
                 <CardContent>
                     <Link href="/learn/budgeting-guide" passHref legacyBehavior>
                         <Button asChild variant="link" className="p-0 h-auto">
-                            <a>How to Budget Guide</a>
+                           <a>How to Budget Guide</a>
                         </Button>
                     </Link>
                 </CardContent>
@@ -589,14 +608,9 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Link href="/categories" passHref>
-                    <Button variant="outline" size="sm">
-                      <FolderCog className="h-4 w-4" /> Manage Categories
-                    </Button>
-                 </Link>
-                 <Link href="/saving-goals" passHref>
-                      <Button variant="outline" size="sm">
-                        <PiggyBank className="h-4 w-4" /> Manage Goals
+                 <Link href="/saving-goals" passHref legacyBehavior>
+                      <Button asChild variant="outline" size="sm">
+                        <a><PiggyBank className="h-4 w-4" /> Manage Goals</a>
                       </Button>
                   </Link>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
