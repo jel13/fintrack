@@ -560,7 +560,9 @@ export default function Home() {
              <div className="flex gap-2">
                  <Link href="/categories" asChild>
                      <Button size="sm" variant="outline">
-                         <FolderCog className="mr-2 h-4 w-4" /> Manage Categories
+                        <span className="flex items-center justify-center gap-2">
+                            <FolderCog className="h-4 w-4" /> Manage Categories
+                        </span>
                      </Button>
                  </Link>
                  {monthlyIncome !== null && (
@@ -653,7 +655,9 @@ export default function Home() {
                 <h2 className="text-lg font-semibold">Saving Goals</h2>
                 <Link href="/saving-goals" asChild>
                      <Button size="sm" variant="outline">
-                        Manage Goals <Settings className="ml-2 h-4 w-4" />
+                        <span className="flex items-center justify-center gap-2">
+                             Manage Goals <Settings className="h-4 w-4" />
+                        </span>
                     </Button>
                 </Link>
             </div>
@@ -762,7 +766,9 @@ export default function Home() {
                          <p className="font-semibold">No Saving Goals Yet</p>
                         <p className="text-sm">Go to 'Manage Goals' to create goals and allocate your savings towards them.</p>
                         <Link href="/saving-goals" asChild>
-                            <Button size="sm" className="mt-3" variant="outline">Manage Goals</Button>
+                            <Button size="sm" className="mt-3" variant="outline">
+                                <span className="flex items-center justify-center">Manage Goals</span>
+                            </Button>
                         </Link>
                      </CardContent>
                   </Card>
@@ -880,4 +886,3 @@ export default function Home() {
     </div>
   );
 }
-

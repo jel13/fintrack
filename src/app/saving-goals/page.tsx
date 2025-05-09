@@ -303,7 +303,7 @@ export default function SavingGoalsPage() {
                                     <p className="font-semibold">No Saving Goals Yet</p>
                                     <p className="text-sm mb-3">Click "Add Goal" to start planning where your savings will go!</p>
                                     <Button size="sm" onClick={() => setIsAddGoalDialogOpen(true)} disabled={totalSavingsBudgetLimit <= 0}>
-                                         Add New Goal
+                                        <span className="flex items-center justify-center">Add New Goal</span>
                                     </Button>
                                      {totalSavingsBudgetLimit <= 0 && <p className="text-xs text-destructive mt-2">Enable Add Goal by increasing your Savings Budget.</p>}
                                 </CardContent>
