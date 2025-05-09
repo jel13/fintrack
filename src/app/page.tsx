@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip, FolderCog, UserCircle } from "lucide-react";
+import { PlusCircle, LayoutDashboard, List, Target, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon } from "lucide-react"; // Added HomeIcon
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { formatCurrency, cn } from "@/lib/utils";
-import { usePathname } from 'next/navigation'; 
+import { usePathname } from 'next/navigation';
 import {
   Select,
   SelectContent,
@@ -42,7 +42,7 @@ export default function Home() {
   const [tempIncome, setTempIncome] = React.useState<string>('');
   const [selectedIncomeCategory, setSelectedIncomeCategory] = React.useState<string>('');
   const { toast } = useToast();
-  const pathname = usePathname(); 
+  const pathname = usePathname();
 
   const currentMonth = format(new Date(), 'yyyy-MM');
   const previousMonthDate = new Date(currentMonth + '-01T00:00:00');
@@ -67,16 +67,16 @@ export default function Home() {
   const monthlySummary = React.useMemo(() => {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0, incomeTransactions: 0 };
     const currentMonthTransactions = transactions.filter(t => format(t.date, 'yyyy-MM') === currentMonth);
-    
+
     const incomeFromTransactionsThisMonth = currentMonthTransactions
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
 
     // Use the set monthlyIncome as the primary income source for budget calculations
     // but also track actual income transactions for the balance.
-    const effectiveIncome = monthlyIncome ?? 0; 
+    const effectiveIncome = monthlyIncome ?? 0;
     const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    
+
     // Balance should reflect actual cash flow: income transactions - expense transactions
     const actualBalance = incomeFromTransactionsThisMonth - expenses;
 
@@ -85,7 +85,7 @@ export default function Home() {
 
   const incomeCategories = React.useMemo(() => categories.filter(cat => cat.isIncomeSource), [categories]);
   const expenseCategories = React.useMemo(() => categories.filter(cat => !cat.isIncomeSource && cat.id !== 'savings'), [categories]);
-  
+
   const spendingCategoriesForSelect = React.useMemo(() => {
      return expenseCategories.filter(cat => cat.id !== 'savings');
    }, [expenseCategories]);
@@ -130,7 +130,7 @@ export default function Home() {
         const leftover = Math.max(0, currentMonthlyIncome - totalBudgetedExcludingSavings);
 
         if (savingsBudgetIndex > -1) {
-            const savingsSpent = prevData.transactions 
+            const savingsSpent = prevData.transactions
                  .filter(t => t.type === 'expense' && t.category === 'savings' && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
 
@@ -140,12 +140,12 @@ export default function Home() {
                     ...currentSavingsBudget,
                     limit: leftover,
                     spent: savingsSpent,
-                    percentage: undefined 
+                    percentage: undefined
                 };
                 budgetsChanged = true;
             }
 
-        } else if (currentMonthlyIncome > 0) { 
+        } else if (currentMonthlyIncome > 0) {
              const savingsSpent = prevData.transactions
                  .filter(t => t.type === 'expense' && t.category === 'savings' && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
@@ -162,7 +162,7 @@ export default function Home() {
 
         if (budgetsChanged) {
              updatedBudgets.sort((a, b) => {
-                 if (a.category === 'savings') return 1; 
+                 if (a.category === 'savings') return 1;
                  if (b.category === 'savings') return -1;
                  const labelA = prevData.categories.find(c => c.id === a.category)?.label ?? a.category;
                  const labelB = prevData.categories.find(c => c.id === b.category)?.label ?? b.category;
@@ -179,11 +179,11 @@ export default function Home() {
   const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
     if (newTransaction.type === 'expense') {
       const categoryBudgetExists = currentMonthBudgets.some(b => b.category === newTransaction.category);
-      if (!categoryBudgetExists && newTransaction.category !== 'savings') { 
-        toast({ 
-          title: "Budget Required", 
-          description: `Please set a budget for '${getCategoryById(newTransaction.category)?.label ?? newTransaction.category}' before adding expenses.`, 
-          variant: "destructive" 
+      if (!categoryBudgetExists && newTransaction.category !== 'savings') {
+        toast({
+          title: "Budget Required",
+          description: `Please set a budget for '${getCategoryById(newTransaction.category)?.label ?? newTransaction.category}' before adding expenses.`,
+          variant: "destructive"
         });
         return;
       }
@@ -196,7 +196,7 @@ export default function Home() {
 
     setAppData(prev => {
         const updatedTransactions = [transactionWithId, ...prev.transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
-        
+
         let updatedMonthlyIncome = prev.monthlyIncome;
         // If this new transaction is an income transaction and matches the *selectedIncomeCategory*
         // for the initial monthly income setup, update monthlyIncome.
@@ -211,16 +211,16 @@ export default function Home() {
             // If 'monthlyIncome' should be dynamic based on all income transactions:
             // updatedMonthlyIncome = updatedTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
         }
-      
+
         return {
             ...prev,
             transactions: updatedTransactions,
             monthlyIncome: updatedMonthlyIncome,
         };
     });
-    toast({ 
-        title: "Transaction added", 
-        description: `${newTransaction.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(newTransaction.amount)} logged for ${getCategoryById(newTransaction.category)?.label ?? newTransaction.category}.` 
+    toast({
+        title: "Transaction added",
+        description: `${newTransaction.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(newTransaction.amount)} logged for ${getCategoryById(newTransaction.category)?.label ?? newTransaction.category}.`
     });
   };
 
@@ -229,7 +229,7 @@ export default function Home() {
 
     const calculatedLimit = newBudget.percentage !== undefined && currentMonthlyIncome > 0
         ? parseFloat(((newBudget.percentage / 100) * currentMonthlyIncome).toFixed(2))
-        : 0; 
+        : 0;
 
      if (newBudget.percentage === undefined || newBudget.percentage <=0) {
         toast({ title: "Invalid Budget", description: "Budget percentage must be a positive value.", variant: "destructive" });
@@ -248,15 +248,15 @@ export default function Home() {
     };
 
     const needsCategoryIds = appData.categories.filter(c =>
-        !c.isIncomeSource && ( 
+        !c.isIncomeSource && (
         c.label.toLowerCase().includes('housing') ||
         c.label.toLowerCase().includes('groceries') ||
         c.label.toLowerCase().includes('transport') ||
-        c.label.toLowerCase().includes('bill')) 
+        c.label.toLowerCase().includes('bill'))
     ).map(c => c.id);
 
     const currentTotalNeedsPercentage = currentMonthBudgets
-        .filter(b => needsCategoryIds.includes(b.category) && b.category !== newBudget.category) 
+        .filter(b => needsCategoryIds.includes(b.category) && b.category !== newBudget.category)
         .reduce((sum, b) => sum + (b.percentage ?? 0), 0)
         + (needsCategoryIds.includes(newBudget.category) ? (newBudget.percentage ?? 0) : 0);
 
@@ -264,7 +264,7 @@ export default function Home() {
          toast({
             title: "Budget Reminder",
             description: `Your 'Needs' categories now represent ${currentTotalNeedsPercentage.toFixed(1)}% of your income, exceeding the recommended 50%. Consider reviewing your allocations.`,
-            variant: "default", 
+            variant: "default",
             duration: 7000,
          });
     }
@@ -302,20 +302,20 @@ export default function Home() {
          toast({ title: "Select Income Source", description: "Please select an income source category.", variant: "destructive" });
          return;
     }
- 
+
      const incomeTransaction: Omit<Transaction, 'id'> = {
          type: 'income',
          amount: incomeValue,
          category: selectedIncomeCategory,
-         date: new Date(), 
-         description: `Initial monthly income set via Dashboard`,
+         date: new Date(),
+         description: `Initial monthly income set via Home screen`,
          receiptDataUrl: undefined,
      };
 
      setAppData(prev => {
             // The `monthlyIncome` field should be the single source of truth for the budgeted income.
-            const newTotalIncome = incomeValue; 
-            
+            const newTotalIncome = incomeValue;
+
             // When new income is set, update budget limits based on *fixed percentages*.
             const updatedBudgets = prev.budgets.map(budget => {
                 let newLimit = budget.limit;
@@ -390,10 +390,10 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <Tabs defaultValue="dashboard" className="flex-grow flex flex-col">
-        <TabsContent value="dashboard" className="flex-grow overflow-y-auto p-4 space-y-4">
+      <Tabs defaultValue="home" className="flex-grow flex flex-col">
+        <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center mb-2">
-                <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+                <h1 className="text-2xl font-bold text-primary">Home</h1>
                 {/* Profile Link was here, moved to bottom nav */}
             </div>
 
@@ -468,7 +468,7 @@ export default function Home() {
                     <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Expenses Logged</CardTitle>
-                        <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                          {hasExpenseBudgetsSet ? (
@@ -540,7 +540,7 @@ export default function Home() {
                     </CardContent>
                 </Card>
            )}
-           {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && ( 
+           {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && (
                 <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
                     <CardContent className="p-6 text-center text-muted-foreground">
                          <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
@@ -573,8 +573,8 @@ export default function Home() {
                         <CardContent className="p-6 text-center text-muted-foreground">
                             <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                             <p className="font-semibold">Set Income First</p>
-                            <p className="text-sm">Please set your income on the Dashboard to log transactions.</p>
-                            <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="dashboard"]')?.click()}>Go to Dashboard</Button>
+                            <p className="text-sm">Please set your income on the Home screen to log transactions.</p>
+                            <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>Go to Home</Button>
                         </CardContent>
                      </Card>
                )}
@@ -593,7 +593,7 @@ export default function Home() {
                     <TransactionListItem key={t.id} transaction={t} categories={categories} />
                    ))
                 ) : (
-                    monthlyIncome !== null && hasExpenseBudgetsSet && ( 
+                    monthlyIncome !== null && hasExpenseBudgetsSet && (
                         <div className="p-4 text-center text-muted-foreground pt-10">
                             <List className="mx-auto h-8 w-8 mb-2" />
                            No transactions recorded yet.
@@ -650,7 +650,7 @@ export default function Home() {
                             <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
                         </div>
                         <div className="flex justify-between text-primary col-span-2 pt-1 mt-1 border-t border-primary/20">
-                            <span>Total Allocated Budget ($):</span> 
+                            <span>Total Allocated Budget ($):</span>
                             <span className="font-semibold">{formatCurrency(totalAllocatedBudgetAmount + savingsBudgetAmount)}</span>
                         </div>
                         <div className="flex justify-between text-foreground col-span-2">
@@ -675,9 +675,9 @@ export default function Home() {
                  <CardContent className="p-6 text-center text-muted-foreground">
                      <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                       <p className="font-semibold">Set Your Income First</p>
-                    <p className="text-sm">Please set your monthly income on the Dashboard tab before creating budgets.</p>
-                     <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="dashboard"]')?.click()}>
-                        Go to Dashboard
+                    <p className="text-sm">Please set your monthly income on the Home tab before creating budgets.</p>
+                     <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>
+                        Go to Home
                      </Button>
                  </CardContent>
              </Card>
@@ -715,9 +715,9 @@ export default function Home() {
                       <CardContent className="p-6 text-center text-muted-foreground">
                           <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                            <p className="font-semibold">Set Your Income First</p>
-                         <p className="text-sm">Please set your monthly income on the Dashboard tab to view insights.</p>
-                          <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="dashboard"]')?.click()}>
-                             Go to Dashboard
+                         <p className="text-sm">Please set your monthly income on the Home tab to view insights.</p>
+                          <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>
+                             Go to Home
                           </Button>
                       </CardContent>
                   </Card>
@@ -747,7 +747,7 @@ export default function Home() {
          </TabsContent>
 
 
-        {(monthlyIncome !== null && monthlyIncome > 0 && (incomeCategories.length > 0 || hasExpenseBudgetsSet)) && ( 
+        {(monthlyIncome !== null && monthlyIncome > 0 && (incomeCategories.length > 0 || hasExpenseBudgetsSet)) && (
              <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
                 <Button
                     size="icon"
@@ -762,9 +762,9 @@ export default function Home() {
 
 
         <TabsList className="grid w-full grid-cols-5 h-16 rounded-none sticky bottom-0 bg-background border-t shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.1)]">
-          <TabsTrigger value="dashboard" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-            <LayoutDashboard className="h-5 w-5" />
-            <span className="text-xs">Dashboard</span>
+          <TabsTrigger value="home" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+            <HomeIcon className="h-5 w-5" />
+            <span className="text-xs">Home</span>
           </TabsTrigger>
           <TabsTrigger value="transactions" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <List className="h-5 w-5" />
@@ -797,20 +797,19 @@ export default function Home() {
         open={isAddTransactionSheetOpen}
         onOpenChange={setIsAddTransactionSheetOpen}
         onAddTransaction={handleAddTransaction}
-        categoriesForSelect={[...incomeCategories, ...spendingCategoriesForSelect]} 
+        categoriesForSelect={[...incomeCategories, ...spendingCategoriesForSelect]}
         canAddExpense={hasExpenseBudgetsSet}
-        currentMonthBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)} 
+        currentMonthBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)}
       />
        <AddBudgetDialog
         open={isAddBudgetDialogOpen}
         onOpenChange={setIsAddBudgetDialogOpen}
         onAddBudget={handleAddBudget}
         existingBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)}
-        availableSpendingCategories={expenseCategories.filter(cat => cat.id !== 'savings')} 
+        availableSpendingCategories={expenseCategories.filter(cat => cat.id !== 'savings')}
         monthlyIncome={monthlyIncome}
         totalAllocatedPercentage={totalAllocatedPercentage}
       />
     </div>
   );
 }
-

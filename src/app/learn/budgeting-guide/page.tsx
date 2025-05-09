@@ -32,7 +32,7 @@ export default function BudgetingGuidePage() {
               <h2 className="text-lg font-semibold mb-2">1. Know Your Income</h2>
               <p className="text-sm text-muted-foreground">
                 The first step is to understand how much money you have coming in each month. This includes your salary, freelance work, allowances, or any other regular income sources.
-                Use the Dashboard in the app to set your estimated monthly income.
+                Use the Home screen in the app to set your estimated monthly income.
               </p>
             </section>
 
@@ -70,7 +70,7 @@ export default function BudgetingGuidePage() {
               <h2 className="text-lg font-semibold mb-2">5. Review and Adjust</h2>
               <p className="text-sm text-muted-foreground">
                 A budget isn't set in stone. Review your spending against your budget regularly (e.g., weekly or monthly). Did you overspend in a category? Underspend? Adjust your budget percentages or limits for the next month as needed.
-                Use the Dashboard's spending analysis and the 'Budgets' tab progress bars to track your performance. Compare current vs. previous month's insights.
+                Use the Home screen's spending analysis and the 'Budgets' tab progress bars to track your performance. Compare current vs. previous month's insights.
               </p>
             </section>
 
