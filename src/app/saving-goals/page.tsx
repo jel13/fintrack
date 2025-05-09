@@ -67,20 +67,18 @@ export default function SavingGoalsPage() {
         const totalWithoutCurrent = currentTotalAllocated - existingPercentage;
 
         if (newPercentage < 0) {
-            // Schedule toast after current render cycle
-            setTimeout(() => toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" }), 0);
+            requestAnimationFrame(() => toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" }));
             return;
         }
 
-        if (totalWithoutCurrent + newPercentage > 100.05) {
+        if (totalWithoutCurrent + newPercentage > 100.05) { // Allow small floating point inaccuracies
             const maxAllowed = Math.max(0, parseFloat((100 - totalWithoutCurrent).toFixed(1)));
-             // Schedule toast after current render cycle
-            setTimeout(() => toast({
+            requestAnimationFrame(() => toast({
                 title: "Allocation Limit Exceeded",
                 description: `Cannot allocate ${newPercentage}%. Total allocation would exceed 100% of savings budget. Available: ${maxAllowed}%`,
                 variant: "destructive",
                 duration: 5000
-            }), 0);
+            }));
              return;
         }
 
@@ -110,8 +108,6 @@ export default function SavingGoalsPage() {
             goals.sort((a, b) => a.name.localeCompare(b.name));
             
             if (toastMessageTitle) {
-                 // Schedule toast after current render cycle
-                 // Use requestAnimationFrame to ensure toast call is outside of render cycle
                 requestAnimationFrame(() => {
                     toast({ title: toastMessageTitle, description: toastMessageDescription });
                 });
@@ -129,7 +125,6 @@ export default function SavingGoalsPage() {
             ...prev,
             savingGoals: prev.savingGoals.filter(g => g.id !== goalId)
         }));
-         // Schedule toast after current render cycle
          requestAnimationFrame(() => {
             toast({ title: "Goal Deleted", description: `Saving goal "${goalToDelete.name}" removed.` });
         });
@@ -145,7 +140,7 @@ export default function SavingGoalsPage() {
         <div className="flex flex-col h-screen bg-background">
              {/* Header */}
              <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
-                <Link href="/" passHref>
+                <Link href="/" passHref legacyBehavior>
                     <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
                         <a><ArrowLeft className="h-5 w-5" /></a>
                     </Button>
@@ -178,7 +173,7 @@ export default function SavingGoalsPage() {
                                 <span className="font-semibold">{totalAllocatedPercentageOfSavings.toFixed(1)}%</span>
                             </div>
                              <div className="flex justify-between">
-                                <span>Allocated to Goals ($):</span>
+                                <span>Allocated to Goals (₱):</span>
                                 <span className="font-semibold">{formatCurrency(totalSavingsBudgetLimit * (totalAllocatedPercentageOfSavings / 100))}</span>
                             </div>
                              <div className="flex justify-between text-accent/80">
@@ -186,7 +181,7 @@ export default function SavingGoalsPage() {
                                 <span className="font-semibold">{(100 - totalAllocatedPercentageOfSavings).toFixed(1)}%</span>
                             </div>
                              <div className="flex justify-between text-accent/80">
-                                <span>Unallocated ($):</span>
+                                <span>Unallocated (₱):</span>
                                 <span className="font-semibold">{formatCurrency(totalSavingsBudgetLimit * (1 - totalAllocatedPercentageOfSavings / 100))}</span>
                             </div>
                             {totalAllocatedPercentageOfSavings > 100.05 && <p className="text-xs text-destructive font-semibold mt-1 col-span-2">Warning: Total goal allocation exceeds 100% of savings budget!</p>}
@@ -194,7 +189,7 @@ export default function SavingGoalsPage() {
                                 <Alert variant="default" className="col-span-2 mt-2 p-2 bg-accent/10 border-accent/30">
                                      <PiggyBank className="h-4 w-4 text-accent/80" />
                                      <AlertDescription className="text-xs text-accent/80">
-                                        Your current savings budget is $0. Reduce expense budgets on the Budgets tab to increase available savings for goals.
+                                        Your current savings budget is ₱0. Reduce expense budgets on the Budgets tab to increase available savings for goals.
                                      </AlertDescription>
                                 </Alert>
                              )}
@@ -282,7 +277,7 @@ export default function SavingGoalsPage() {
                                                         <p className="text-xs text-muted-foreground mt-1.5">
                                                             Alloc: {goal.percentageAllocation}% of Savings
                                                             {totalSavingsBudgetLimit > 0 && ` (~${formatCurrency(monthlyContribution)}/mo)`}
-                                                            {totalSavingsBudgetLimit <= 0 && ` ($0/mo)`}
+                                                            {totalSavingsBudgetLimit <= 0 && ` (₱0/mo)`}
                                                         </p>
                                                     )}
                                                      {goal.targetDate && (

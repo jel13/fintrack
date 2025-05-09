@@ -167,7 +167,7 @@ export function AddSavingGoalDialog({
         {isAllocationDisabled && (
              <Alert variant="destructive" className="mt-2">
                  <Info className="h-4 w-4" />
-                 <AlertTitle>Savings Budget is $0</AlertTitle>
+                 <AlertTitle>Savings Budget is ₱0</AlertTitle>
                  <AlertDescription className="text-xs">
                     You cannot allocate funds to goals until your monthly Savings Budget is positive. Reduce expense budgets on the Budgets tab to increase available savings.
                  </AlertDescription>
@@ -195,7 +195,7 @@ export function AddSavingGoalDialog({
                 name="targetAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Target Amount ($)</FormLabel>
+                    <FormLabel>Target Amount (₱)</FormLabel>
                     <FormControl>
                        <Input
                         type="number"
@@ -226,7 +226,7 @@ export function AddSavingGoalDialog({
                       <FormControl>
                       <Input
                           type="number"
-                          placeholder={isAllocationDisabled ? "Savings budget is $0" : `Max ${maxAllowedPercentage.toFixed(1)}% available`}
+                          placeholder={isAllocationDisabled ? "Savings budget is ₱0" : `Max ${maxAllowedPercentage.toFixed(1)}% available`}
                           {...field}
                           // Handle undefined for input value consistency
                           value={field.value === undefined ? '' : field.value}
@@ -328,3 +328,4 @@ export function AddSavingGoalDialog({
     </Dialog>
   );
 }
+

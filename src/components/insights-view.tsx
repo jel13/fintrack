@@ -81,14 +81,14 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
         const income = monthlyIncome ?? 0; // Use set income
         const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
         // Net Savings = Income - Expenses
-        const actualSavings = Math.max(0, income - expenses); // Ensure non-negative
+        const actualSavings = income - expenses; 
         return { income, expenses, actualSavings };
     }, [monthlyIncome, currentMonthTransactions]);
 
     const previousMonthTotals = React.useMemo(() => {
         const income = previousMonthIncome ?? 0;
         const expenses = previousMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-        const actualSavings = Math.max(0, income - expenses);
+        const actualSavings = income - expenses;
         return { income, expenses, actualSavings };
     }, [previousMonthIncome, previousMonthTransactions]);
 
@@ -99,7 +99,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
     const comparisonData = React.useMemo(() => [
         { name: format(new Date(previousMonth + '-01T00:00:00'), 'MMM yyyy'), Income: previousMonthTotals.income, Expenses: previousMonthTotals.expenses, Savings: previousMonthTotals.actualSavings },
         { name: format(new Date(currentMonth + '-01T00:00:00'), 'MMM yyyy'), Income: currentMonthTotals.income, Expenses: currentMonthTotals.expenses, Savings: currentMonthTotals.actualSavings },
-    ].filter(d => d.Income > 0 || d.Expenses > 0 || d.Savings > 0) // Filter out months with no data
+    ].filter(d => d.Income > 0 || d.Expenses > 0 || d.Savings !== 0) // Filter out months with no data or zero savings for clarity
     , [currentMonth, previousMonth, currentMonthTotals, previousMonthTotals]);
 
     // Spending by Category (Current Month) - Use top-level categories
@@ -159,11 +159,11 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
     const expenseChangePercent = previousMonthTotals.expenses > 0 ? (expenseChange / previousMonthTotals.expenses) * 100 : (currentMonthTotals.expenses > 0 ? Infinity : 0);
     const savingsChange = currentMonthTotals.actualSavings - previousMonthTotals.actualSavings;
      // Avoid division by zero or misleading percentages if previous savings were zero or negative
-    const savingsChangePercent = previousMonthTotals.actualSavings > 0 ? (savingsChange / previousMonthTotals.actualSavings) * 100 : (currentMonthTotals.actualSavings > 0 ? Infinity : 0);
+    const savingsChangePercent = previousMonthTotals.actualSavings !== 0 ? (savingsChange / previousMonthTotals.actualSavings) * 100 : (currentMonthTotals.actualSavings !== 0 ? Infinity : 0);
 
 
     const formatPercentage = (value: number): string => {
-        if (!isFinite(value)) return "(vs $0)"; // Handle Infinity
+        if (!isFinite(value)) return "(vs ₱0)"; // Handle Infinity
         if (isNaN(value)) return "(N/A)";
         return `(${value >= 0 ? '+' : ''}${value.toFixed(1)}%)`;
     };
@@ -199,7 +199,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(currentMonthTotals.actualSavings)}</div>
                          <p className={`text-xs ${savingsChange >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                            {isFinite(savingsChangePercent) || currentMonthTotals.actualSavings > 0 ? (
+                            {isFinite(savingsChangePercent) || currentMonthTotals.actualSavings !== 0 ? (
                                 <>
                                     {savingsChange >= 0 ? '+' : ''}{formatCurrency(savingsChange)} {formatPercentage(savingsChangePercent)} vs last month
                                 </>
@@ -244,7 +244,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                                 <ChartLegend content={<ChartLegendContent />} />
                                 <Bar dataKey="Income" fill={chartColors.income} radius={4} />
                                 <Bar dataKey="Expenses" fill={chartColors.expenses} radius={4} />
-                                <Bar dataKey="Savings" fill={chartColors.savings} radius={4} />
+                                <Bar dataKey="Savings" name="Net Savings" fill={chartColors.savings} radius={4} />
                             </BarChart>
                         </ChartContainer>
                     ) : (
@@ -328,3 +328,4 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
         </div>
     );
 };
+

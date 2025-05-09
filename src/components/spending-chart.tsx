@@ -127,7 +127,7 @@ export function SpendingChart({ transactions, month, categories }: SpendingChart
     : (totalMonthlySpending > 0 ? Infinity : 0); // Use Infinity for percentage if previous was 0 but current > 0
 
   const displaySpendingChangePercentage = () => {
-     if (spendingChangePercentage === Infinity) return "(vs $0)";
+     if (spendingChangePercentage === Infinity) return "(vs ₱0)";
      if (isNaN(spendingChangePercentage) || !isFinite(spendingChangePercentage)) return "(N/A)"; // Check for NaN and Infinity
      return `(${spendingChangePercentage >= 0 ? '+' : ''}${spendingChangePercentage.toFixed(1)}%)`;
   }
@@ -223,3 +223,4 @@ export function SpendingChart({ transactions, month, categories }: SpendingChart
     </Card>
   );
 }
+

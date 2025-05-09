@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, LayoutDashboard, List, Target, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon } from "lucide-react"; // Added HomeIcon
+import { PlusCircle, LayoutDashboard, List, Target, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, FolderCog, Folder } from "lucide-react"; // Added HomeIcon
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import { getCategoryIconComponent } from '@/components/category-icon';
 import { Progress } from "@/components/ui/progress";
 import { InsightsView } from "@/components/insights-view";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 export default function Home() {
@@ -72,12 +73,8 @@ export default function Home() {
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
 
-    // Use the set monthlyIncome as the primary income source for budget calculations
-    // but also track actual income transactions for the balance.
     const effectiveIncome = monthlyIncome ?? 0;
     const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-
-    // Balance should reflect actual cash flow: income transactions - expense transactions
     const actualBalance = incomeFromTransactionsThisMonth - expenses;
 
     return { income: effectiveIncome, expenses, balance: actualBalance, incomeTransactions: incomeFromTransactionsThisMonth };
@@ -196,26 +193,9 @@ export default function Home() {
 
     setAppData(prev => {
         const updatedTransactions = [transactionWithId, ...prev.transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
-
-        let updatedMonthlyIncome = prev.monthlyIncome;
-        // If this new transaction is an income transaction and matches the *selectedIncomeCategory*
-        // for the initial monthly income setup, update monthlyIncome.
-        // This logic might need refinement if users can log multiple "main" income sources
-        // or if 'monthlyIncome' represents something other than a single main income stream.
-        // For now, let's assume 'monthlyIncome' reflects the primary source value.
-        if (newTransaction.type === 'income' && newTransaction.category === prev.categories.find(c => c.isIncomeSource && c.label === 'Salary')?.id /* Example, adjust if needed */ ) {
-            // This part is tricky. If monthlyIncome is a manually set budget,
-            // should individual income transactions automatically update it?
-            // For simplicity now, individual income transactions will affect the *balance*
-            // but 'monthlyIncome' for budgeting purposes remains as set by the user.
-            // If 'monthlyIncome' should be dynamic based on all income transactions:
-            // updatedMonthlyIncome = updatedTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-        }
-
         return {
             ...prev,
             transactions: updatedTransactions,
-            monthlyIncome: updatedMonthlyIncome,
         };
     });
     toast({
@@ -313,20 +293,15 @@ export default function Home() {
      };
 
      setAppData(prev => {
-            // The `monthlyIncome` field should be the single source of truth for the budgeted income.
             const newTotalIncome = incomeValue;
-
-            // When new income is set, update budget limits based on *fixed percentages*.
             const updatedBudgets = prev.budgets.map(budget => {
                 let newLimit = budget.limit;
-                // Only recalculate for budgets with a defined percentage (i.e., not 'savings')
                 if (budget.category !== 'savings' && budget.percentage !== undefined && budget.percentage > 0) {
                     newLimit = parseFloat(((budget.percentage / 100) * newTotalIncome).toFixed(2));
                 }
                 return { ...budget, limit: newLimit };
             });
 
-            // Add the initial income setting as a transaction for record-keeping
             const transactionWithId: Transaction = { ...incomeTransaction, id: `initial-inc-${Date.now()}` };
             const updatedTransactions = [transactionWithId, ...prev.transactions]
                 .sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -394,23 +369,22 @@ export default function Home() {
         <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center mb-2">
                 <h1 className="text-2xl font-bold text-primary">Home</h1>
-                {/* Profile Link was here, moved to bottom nav */}
             </div>
 
             {monthlyIncome === null || monthlyIncome === 0 ? (
               <Card className="border-primary border-2 shadow-lg animate-fade-in">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2"><Wallet className="text-primary h-5 w-5"/> Set Your Monthly Income</CardTitle>
-                  <CardDescription>Estimate your total income for the month and select the primary source. This will be the basis for your budgeting.</CardDescription>
+                  <CardDescription>Enter your estimated total income for the month and select its primary source category. This forms the basis for your budget.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <Label htmlFor="monthly-income">Amount ($)</Label>
+                            <Label htmlFor="monthly-income">Amount (₱)</Label>
                             <Input
                                 id="monthly-income"
                                 type="number"
-                                placeholder="e.g., 2500"
+                                placeholder="e.g., 25000"
                                 value={tempIncome}
                                 onChange={(e) => setTempIncome(e.target.value)}
                                 className="flex-grow"
@@ -541,11 +515,11 @@ export default function Home() {
                 </Card>
            )}
            {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && (
-                <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
-                    <CardContent className="p-6 text-center text-muted-foreground">
-                         <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
-                         <p className="font-semibold">Set Your Income</p>
-                        <p className="text-sm">Please set your estimated monthly income above to unlock budgeting and tracking features.</p>
+                 <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
+                    <CardContent className="p-6 text-center">
+                        <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
+                         <p className="font-semibold text-destructive">Set Your Income</p>
+                        <p className="text-sm text-destructive/80">Please set your estimated monthly income above to unlock budgeting and tracking features.</p>
                     </CardContent>
                 </Card>
            )}
@@ -556,7 +530,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent>
                     <Link href="/learn/budgeting-guide" passHref legacyBehavior>
-                        <Button asChild variant="link" className="p-0 h-auto">
+                        <Button asChild variant="link" className="p-0 h-auto text-base">
                            <a>How to Budget Guide</a>
                         </Button>
                     </Link>
@@ -569,17 +543,17 @@ export default function Home() {
              <div className="p-4 space-y-2">
               <h2 className="text-lg font-semibold mb-2">All Transactions</h2>
                {transactions.length === 0 && monthlyIncome === null && (
-                     <Card className="border-dashed border-muted-foreground bg-destructive/10">
-                        <CardContent className="p-6 text-center text-muted-foreground">
+                      <Card className="border-dashed border-destructive/30 bg-destructive/10">
+                        <CardContent className="p-6 text-center">
                             <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
-                            <p className="font-semibold">Set Income First</p>
-                            <p className="text-sm">Please set your income on the Home screen to log transactions.</p>
+                            <p className="font-semibold text-destructive">Set Income First</p>
+                            <p className="text-sm text-destructive/80">Please set your income on the Home screen to log transactions.</p>
                             <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>Go to Home</Button>
                         </CardContent>
                      </Card>
                )}
                {transactions.length === 0 && monthlyIncome !== null && !hasExpenseBudgetsSet && (
-                    <Card className="border-dashed border-muted-foreground bg-secondary/30">
+                    <Card className="border-dashed border-secondary/50 bg-secondary/30">
                          <CardContent className="p-6 text-center text-muted-foreground">
                             <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                              <p className="font-semibold">Set Budgets to Log Expenses</p>
@@ -638,7 +612,7 @@ export default function Home() {
                             <span className="font-semibold">{totalAllocatedPercentage.toFixed(1)}%</span>
                         </div>
                         <div className="flex justify-between text-primary">
-                            <span>Expenses Allocated ($):</span>
+                            <span>Expenses Allocated (₱):</span>
                             <span className="font-semibold">{formatCurrency(totalAllocatedBudgetAmount)}</span>
                         </div>
                         <div className="flex justify-between text-accent">
@@ -646,15 +620,15 @@ export default function Home() {
                              <span className="font-semibold">{(100 - totalAllocatedPercentage).toFixed(1)}%</span>
                         </div>
                          <div className="flex justify-between text-accent">
-                            <span>Available for Savings ($):</span>
+                            <span>Available for Savings (₱):</span>
                             <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
                         </div>
                         <div className="flex justify-between text-primary col-span-2 pt-1 mt-1 border-t border-primary/20">
-                            <span>Total Allocated Budget ($):</span>
+                            <span>Total Allocated Budget (₱):</span>
                             <span className="font-semibold">{formatCurrency(totalAllocatedBudgetAmount + savingsBudgetAmount)}</span>
                         </div>
                         <div className="flex justify-between text-foreground col-span-2">
-                            <span>Remaining Unbudgeted ($):</span>
+                            <span>Remaining Unbudgeted (₱):</span>
                              <span className="font-semibold">{formatCurrency(monthlyIncome - (totalAllocatedBudgetAmount + savingsBudgetAmount))}</span>
                         </div>
 
@@ -671,16 +645,16 @@ export default function Home() {
 
 
           {(monthlyIncome === null || monthlyIncome === 0) ? (
-             <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
-                 <CardContent className="p-6 text-center text-muted-foreground">
-                     <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
-                      <p className="font-semibold">Set Your Income First</p>
-                    <p className="text-sm">Please set your monthly income on the Home tab before creating budgets.</p>
-                     <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>
-                        Go to Home
-                     </Button>
-                 </CardContent>
-             </Card>
+            <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
+                <CardContent className="p-6 text-center">
+                    <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
+                    <p className="font-semibold text-destructive">Set Your Income First</p>
+                    <p className="text-sm text-destructive/80">Please set your monthly income on the Home tab before creating budgets.</p>
+                    <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>
+                       Go to Home
+                    </Button>
+                </CardContent>
+            </Card>
            ) : currentMonthBudgets.length > 0 ? (
              [...currentMonthBudgets]
                 .sort((a, b) => {
@@ -696,7 +670,7 @@ export default function Home() {
                     </div>
                  ))
            ) : (
-                 <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
+                <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in">
                      <CardContent className="p-6 text-center text-muted-foreground">
                         <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                         <p className="font-semibold">No Budgets Yet</p>
@@ -711,27 +685,27 @@ export default function Home() {
                  <h2 className="text-lg font-semibold">Financial Insights</h2>
              </div>
              {(monthlyIncome === null || monthlyIncome === 0) ? (
-                  <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
-                      <CardContent className="p-6 text-center text-muted-foreground">
-                          <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
-                           <p className="font-semibold">Set Your Income First</p>
-                         <p className="text-sm">Please set your monthly income on the Home tab to view insights.</p>
-                          <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>
-                             Go to Home
-                          </Button>
-                      </CardContent>
-                  </Card>
+                   <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
+                       <CardContent className="p-6 text-center">
+                           <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
+                            <p className="font-semibold text-destructive">Set Your Income First</p>
+                          <p className="text-sm text-destructive/80">Please set your monthly income on the Home tab to view insights.</p>
+                           <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>
+                              Go to Home
+                           </Button>
+                       </CardContent>
+                   </Card>
              ) : !hasExpenseBudgetsSet ? (
-                 <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
-                      <CardContent className="p-6 text-center text-muted-foreground">
-                         <BarChart3 className="mx-auto h-8 w-8 mb-2 text-primary" />
-                          <p className="font-semibold">Set Budgets First</p>
-                         <p className="text-sm">Set your budgets in the 'Budgets' tab to generate detailed spending insights.</p>
-                         <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>
-                             Go to Budgets
-                        </Button>
-                      </CardContent>
-                  </Card>
+                  <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in">
+                       <CardContent className="p-6 text-center text-muted-foreground">
+                          <BarChart3 className="mx-auto h-8 w-8 mb-2 text-primary" />
+                           <p className="font-semibold">Set Budgets First</p>
+                          <p className="text-sm">Set your budgets in the 'Budgets' tab to generate detailed spending insights.</p>
+                          <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>
+                              Go to Budgets
+                         </Button>
+                       </CardContent>
+                   </Card>
              ) : (
                  <div className="animate-fade-in">
                     <InsightsView
@@ -813,3 +787,4 @@ export default function Home() {
     </div>
   );
 }
+
