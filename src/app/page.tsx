@@ -558,7 +558,7 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Link href="/categories" passHref>
+                 <Link href="/categories" asChild>
                      <Button size="sm" variant="outline">
                          <FolderCog className="mr-2 h-4 w-4" /> Manage Categories
                      </Button>
@@ -651,7 +651,7 @@ export default function Home() {
         <TabsContent value="goals" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">Saving Goals</h2>
-                <Link href="/saving-goals" passHref>
+                <Link href="/saving-goals" asChild>
                      <Button size="sm" variant="outline">
                         Manage Goals <Settings className="ml-2 h-4 w-4" />
                     </Button>
@@ -761,7 +761,7 @@ export default function Home() {
                          <PiggyBank className="mx-auto h-8 w-8 mb-2 text-accent" />
                          <p className="font-semibold">No Saving Goals Yet</p>
                         <p className="text-sm">Go to 'Manage Goals' to create goals and allocate your savings towards them.</p>
-                        <Link href="/saving-goals" passHref>
+                        <Link href="/saving-goals" asChild>
                             <Button size="sm" className="mt-3" variant="outline">Manage Goals</Button>
                         </Link>
                      </CardContent>
@@ -774,7 +774,7 @@ export default function Home() {
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Link href="/learn/budgeting-guide" passHref>
+                    <Link href="/learn/budgeting-guide" asChild>
                         <Button variant="link" className="p-0 h-auto">How to Budget Guide</Button>
                     </Link>
                 </CardContent>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -11,7 +12,7 @@ export default function BudgetingGuidePage() {
     <div className="flex flex-col h-screen p-4 bg-background">
       {/* Header */}
       <div className="flex items-center mb-4">
-        <Link href="/" passHref>
+        <Link href="/" asChild>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>

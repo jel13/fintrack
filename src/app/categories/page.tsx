@@ -279,7 +279,7 @@ export default function CategoriesPage() {
     return (
         <div className="flex flex-col h-screen bg-background">
             <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
-                <Link href="/" passHref>
+                <Link href="/" asChild>
                     <Button variant="ghost" size="icon" aria-label="Back to Home">
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
