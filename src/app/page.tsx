@@ -557,11 +557,10 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Link
-                    href="/categories"
-                    className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                  >
-                    <FolderCog className="h-4 w-4" /> Manage Categories
+                 <Link href="/categories" passHref legacyBehavior>
+                    <a className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex items-center justify-center gap-2")}>
+                      <FolderCog className="h-4 w-4" /> Manage Categories
+                    </a>
                   </Link>
                  {monthlyIncome !== null && (
                     <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
@@ -883,3 +882,4 @@ export default function Home() {
       />
     </div>
   );
+}
