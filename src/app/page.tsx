@@ -1,10 +1,11 @@
+
 "use client";
 
 import * as React from "react";
 import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip, FolderCog } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button, buttonVariants } from "@/components/ui/button"; // Import buttonVariants
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AddTransactionSheet } from "@/components/add-transaction-sheet";
 import { AddBudgetDialog } from "@/components/add-budget-dialog";
@@ -64,17 +65,21 @@ export default function Home() {
   const monthlySummary = React.useMemo(() => {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0, incomeTransactions: 0 };
     const currentMonthTransactions = transactions.filter(t => format(t.date, 'yyyy-MM') === currentMonth);
-    const incomeTransactions = currentMonthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const effectiveIncome = monthlyIncome ?? 0;
+    const incomeTransactionsSum = currentMonthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const effectiveIncome = monthlyIncome ?? 0; // This is appData.monthlyIncome
     const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    const balance = effectiveIncome - expenses;
-    return { income: effectiveIncome, expenses, balance, incomeTransactions };
+    const balance = effectiveIncome - expenses; // Balance is effectiveIncome (appData.monthlyIncome) - expenses
+    return { income: effectiveIncome, expenses, balance, incomeTransactions: incomeTransactionsSum };
   }, [transactions, monthlyIncome, currentMonth, isLoaded]);
 
   const incomeCategories = React.useMemo(() => categories.filter(cat => cat.isIncomeSource), [categories]);
   const expenseCategories = React.useMemo(() => categories.filter(cat => !cat.isIncomeSource && cat.id !== 'savings'), [categories]);
+  
   const spendingCategoriesForSelect = React.useMemo(() => {
-       return expenseCategories.filter(cat => !expenseCategories.some(c => c.parentId === cat.id));
+     // Filter for expense categories that do not have children OR are parents themselves but also allow direct expense logging
+     // For simplicity, we'll allow selection of any non-income-source category that isn't 'savings'.
+     // More complex logic could filter out parents if only children are meant for transactions.
+     return expenseCategories.filter(cat => cat.id !== 'savings');
    }, [expenseCategories]);
 
   const currentMonthBudgets = React.useMemo(() => {
@@ -86,6 +91,7 @@ export default function Home() {
 
      setAppData(prevData => {
          let budgetsChanged = false;
+         const currentMonthlyIncome = prevData.monthlyIncome ?? 0;
 
          const updatedBudgets = prevData.budgets.map(budget => {
               let changed = false;
@@ -96,8 +102,8 @@ export default function Home() {
               if (budget.spent !== spent) changed = true;
 
              let limit = budget.limit;
-             if (budget.category !== 'savings' && budget.percentage !== undefined && prevData.monthlyIncome !== null) {
-                 const newLimit = parseFloat(((budget.percentage / 100) * prevData.monthlyIncome).toFixed(2));
+             if (budget.category !== 'savings' && budget.percentage !== undefined) {
+                 const newLimit = parseFloat(((budget.percentage / 100) * currentMonthlyIncome).toFixed(2));
                   if (budget.limit !== newLimit) {
                      limit = newLimit;
                      changed = true;
@@ -113,10 +119,10 @@ export default function Home() {
             .filter(b => b.category !== 'savings' && b.month === currentMonth)
             .reduce((sum, b) => sum + b.limit, 0);
 
-        const leftover = Math.max(0, (prevData.monthlyIncome ?? 0) - totalBudgetedExcludingSavings);
+        const leftover = Math.max(0, currentMonthlyIncome - totalBudgetedExcludingSavings);
 
         if (savingsBudgetIndex > -1) {
-            const savingsSpent = prevData.transactions
+            const savingsSpent = prevData.transactions // Should savings have "spent"? Or is it purely allocation? For now, track if used as an expense category.
                  .filter(t => t.type === 'expense' && t.category === 'savings' && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
 
@@ -126,12 +132,12 @@ export default function Home() {
                     ...currentSavingsBudget,
                     limit: leftover,
                     spent: savingsSpent,
-                    percentage: undefined
+                    percentage: undefined // Savings percentage is implicit
                 };
                 budgetsChanged = true;
             }
 
-        } else if (prevData.monthlyIncome !== null) {
+        } else if (currentMonthlyIncome > 0) { // Only add savings budget if there's income
              const savingsSpent = prevData.transactions
                  .filter(t => t.type === 'expense' && t.category === 'savings' && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
@@ -148,7 +154,7 @@ export default function Home() {
 
         if (budgetsChanged) {
              updatedBudgets.sort((a, b) => {
-                 if (a.category === 'savings') return 1;
+                 if (a.category === 'savings') return 1; // Savings last
                  if (b.category === 'savings') return -1;
                  const labelA = prevData.categories.find(c => c.id === a.category)?.label ?? a.category;
                  const labelB = prevData.categories.find(c => c.id === b.category)?.label ?? b.category;
@@ -164,9 +170,13 @@ export default function Home() {
 
   const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
     if (newTransaction.type === 'expense') {
-      const budgetExists = currentMonthBudgets.some(b => b.category === newTransaction.category);
-      if (!budgetExists && newTransaction.category !== 'savings') {
-        toast({ title: "Budget Required", description: `Please set a budget for '${getCategoryById(newTransaction.category)?.label ?? newTransaction.category}' before adding expenses.`, variant: "destructive" });
+      const categoryBudgetExists = currentMonthBudgets.some(b => b.category === newTransaction.category);
+      if (!categoryBudgetExists && newTransaction.category !== 'savings') { // Allow 'savings' as expense if needed, though typically not
+        toast({ 
+          title: "Budget Required", 
+          description: `Please set a budget for '${getCategoryById(newTransaction.category)?.label ?? newTransaction.category}' before adding expenses.`, 
+          variant: "destructive" 
+        });
         return;
       }
     }
@@ -175,23 +185,45 @@ export default function Home() {
       ...newTransaction,
       id: `tx-${Date.now().toString()}`,
     };
-    setAppData(prev => ({
-        ...prev,
-        transactions: [transactionWithId, ...prev.transactions].sort((a, b) => b.date.getTime() - a.date.getTime()),
-    }));
-    toast({ title: "Transaction added", description: `${newTransaction.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(newTransaction.amount)} logged for ${getCategoryById(newTransaction.category)?.label ?? newTransaction.category}.` });
+
+    setAppData(prev => {
+        const updatedTransactions = [transactionWithId, ...prev.transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
+        let updatedMonthlyIncome = prev.monthlyIncome;
+
+        if (newTransaction.type === 'income') {
+            updatedMonthlyIncome = (prev.monthlyIncome ?? 0) + newTransaction.amount;
+        }
+        // For expenses, appData.monthlyIncome (the basis for budgeting) does not change.
+        // The expense will reduce the balance via the 'spent' amount in budgets and overall summary.
+
+        return {
+            ...prev,
+            transactions: updatedTransactions,
+            monthlyIncome: updatedMonthlyIncome, // Update if it's an income transaction
+        };
+    });
+    toast({ 
+        title: "Transaction added", 
+        description: `${newTransaction.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(newTransaction.amount)} logged for ${getCategoryById(newTransaction.category)?.label ?? newTransaction.category}.` 
+    });
   };
 
  const handleAddBudget = (newBudget: Omit<Budget, 'id' | 'spent' | 'month' | 'limit'>) => {
+    const currentMonthlyIncome = appData.monthlyIncome ?? 0;
 
-    const calculatedLimit = newBudget.percentage !== undefined && monthlyIncome && monthlyIncome > 0
-        ? parseFloat(((newBudget.percentage / 100) * monthlyIncome).toFixed(2))
-        : 0;
+    const calculatedLimit = newBudget.percentage !== undefined && currentMonthlyIncome > 0
+        ? parseFloat(((newBudget.percentage / 100) * currentMonthlyIncome).toFixed(2))
+        : 0; // If no percentage or income, limit is 0
 
-     if (calculatedLimit <= 0 && newBudget.percentage && newBudget.percentage > 0) {
-         toast({ title: "Invalid Budget", description: "Calculated budget limit must be positive. Check income and percentage.", variant: "destructive" });
+     if (newBudget.percentage === undefined || newBudget.percentage <=0) {
+        toast({ title: "Invalid Budget", description: "Budget percentage must be a positive value.", variant: "destructive" });
+        return;
+     }
+     if (calculatedLimit <= 0 && newBudget.percentage > 0 && currentMonthlyIncome > 0) {
+         toast({ title: "Invalid Budget", description: "Calculated budget limit is zero or negative. Check income and percentage.", variant: "destructive" });
          return;
      }
+
 
     const budgetWithDetails: Budget = {
         ...newBudget,
@@ -204,23 +236,24 @@ export default function Home() {
         percentage: newBudget.percentage,
     };
 
-     const needsCategoryIds = appData.categories.filter(c =>
+    const needsCategoryIds = appData.categories.filter(c =>
+        !c.isIncomeSource && ( // Ensure it's an expense category
         c.label.toLowerCase().includes('housing') ||
         c.label.toLowerCase().includes('groceries') ||
         c.label.toLowerCase().includes('transport') ||
-        c.label.toLowerCase().includes('bill')
+        c.label.toLowerCase().includes('bill')) // Simplified check
     ).map(c => c.id);
 
-    const currentNeedsPercentage = currentMonthBudgets
-        .filter(b => needsCategoryIds.includes(b.category) && b.category !== newBudget.category)
+    const currentTotalNeedsPercentage = currentMonthBudgets
+        .filter(b => needsCategoryIds.includes(b.category) && b.category !== newBudget.category) // Exclude the one being added/updated for recalc
         .reduce((sum, b) => sum + (b.percentage ?? 0), 0)
         + (needsCategoryIds.includes(newBudget.category) ? (newBudget.percentage ?? 0) : 0);
 
-    if (currentNeedsPercentage > 50) {
+    if (currentTotalNeedsPercentage > 50) {
          toast({
             title: "Budget Reminder",
-            description: `Your 'Needs' categories now represent ${currentNeedsPercentage.toFixed(1)}% of your income, exceeding the recommended 50%. Consider reviewing your allocations.`,
-            variant: "default",
+            description: `Your 'Needs' categories now represent ${currentTotalNeedsPercentage.toFixed(1)}% of your income, exceeding the recommended 50%. Consider reviewing your allocations.`,
+            variant: "default", // Non-destructive
             duration: 7000,
          });
     }
@@ -263,20 +296,23 @@ export default function Home() {
          type: 'income',
          amount: incomeValue,
          category: selectedIncomeCategory,
-         date: new Date(),
-         description: `Monthly income set`,
+         date: new Date(), // Transaction date is now
+         description: `Monthly income set/updated`, // General description
          receiptDataUrl: undefined,
      };
 
      setAppData(prev => {
-            const newIncome = incomeValue;
+            const newTotalIncome = incomeValue; // This is the new total monthly income.
+            
+            // Budget limits will be recalculated by the useEffect hook watching monthlyIncome
             const updatedBudgets = prev.budgets.map(budget => {
                 let newLimit = budget.limit;
                 if (budget.category !== 'savings' && budget.percentage !== undefined && budget.percentage > 0) {
-                    newLimit = parseFloat(((budget.percentage / 100) * newIncome).toFixed(2));
+                    newLimit = parseFloat(((budget.percentage / 100) * newTotalIncome).toFixed(2));
                 }
                 return { ...budget, limit: newLimit };
             });
+
 
             const transactionWithId: Transaction = { ...incomeTransaction, id: `inc-${Date.now()}` };
             const updatedTransactions = [transactionWithId, ...prev.transactions]
@@ -284,13 +320,14 @@ export default function Home() {
 
             return {
                 ...prev,
-                monthlyIncome: newIncome,
-                budgets: updatedBudgets,
+                monthlyIncome: newTotalIncome, // Update appData.monthlyIncome to the new total
+                budgets: updatedBudgets, // Pass budgets with potentially updated limits
                 transactions: updatedTransactions
             };
        });
 
       toast({ title: "Income Updated", description: `Monthly income set to ${formatCurrency(incomeValue)}. Budget limits updated.` });
+      // No need to set tempIncome or selectedIncomeCategory here, as the main income UI will hide.
   };
 
    const getCategoryById = (id: string): Category | undefined => {
@@ -323,7 +360,7 @@ export default function Home() {
   }, [currentMonthBudgets]);
 
   const hasExpenseBudgetsSet = React.useMemo(() => {
-    return currentMonthBudgets.some(b => b.category !== 'savings' && b.limit > 0);
+    return currentMonthBudgets.some(b => b.category !== 'savings' && b.limit > 0 && b.percentage !== undefined && b.percentage > 0);
   }, [currentMonthBudgets]);
 
 
@@ -343,11 +380,11 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-background">
       <Tabs defaultValue="dashboard" className="flex-grow flex flex-col">
         <TabsContent value="dashboard" className="flex-grow overflow-y-auto p-4 space-y-4">
-            {monthlyIncome === null ? (
+            {monthlyIncome === null || monthlyIncome === 0 ? (
               <Card className="border-primary border-2 shadow-lg animate-fade-in">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2"><Wallet className="text-primary h-5 w-5"/> Set Your Monthly Income</CardTitle>
-                  <CardDescription>Estimate your total income for the month and select the primary source.</CardDescription>
+                  <CardDescription>Estimate your total income for the month and select the primary source. This will be the basis for your budgeting.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                    <div className="grid grid-cols-2 gap-4">
@@ -365,7 +402,7 @@ export default function Home() {
                          <div className="space-y-1">
                              <Label htmlFor="income-category">Source Category</Label>
                              <Select value={selectedIncomeCategory} onValueChange={setSelectedIncomeCategory}>
-                                <SelectTrigger id="income-category">
+                                <SelectTrigger id="income-category" className="truncate">
                                     <SelectValue placeholder="Select source" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -383,7 +420,7 @@ export default function Home() {
                                         })
                                     ) : (
                                          <SelectItem value="no-income-cats" disabled>
-                                            No income categories defined
+                                            Define income categories first
                                          </SelectItem>
                                     )}
                                 </SelectContent>
@@ -391,11 +428,14 @@ export default function Home() {
                          </div>
                    </div>
                    <Button onClick={handleSetIncome} className="w-full">Set Monthly Income</Button>
+                   {incomeCategories.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center">No income source categories found. Please add some in 'Manage Categories' via the Budgets tab.</p>
+                   )}
                 </CardContent>
               </Card>
             ) : null}
 
-             {monthlyIncome !== null && (
+             {monthlyIncome !== null && monthlyIncome > 0 && (
                 <>
                  <div className="grid gap-4 grid-cols-2 animate-slide-up">
                     <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]">
@@ -404,8 +444,8 @@ export default function Home() {
                         <Wallet className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-primary">{formatCurrency(monthlyIncome)}</div>
-                        <p className="text-xs text-muted-foreground">Set for this month</p>
+                        <div className="text-2xl font-bold text-primary">{formatCurrency(monthlySummary.income)}</div>
+                        <p className="text-xs text-muted-foreground">This month's total</p>
                     </CardContent>
                     </Card>
                     <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]">
@@ -426,7 +466,7 @@ export default function Home() {
                 <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]" style={{"animationDelay": "0.1s"}}>
                     <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Remaining Balance</CardTitle>
-                    <CardDescription>Estimated income vs logged expenses this month</CardDescription>
+                    <CardDescription>Total income minus logged expenses this month.</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-bold text-primary">{formatCurrency(monthlySummary.balance)}</div>
@@ -436,13 +476,13 @@ export default function Home() {
              )}
 
 
-          {monthlyIncome !== null && hasExpenseBudgetsSet && (
+          {monthlyIncome !== null && monthlyIncome > 0 && hasExpenseBudgetsSet && (
              <div className="animate-slide-up" style={{"animationDelay": "0.2s"}}>
                  <SpendingChart transactions={transactions} month={currentMonth} categories={categories} />
              </div>
            )}
 
-          {monthlyIncome !== null && (
+          {monthlyIncome !== null && monthlyIncome > 0 && (
             <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]" style={{"animationDelay": "0.3s"}}>
                 <CardHeader>
                 <CardTitle>Recent Transactions</CardTitle>
@@ -461,7 +501,7 @@ export default function Home() {
                     )}
                 </ScrollArea>
                  {transactions.length > 5 && (
-                     <div className="p-2 text-center">
+                     <div className="p-2 text-center border-t">
                         <Link href="#" onClick={(e) => { e.preventDefault(); document.querySelector('button[value="transactions"]')?.click(); }}>
                              <Button variant="link" size="sm">View All History</Button>
                         </Link>
@@ -470,7 +510,7 @@ export default function Home() {
                 </CardContent>
             </Card>
           )}
-           {!hasExpenseBudgetsSet && monthlyIncome !== null && (
+           {!hasExpenseBudgetsSet && monthlyIncome !== null && monthlyIncome > 0 && (
                 <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
                     <CardContent className="p-6 text-center text-muted-foreground">
                         <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
@@ -482,7 +522,7 @@ export default function Home() {
                     </CardContent>
                 </Card>
            )}
-           {monthlyIncome === null && (
+           {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && ( // Show only after load and if income is not set
                 <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
                     <CardContent className="p-6 text-center text-muted-foreground">
                          <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
@@ -497,26 +537,37 @@ export default function Home() {
            <ScrollArea className="h-full">
              <div className="p-4 space-y-2">
               <h2 className="text-lg font-semibold mb-2">All Transactions</h2>
-               {!hasExpenseBudgetsSet && monthlyIncome !== null && transactions.filter(t => t.type === 'expense').length === 0 ? (
+               {transactions.length === 0 && monthlyIncome === null && (
+                     <Card className="border-dashed border-muted-foreground bg-destructive/10">
+                        <CardContent className="p-6 text-center text-muted-foreground">
+                            <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
+                            <p className="font-semibold">Set Income First</p>
+                            <p className="text-sm">Please set your income on the Dashboard to log transactions.</p>
+                            <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="dashboard"]')?.click()}>Go to Dashboard</Button>
+                        </CardContent>
+                     </Card>
+               )}
+               {transactions.length === 0 && monthlyIncome !== null && !hasExpenseBudgetsSet && (
                     <Card className="border-dashed border-muted-foreground bg-secondary/30">
                          <CardContent className="p-6 text-center text-muted-foreground">
                             <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
-                             <p className="font-semibold">Set Budgets First</p>
-                            <p className="text-sm">You need to set budgets in the 'Budgets' tab before you can log or view expense transactions.</p>
-                            <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>
-                                Go to Budgets
-                            </Button>
+                             <p className="font-semibold">Set Budgets to Log Expenses</p>
+                            <p className="text-sm">You can log income now. To log expenses, set budgets in the 'Budgets' tab.</p>
+                            <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>Go to Budgets</Button>
                          </CardContent>
                     </Card>
-               ) : transactions.length > 0 ? (
+               )}
+               {transactions.length > 0 ? (
                    transactions.map((t) => (
                     <TransactionListItem key={t.id} transaction={t} categories={categories} />
                    ))
                 ) : (
-                    <div className="p-4 text-center text-muted-foreground pt-10">
-                        <List className="mx-auto h-8 w-8 mb-2" />
-                       No transactions recorded yet.
-                    </div>
+                    monthlyIncome !== null && hasExpenseBudgetsSet && ( // Only show "No transactions recorded" if income and budgets are set
+                        <div className="p-4 text-center text-muted-foreground pt-10">
+                            <List className="mx-auto h-8 w-8 mb-2" />
+                           No transactions recorded yet.
+                        </div>
+                    )
                 )}
              </div>
            </ScrollArea>
@@ -526,10 +577,12 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Link href="/categories" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                      <FolderCog className="h-4 w-4 mr-2" /> Manage Categories {/* Added mr-2 for spacing */}
+                 <Link href="/categories" passHref>
+                     <Button asChild variant="outline" size="sm">
+                        <a><FolderCog className="h-4 w-4" /> Manage Categories</a>
+                     </Button>
                  </Link>
-                 {monthlyIncome !== null && (
+                 {monthlyIncome !== null && monthlyIncome > 0 && (
                     <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
                     </Button>
@@ -537,14 +590,14 @@ export default function Home() {
              </div>
           </div>
 
-            {monthlyIncome !== null && (
-                <Card className="mb-4 bg-primary/10 border-primary animate-fade-in">
+            {monthlyIncome !== null && monthlyIncome > 0 && (
+                <Card className="mb-4 bg-primary/10 border-primary/30 animate-fade-in">
                      <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                            <Info className="h-5 w-5 text-primary" /> Allocation Summary ({format(new Date(currentMonth + '-01T00:00:00'), 'MMMM')})
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-3 pt-0 text-sm text-primary-foreground grid grid-cols-2 gap-x-4 gap-y-1">
+                    <CardContent className="p-3 pt-0 text-sm grid grid-cols-2 gap-x-4 gap-y-1">
                          <div className="flex justify-between text-primary col-span-2 border-b pb-1 mb-1 border-primary/20">
                              <span>Total Income:</span>
                              <span className="font-semibold">{formatCurrency(monthlyIncome)}</span>
@@ -566,8 +619,12 @@ export default function Home() {
                             <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
                         </div>
                         <div className="flex justify-between text-primary col-span-2 pt-1 mt-1 border-t border-primary/20">
-                            <span>Total Allocated Budget:</span>
+                            <span>Total Allocated Budget ($):</span> {/* Clarified Label */}
                             <span className="font-semibold">{formatCurrency(totalAllocatedBudgetAmount + savingsBudgetAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-foreground col-span-2">
+                            <span>Remaining Unbudgeted ($):</span>
+                             <span className="font-semibold">{formatCurrency(monthlyIncome - (totalAllocatedBudgetAmount + savingsBudgetAmount))}</span>
                         </div>
 
 
@@ -582,11 +639,11 @@ export default function Home() {
             )}
 
 
-          {monthlyIncome === null ? (
+          {(monthlyIncome === null || monthlyIncome === 0) ? (
              <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
                  <CardContent className="p-6 text-center text-muted-foreground">
                      <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
-                      <p className="font-semibold">Set Your Income</p>
+                      <p className="font-semibold">Set Your Income First</p>
                     <p className="text-sm">Please set your monthly income on the Dashboard tab before creating budgets.</p>
                      <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="dashboard"]')?.click()}>
                         Go to Dashboard
@@ -622,19 +679,21 @@ export default function Home() {
         <TabsContent value="goals" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">Saving Goals</h2>
-                <Link href="/saving-goals" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                     Manage Goals <Settings className="h-4 w-4 ml-1" /> {/* Added ml-1 for spacing */}
+                <Link href="/saving-goals" passHref>
+                    <Button asChild variant="outline" size="sm">
+                        <a><Settings className="h-4 w-4" /> Manage Goals</a>
+                    </Button>
                 </Link>
             </div>
 
-             {monthlyIncome !== null && (
-                <Card className="mb-4 bg-accent/10 border-accent animate-fade-in">
+             {monthlyIncome !== null && monthlyIncome > 0 && (
+                <Card className="mb-4 bg-accent/10 border-accent/30 animate-fade-in">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                             <PiggyBank className="h-5 w-5 text-accent"/> Savings & Goals Allocation
                         </CardTitle>
                          <CardDescription className="text-xs">
-                            Your Savings budget is automatically calculated. Allocate percentages of this to your goals.
+                            Your Savings budget is automatically calculated based on unallocated income after expenses. Allocate percentages of this savings amount to your specific goals.
                          </CardDescription>
                     </CardHeader>
                     <CardContent className="p-3 pt-0 text-sm text-accent grid grid-cols-2 gap-x-4 gap-y-1">
@@ -670,16 +729,16 @@ export default function Home() {
                             </div>
                              </>
                          )}
-                         {savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) > 100 && (
+                         {savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) > 100.05 && ( // Allow for slight floating point issues
                              <p className="text-xs text-destructive font-semibold mt-1 col-span-2">Warning: Goal allocation exceeds 100% of savings budget!</p>
                          )}
                           {savingsBudgetAmount <= 0 && (
-                             <p className="text-xs text-accent/80 mt-1 col-span-2">Your savings budget is currently $0. Manage goals, but funding requires reducing expense budgets.</p>
+                             <p className="text-xs text-accent/80 mt-1 col-span-2">Your savings budget is currently $0. Funding goals requires increasing this by reducing expense budgets or increasing income.</p>
                           )}
-                           {!hasExpenseBudgetsSet && monthlyIncome !== null && (
+                           {!hasExpenseBudgetsSet && monthlyIncome !== null && monthlyIncome > 0 && (
                                <p className="text-xs text-accent/80 mt-1 col-span-2">Set expense budgets first to determine your available savings.</p>
                            )}
-                            {monthlyIncome === null && (
+                            {(monthlyIncome === null || monthlyIncome === 0) && (
                                <p className="text-xs text-accent/80 mt-1 col-span-2">Set your income first to calculate savings.</p>
                            )}
                     </CardContent>
@@ -695,31 +754,34 @@ export default function Home() {
                      const progressPercent = goal.targetAmount > 0 ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100) : 0;
                      return (
                          <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
-                            <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01]">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-base">{goal.name}</CardTitle>
-                                    {goal.description && <CardDescription className="text-xs">{goal.description}</CardDescription>}
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex justify-between text-sm mb-1">
-                                        <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
-                                        <span>{progressPercent.toFixed(1)}%</span>
-                                    </div>
-                                    <Progress value={progressPercent} className="w-full h-2 [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:bg-accent [&::-moz-progress-bar]:bg-accent" />
-                                    {goal.percentageAllocation && goal.percentageAllocation > 0 && savingsBudgetAmount > 0 && (
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            Receives {goal.percentageAllocation}% of Savings ({formatCurrency(monthlyContribution)}/month)
-                                        </p>
-                                    )}
-                                    {goal.percentageAllocation && goal.percentageAllocation > 0 && savingsBudgetAmount <= 0 && (
-                                          <p className="text-xs text-muted-foreground mt-1">
-                                              Receives {goal.percentageAllocation}% of Savings ($0/month)
-                                          </p>
-                                    )}
-                                     {goal.targetDate && (
-                                         <p className="text-xs text-muted-foreground mt-1">Target: {format(goal.targetDate, 'MMM yyyy')}</p>
-                                     )}
-                                </CardContent>
+                            <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] relative overflow-hidden">
+                                 <div
+                                    className="absolute top-0 left-0 h-full bg-accent/10 transition-all duration-300 ease-out"
+                                    style={{ width: `${progressPercent}%` }}
+                                  />
+                                <div className="relative z-10">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-base">{goal.name}</CardTitle>
+                                        {goal.description && <CardDescription className="text-xs">{goal.description}</CardDescription>}
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
+                                            <span>{progressPercent.toFixed(1)}%</span>
+                                        </div>
+                                        <Progress value={progressPercent} className="w-full h-2 [&>div]:bg-accent" />
+                                        {goal.percentageAllocation && goal.percentageAllocation > 0 && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Alloc: {goal.percentageAllocation}% of Savings
+                                                {savingsBudgetAmount > 0 && ` (~${formatCurrency(monthlyContribution)}/mo)`}
+                                                {savingsBudgetAmount <= 0 && ` ($0/mo)`}
+                                            </p>
+                                        )}
+                                        {goal.targetDate && (
+                                            <p className="text-xs text-muted-foreground mt-1">Target: {format(goal.targetDate, 'MMM yyyy')}</p>
+                                        )}
+                                    </CardContent>
+                                </div>
                             </Card>
                          </div>
                      );
@@ -730,8 +792,10 @@ export default function Home() {
                          <PiggyBank className="mx-auto h-8 w-8 mb-2 text-accent" />
                          <p className="font-semibold">No Saving Goals Yet</p>
                         <p className="text-sm">Go to 'Manage Goals' to create goals and allocate your savings towards them.</p>
-                         <Link href="/saving-goals" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3")}>
-                                Manage Goals
+                         <Link href="/saving-goals" passHref>
+                            <Button asChild variant="outline" size="sm" className="mt-3">
+                                <a>Manage Goals</a>
+                            </Button>
                          </Link>
                      </CardContent>
                   </Card>
@@ -743,7 +807,11 @@ export default function Home() {
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Link href="/learn/budgeting-guide" className={cn(buttonVariants({ variant: "link" }), "p-0 h-auto text-primary")}>How to Budget Guide</Link>
+                    <Link href="/learn/budgeting-guide" passHref>
+                        <Button asChild variant="link" className="p-0 h-auto text-primary">
+                            <a>How to Budget Guide</a>
+                        </Button>
+                    </Link>
                 </CardContent>
              </Card>
         </TabsContent>
@@ -752,11 +820,11 @@ export default function Home() {
              <div className="flex justify-between items-center mb-4">
                  <h2 className="text-lg font-semibold">Financial Insights</h2>
              </div>
-             {monthlyIncome === null ? (
+             {(monthlyIncome === null || monthlyIncome === 0) ? (
                   <Card className="border-dashed border-muted-foreground animate-fade-in bg-destructive/10">
                       <CardContent className="p-6 text-center text-muted-foreground">
                           <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
-                           <p className="font-semibold">Set Your Income</p>
+                           <p className="font-semibold">Set Your Income First</p>
                          <p className="text-sm">Please set your monthly income on the Dashboard tab to view insights.</p>
                           <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="dashboard"]')?.click()}>
                              Go to Dashboard
@@ -789,7 +857,7 @@ export default function Home() {
          </TabsContent>
 
 
-        {(monthlyIncome !== null && (hasExpenseBudgetsSet || incomeCategories.length > 0)) && (
+        {(monthlyIncome !== null && monthlyIncome > 0 && (incomeCategories.length > 0 || hasExpenseBudgetsSet)) && ( // Allow adding income if income categories exist, or expenses if budgets exist
              <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
                 <Button
                     size="icon"
@@ -831,19 +899,20 @@ export default function Home() {
         open={isAddTransactionSheetOpen}
         onOpenChange={setIsAddTransactionSheetOpen}
         onAddTransaction={handleAddTransaction}
-        categoriesForSelect={[...incomeCategories, ...spendingCategoriesForSelect]}
+        categoriesForSelect={[...incomeCategories, ...spendingCategoriesForSelect]} // Pass all relevant categories
         canAddExpense={hasExpenseBudgetsSet}
-        currentMonthBudgetCategoryIds={currentMonthBudgets.map(b => b.category)}
+        currentMonthBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)} // Only budgeted expense categories
       />
        <AddBudgetDialog
         open={isAddBudgetDialogOpen}
         onOpenChange={setIsAddBudgetDialogOpen}
         onAddBudget={handleAddBudget}
         existingBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)}
-        availableSpendingCategories={spendingCategoriesForSelect}
+        availableSpendingCategories={expenseCategories.filter(cat => cat.id !== 'savings')} // All non-savings expense categories
         monthlyIncome={monthlyIncome}
         totalAllocatedPercentage={totalAllocatedPercentage}
       />
     </div>
   );
 }
+
