@@ -1,11 +1,10 @@
-
 "use client";
 
 import * as React from "react";
 import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip, FolderCog } from "lucide-react"; // Added BarChart3/Activity for Insights, Paperclip, FolderCog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button, buttonVariants } from "@/components/ui/button"; // Import buttonVariants
+import { Button } from "@/components/ui/button"; // Import Button
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AddTransactionSheet } from "@/components/add-transaction-sheet";
 import { AddBudgetDialog } from "@/components/add-budget-dialog";
@@ -558,10 +557,10 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Link href="/categories" passHref legacyBehavior>
-                    <a className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                 <Link href="/categories" asChild>
+                    <Button variant="outline" size="sm">
                       <FolderCog className="h-4 w-4" /> Manage Categories
-                    </a>
+                    </Button>
                   </Link>
                  {monthlyIncome !== null && (
                     <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
@@ -656,10 +655,10 @@ export default function Home() {
         <TabsContent value="goals" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">Saving Goals</h2>
-                <Link href="/saving-goals" passHref legacyBehavior>
-                    <a className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                <Link href="/saving-goals" asChild>
+                     <Button variant="outline" size="sm" >
                          Manage Goals <Settings className="h-4 w-4" />
-                    </a>
+                    </Button>
                 </Link>
             </div>
 
@@ -766,10 +765,10 @@ export default function Home() {
                          <PiggyBank className="mx-auto h-8 w-8 mb-2 text-accent" />
                          <p className="font-semibold">No Saving Goals Yet</p>
                         <p className="text-sm">Go to 'Manage Goals' to create goals and allocate your savings towards them.</p>
-                         <Link href="/saving-goals" passHref legacyBehavior>
-                             <a className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3")}>
+                         <Link href="/saving-goals" asChild>
+                             <Button variant="outline" size="sm" className="mt-3">
                                 Manage Goals
-                             </a>
+                             </Button>
                         </Link>
                      </CardContent>
                   </Card>
@@ -781,8 +780,8 @@ export default function Home() {
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Link href="/learn/budgeting-guide" passHref legacyBehavior>
-                        <a className={cn(buttonVariants({ variant: "link", className: "p-0 h-auto" }))}>How to Budget Guide</a>
+                    <Link href="/learn/budgeting-guide" asChild>
+                        <Button variant="link" className="p-0 h-auto text-primary">How to Budget Guide</Button>
                     </Link>
                 </CardContent>
              </Card>
@@ -887,5 +886,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
