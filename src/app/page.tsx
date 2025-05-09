@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip, FolderCog, UserCircle } from "lucide-react"; // Added UserCircle
+import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip, FolderCog, UserCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { formatCurrency, cn } from "@/lib/utils";
+import { usePathname } from 'next/navigation'; // Import usePathname
 import {
   Select,
   SelectContent,
@@ -41,6 +42,7 @@ export default function Home() {
   const [tempIncome, setTempIncome] = React.useState<string>('');
   const [selectedIncomeCategory, setSelectedIncomeCategory] = React.useState<string>('');
   const { toast } = useToast();
+  const pathname = usePathname(); // Get current pathname
 
   const currentMonth = format(new Date(), 'yyyy-MM');
   const previousMonthDate = new Date(currentMonth + '-01T00:00:00');
@@ -73,7 +75,6 @@ export default function Home() {
     const effectiveIncome = monthlyIncome ?? 0; 
     const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
     
-    // Balance is now calculated based on ALL income transactions this month vs all expenses this month
     const actualBalance = incomeFromTransactionsThisMonth - expenses;
 
     return { income: effectiveIncome, expenses, balance: actualBalance, incomeTransactions: incomeFromTransactionsThisMonth };
@@ -194,11 +195,7 @@ export default function Home() {
         const updatedTransactions = [transactionWithId, ...prev.transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
         
         let updatedMonthlyIncome = prev.monthlyIncome;
-        if (transactionWithId.type === 'income') {
-             // Do not add to monthlyIncome here, as it's user-set budget.
-             // The monthlySummary.balance will update due to incomeFromTransactionsThisMonth changing.
-        }
-        
+      
         return {
             ...prev,
             transactions: updatedTransactions,
@@ -877,7 +874,7 @@ export default function Home() {
         )}
 
 
-        <TabsList className="grid w-full grid-cols-5 h-16 rounded-none sticky bottom-0 bg-background border-t shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.1)]">
+        <TabsList className="grid w-full grid-cols-6 h-16 rounded-none sticky bottom-0 bg-background border-t shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.1)]">
           <TabsTrigger value="dashboard" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <LayoutDashboard className="h-5 w-5" />
             <span className="text-xs">Dashboard</span>
@@ -898,6 +895,18 @@ export default function Home() {
             <Activity className="h-5 w-5" />
              <span className="text-xs">Insights</span>
           </TabsTrigger>
+          <Link
+            href="/profile"
+            className={cn(
+              "flex flex-col items-center justify-center h-full gap-1 rounded-none text-muted-foreground hover:text-primary",
+              pathname === "/profile"
+                ? "border-t-2 border-primary bg-primary/10 text-primary"
+                : "border-t-2 border-transparent"
+            )}
+          >
+            <UserCircle className="h-5 w-5" />
+            <span className="text-xs">Profile</span>
+          </Link>
         </TabsList>
       </Tabs>
 
