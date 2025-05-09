@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -258,13 +257,13 @@ export default function Home() {
         let updatedBudgets;
         if (existingBudgetIndex > -1) {
             updatedBudgets = [...prev.budgets];
-            updatedBudgets[existingBudgetIndex] = budgetWithDetails; 
+            updatedBudgets[existingBudgetIndex] = budgetWithDetails;
         } else {
             updatedBudgets = [...prev.budgets, budgetWithDetails];
         }
 
         updatedBudgets.sort((a, b) => {
-             if (a.category === 'savings') return 1; 
+             if (a.category === 'savings') return 1;
              if (b.category === 'savings') return -1;
              const labelA = getCategoryById(a.category)?.label ?? a.category;
              const labelB = getCategoryById(b.category)?.label ?? b.category;
@@ -280,7 +279,7 @@ export default function Home() {
 
  const handleSetIncome = () => {
     const incomeValue = parseFloat(tempIncome);
-    if (isNaN(incomeValue) || incomeValue <= 0) { 
+    if (isNaN(incomeValue) || incomeValue <= 0) {
         toast({ title: "Invalid Income", description: "Please enter a valid positive number for income.", variant: "destructive" });
         return;
     }
@@ -292,10 +291,10 @@ export default function Home() {
      const incomeTransaction: Omit<Transaction, 'id'> = {
          type: 'income',
          amount: incomeValue,
-         category: selectedIncomeCategory, 
+         category: selectedIncomeCategory,
          date: new Date(),
-         description: `Monthly income set`, 
-         receiptDataUrl: undefined, 
+         description: `Monthly income set`,
+         receiptDataUrl: undefined,
      };
 
      setAppData(prev => {
@@ -339,7 +338,7 @@ export default function Home() {
 
   const totalAllocatedPercentage = React.useMemo(() => {
      return currentMonthBudgets
-         .filter(b => b.category !== 'savings' && b.percentage !== undefined) 
+         .filter(b => b.category !== 'savings' && b.percentage !== undefined)
          .reduce((sum, b) => sum + (b.percentage ?? 0), 0);
   }, [currentMonthBudgets]);
 
@@ -355,7 +354,7 @@ export default function Home() {
   }, [currentMonthBudgets]);
 
   const hasExpenseBudgetsSet = React.useMemo(() => {
-    return currentMonthBudgets.some(b => b.category !== 'savings' && b.limit > 0); 
+    return currentMonthBudgets.some(b => b.category !== 'savings' && b.limit > 0);
   }, [currentMonthBudgets]);
 
 
@@ -449,7 +448,7 @@ export default function Home() {
                          {hasExpenseBudgetsSet ? (
                             <div className="text-2xl font-bold">{formatCurrency(monthlySummary.expenses)}</div>
                          ) : (
-                             <Skeleton className="h-8 w-24" /> 
+                             <Skeleton className="h-8 w-24" />
                          )}
                          <p className="text-xs text-muted-foreground">{hasExpenseBudgetsSet ? "This month" : "Set budgets first"}</p>
                     </CardContent>
@@ -482,7 +481,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="p-0">
                 <ScrollArea className="h-[200px]">
-                    {transactions.slice(0, 5).map((t) => ( 
+                    {transactions.slice(0, 5).map((t) => (
                         <TransactionListItem key={t.id} transaction={t} categories={categories} />
                     ))}
                     {transactions.length === 0 && (
@@ -628,7 +627,7 @@ export default function Home() {
                  </CardContent>
              </Card>
            ) : currentMonthBudgets.length > 0 ? (
-             [...currentMonthBudgets] 
+             [...currentMonthBudgets]
                 .sort((a, b) => {
                     if (a.category === 'savings') return 1;
                     if (b.category === 'savings') return -1;
@@ -781,8 +780,8 @@ export default function Home() {
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Link href="/learn/budgeting-guide" asChild>
-                        <Button variant="link" className="p-0 h-auto">How to Budget Guide</Button>
+                    <Link href="/learn/budgeting-guide" passHref legacyBehavior>
+                        <a className={cn(buttonVariants({ variant: "link", className: "p-0 h-auto" }))}>How to Budget Guide</a>
                     </Link>
                 </CardContent>
              </Card>
@@ -820,7 +819,7 @@ export default function Home() {
                         currentMonth={currentMonth}
                         previousMonth={previousMonth}
                         transactions={transactions}
-                        budgets={budgets} 
+                        budgets={budgets}
                         categories={categories}
                         monthlyIncome={monthlyIncome}
                     />
@@ -843,7 +842,7 @@ export default function Home() {
         )}
 
 
-        <TabsList className="grid w-full grid-cols-5 h-16 rounded-none sticky bottom-0 bg-background border-t shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.1)]"> 
+        <TabsList className="grid w-full grid-cols-5 h-16 rounded-none sticky bottom-0 bg-background border-t shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.1)]">
           <TabsTrigger value="dashboard" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <LayoutDashboard className="h-5 w-5" />
             <span className="text-xs">Dashboard</span>
@@ -860,8 +859,8 @@ export default function Home() {
             <PiggyBank className="h-5 w-5" />
              <span className="text-xs">Goals</span>
           </TabsTrigger>
-           <TabsTrigger value="insights" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary"> 
-            <Activity className="h-5 w-5" /> 
+           <TabsTrigger value="insights" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+            <Activity className="h-5 w-5" />
              <span className="text-xs">Insights</span>
           </TabsTrigger>
         </TabsList>
@@ -881,10 +880,9 @@ export default function Home() {
         onAddBudget={handleAddBudget}
         existingBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)}
         availableSpendingCategories={spendingCategoriesForSelect}
-        monthlyIncome={monthlyIncome} 
+        monthlyIncome={monthlyIncome}
         totalAllocatedPercentage={totalAllocatedPercentage}
       />
     </div>
   );
 }
-
