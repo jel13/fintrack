@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FinTrack Mobile</string>
+    <string name="title_activity_main">FinTrack Mobile</string>
+    <string name="package_name">com.fintrack.mobile</string>
+    <string name="custom_url_scheme">com.fintrack.mobile</string>
+</resources>
