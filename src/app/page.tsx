@@ -4,7 +4,7 @@ import * as React from "react";
 import { PlusCircle, LayoutDashboard, List, Target, TrendingDown, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, Paperclip, FolderCog } from "lucide-react"; // Added BarChart3/Activity for Insights, Paperclip, FolderCog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button"; // Import buttonVariants
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AddTransactionSheet } from "@/components/add-transaction-sheet";
 import { AddBudgetDialog } from "@/components/add-budget-dialog";
@@ -557,13 +557,12 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Button size="sm" variant="outline" asChild>
-                    <Link href="/categories">
-                        <span className="flex items-center justify-center gap-2">
-                            <FolderCog className="h-4 w-4" /> Manage Categories
-                        </span>
-                    </Link>
-                 </Button>
+                 <Link
+                    href="/categories"
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                  >
+                    <FolderCog className="h-4 w-4" /> Manage Categories
+                  </Link>
                  {monthlyIncome !== null && (
                     <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
