@@ -4,7 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank, Info, Target } from "lucide-react"; // Added Target
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
@@ -140,9 +140,9 @@ export default function SavingGoalsPage() {
         <div className="flex flex-col h-screen bg-background">
             {/* Header */}
              <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
-                <Link href="/" asChild>
-                    <Button variant="ghost" size="icon" aria-label="Back to Home">
-                        <ArrowLeft className="h-5 w-5" />
+                <Link href="/" legacyBehavior passHref>
+                    <Button variant="ghost" size="icon" aria-label="Back to Home" asChild>
+                        <a><ArrowLeft className="h-5 w-5" /></a>
                     </Button>
                 </Link>
                 <h1 className="text-xl font-semibold ml-2">Manage Saving Goals</h1>
@@ -333,3 +333,4 @@ export default function SavingGoalsPage() {
         </div>
     );
 }
+
