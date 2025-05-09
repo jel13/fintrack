@@ -54,13 +54,8 @@ export default function Home() {
     const loadedData = loadAppData();
     setAppData(loadedData);
     setTempIncome(loadedData.monthlyIncome?.toString() ?? '');
-    // Set default income category if there's only one and it's not selected
-    const incomeCategories = loadedData.categories.filter(cat => cat.isIncomeSource);
-    if (incomeCategories.length === 1 && !selectedIncomeCategory) {
-        // setSelectedIncomeCategory(incomeCategories[0].id); // Auto-select if only one, or leave for user
-    }
     setIsLoaded(true);
-  }, []); // Removed selectedIncomeCategory from dependencies to avoid loop if auto-selecting
+  }, []); 
 
   React.useEffect(() => {
     if (isLoaded) {
@@ -78,9 +73,9 @@ export default function Home() {
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
 
-    const effectiveIncome = monthlyIncome ?? 0; // This is the user-set budgeted income
+    const effectiveIncome = monthlyIncome ?? 0; 
     const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    const actualBalance = incomeFromTransactionsThisMonth - expenses; // Balance based on actual transactions
+    const actualBalance = incomeFromTransactionsThisMonth - expenses; 
 
     return { income: effectiveIncome, expenses, balance: actualBalance, incomeTransactions: incomeFromTransactionsThisMonth };
   }, [transactions, monthlyIncome, currentMonth, isLoaded]);
@@ -97,7 +92,7 @@ export default function Home() {
   }, [budgets, currentMonth]);
 
   React.useEffect(() => {
-    if (!isLoaded || appData.monthlyIncome === null) return; // Use appData.monthlyIncome for consistency
+    if (!isLoaded || appData.monthlyIncome === null) return; 
 
      setAppData(prevData => {
          let budgetsChanged = false;
@@ -132,7 +127,7 @@ export default function Home() {
         const leftoverForSavings = Math.max(0, currentSetMonthlyIncome - totalBudgetedExcludingSavings);
 
         if (savingsBudgetIndex > -1) {
-            const savingsSpent = prevData.transactions // Savings "spent" is money moved to goals, not actual expenses
+            const savingsSpent = prevData.transactions 
                  .filter(t => t.type === 'expense' && t.category === 'savings' && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
 
@@ -142,12 +137,12 @@ export default function Home() {
                     ...currentSavingsBudget,
                     limit: leftoverForSavings,
                     spent: savingsSpent,
-                    percentage: undefined // Savings percentage is not set by user directly
+                    percentage: undefined 
                 };
                 budgetsChanged = true;
             }
 
-        } else if (currentSetMonthlyIncome > 0) { // Create savings budget if income is set and no savings budget exists
+        } else if (currentSetMonthlyIncome > 0) { 
              const savingsSpent = prevData.transactions
                  .filter(t => t.type === 'expense' && t.category === 'savings' && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
@@ -175,7 +170,7 @@ export default function Home() {
         return prevData;
 
      });
-  }, [transactions, appData.monthlyIncome, currentMonth, isLoaded, categories, appData.budgets.length]); // Added appData.budgets.length to help trigger on budget addition/removal
+  }, [transactions, appData.monthlyIncome, currentMonth, isLoaded, categories, appData.budgets.length]); 
 
 
   const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
@@ -200,20 +195,14 @@ export default function Home() {
         const updatedTransactions = [transactionWithId, ...prev.transactions].sort((a, b) => b.date.getTime() - a.date.getTime());
         let updatedMonthlyIncome = prev.monthlyIncome;
 
-        // If it's an income transaction, update the monthlyIncome for summary, not for budget base
-        if (newTransaction.type === 'income' && prev.monthlyIncome === null) {
-             // If initial income not set, this transaction sets it for budgeting
-            updatedMonthlyIncome = newTransaction.amount;
+        if (newTransaction.type === 'income') {
+            updatedMonthlyIncome = (prev.monthlyIncome ?? 0) + newTransaction.amount;
         }
-        // If monthlyIncome is already set, adding more income transactions affects 'Actual Balance'
-        // but not necessarily the 'Budgeted Income' figure unless user explicitly changes it
-        // or we decide income transactions ALWAYS adjust the base monthlyIncome for budgeting.
-        // Current logic: 'Budgeted Income' is set explicitly. Income transactions add to 'Actual Balance'.
-
+        
         return {
             ...prev,
             transactions: updatedTransactions,
-            monthlyIncome: updatedMonthlyIncome, // Only update if initial income was null
+            monthlyIncome: updatedMonthlyIncome, 
         };
     });
     toast({
@@ -311,7 +300,7 @@ export default function Home() {
      };
 
      setAppData(prev => {
-            const newTotalMonthlyIncome = incomeValue;
+            const newTotalMonthlyIncome = (prev.monthlyIncome ?? 0) + incomeValue;
             const transactionWithId: Transaction = { ...incomeTransaction, id: `initial-inc-${Date.now()}` };
             const updatedTransactions = [transactionWithId, ...prev.transactions]
                 .sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -322,8 +311,10 @@ export default function Home() {
                 transactions: updatedTransactions
             };
        });
-
-      toast({ title: "Income Updated", description: `Monthly budgeted income set to ${formatCurrency(incomeValue)}. Budgets using percentages will update.` });
+      
+      setTempIncome(''); // Clear the input field
+      setSelectedIncomeCategory(''); // Clear selected category
+      toast({ title: "Income Updated", description: `Monthly budgeted income set to ${formatCurrency(appData.monthlyIncome ? appData.monthlyIncome + incomeValue : incomeValue)}. Budgets using percentages will update.` });
   };
 
    const getCategoryById = (id: string): Category | undefined => {
@@ -540,7 +531,7 @@ export default function Home() {
                 <CardContent>
                     <Link href="/learn/budgeting-guide" passHref>
                         <Button asChild variant="link" className="p-0 h-auto text-base">
-                           How to Budget Guide
+                           <span className="flex items-center justify-center">How to Budget Guide</span>
                         </Button>
                     </Link>
                 </CardContent>
@@ -593,9 +584,9 @@ export default function Home() {
              <div className="flex gap-2">
                  <Link href="/saving-goals" passHref>
                       <Button asChild variant="outline" size="sm">
-                        <>
+                        <span className="flex items-center justify-center gap-2">
                           <PiggyBank className="h-4 w-4" /> Manage Goals
-                        </>
+                        </span>
                       </Button>
                   </Link>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
@@ -749,4 +740,4 @@ export default function Home() {
   );
 }
 
-
+    
