@@ -73,25 +73,27 @@ export default function SavingGoalsPage() {
 
         // Prevent negative percentage
         if (newPercentage < 0) {
-            toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" });
+            setTimeout(() => toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" }), 0);
             return; // Don't update state
         }
 
         // Prevent total allocation exceeding 100% of the savings budget
         if (totalWithoutCurrent + newPercentage > 100.05) { // Use slight tolerance for floating point
             const maxAllowed = Math.max(0, parseFloat((100 - totalWithoutCurrent).toFixed(1)));
-            toast({
+            setTimeout(() => toast({
                 title: "Allocation Limit Exceeded",
                 description: `Cannot allocate ${newPercentage}%. Total allocation would exceed 100% of savings budget. Available: ${maxAllowed}%`,
                 variant: "destructive",
                 duration: 5000
-            });
+            }), 0);
              return; // Prevent save approach
         }
 
         // If validation passes, update the state
         setAppData(prev => {
             let goals = [...prev.savingGoals];
+            let toastMessageTitle = "";
+            let toastMessageDescription = "";
 
             if (goalData.id) {
                 // Update existing goal
@@ -100,20 +102,26 @@ export default function SavingGoalsPage() {
                     // Ensure savedAmount is preserved unless explicitly modified
                     const originalSavedAmount = goals[index].savedAmount;
                     goals[index] = { ...goals[index], ...goalData, savedAmount: originalSavedAmount };
-                    toast({ title: "Goal Updated", description: `Saving goal "${goalData.name}" updated.` });
+                    toastMessageTitle = "Goal Updated";
+                    toastMessageDescription = `Saving goal "${goalData.name}" updated.`;
                 }
             } else {
                 // Add new goal
                 const newGoal: SavingGoal = {
                     ...goalData,
-                    id: `goal-${Date.now().toString()}`,
+                    id: `goal-${Date.now().toString()}`, // Consider a more robust ID generation for production
                     savedAmount: 0, // Initialize saved amount for new goals
                 };
                 goals.push(newGoal);
-                 toast({ title: "Goal Added", description: `New saving goal "${newGoal.name}" added.` });
+                toastMessageTitle = "Goal Added";
+                toastMessageDescription = `New saving goal "${newGoal.name}" added.`;
             }
              // Sort goals, e.g., by name, for consistent order
             goals.sort((a, b) => a.name.localeCompare(b.name));
+            
+            if (toastMessageTitle) {
+                setTimeout(() => toast({ title: toastMessageTitle, description: toastMessageDescription }), 0);
+            }
             return { ...prev, savingGoals: goals };
         });
         setEditingGoal(null); // Reset editing state
@@ -127,7 +135,7 @@ export default function SavingGoalsPage() {
             ...prev,
             savingGoals: prev.savingGoals.filter(g => g.id !== goalId)
         }));
-         toast({ title: "Goal Deleted", description: `Saving goal "${goalToDelete.name}" removed.` });
+        setTimeout(() => toast({ title: "Goal Deleted", description: `Saving goal "${goalToDelete.name}" removed.` }), 0);
     };
 
     const openEditDialog = (goal: SavingGoal) => {
