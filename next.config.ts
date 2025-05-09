@@ -18,11 +18,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-   async redirects() {
-    // Self-referential redirects are removed.
-    // If actual redirects are needed in the future, they can be added here.
-    return [];
-  },
+  // Removed async redirects() function
 };
 
 export default nextConfig;
