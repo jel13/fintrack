@@ -536,7 +536,7 @@ export default function Home() {
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Link href="/learn/budgeting-guide" passHref>
+                    <Link href="/learn/budgeting-guide" passHref legacyBehavior>
                         <Button asChild variant="link" className="p-0 h-auto">
                             <a>How to Budget Guide</a>
                         </Button>
@@ -590,13 +590,13 @@ export default function Home() {
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
                  <Link href="/categories" passHref>
-                     <Button asChild variant="outline" size="sm">
-                        <a><FolderCog className="h-4 w-4" /> Manage Categories</a>
-                     </Button>
+                    <Button variant="outline" size="sm">
+                      <FolderCog className="h-4 w-4" /> Manage Categories
+                    </Button>
                  </Link>
                  <Link href="/saving-goals" passHref>
-                      <Button asChild variant="outline" size="sm">
-                        <a><PiggyBank className="h-4 w-4" /> Manage Goals</a>
+                      <Button variant="outline" size="sm">
+                        <PiggyBank className="h-4 w-4" /> Manage Goals
                       </Button>
                   </Link>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
