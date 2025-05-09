@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -558,13 +557,13 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Link href="/categories" asChild>
-                     <Button size="sm" variant="outline">
+                 <Button size="sm" variant="outline" asChild>
+                    <Link href="/categories">
                         <span className="flex items-center justify-center gap-2">
                             <FolderCog className="h-4 w-4" /> Manage Categories
                         </span>
-                     </Button>
-                 </Link>
+                    </Link>
+                 </Button>
                  {monthlyIncome !== null && (
                     <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
@@ -885,4 +884,3 @@ export default function Home() {
       />
     </div>
   );
-}
