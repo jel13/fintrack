@@ -541,7 +541,7 @@ export default function Home() {
                 <CardContent>
                     <Link href="/learn/budgeting-guide" passHref>
                         <Button asChild variant="link" className="p-0 h-auto text-base">
-                           <a>How to Budget Guide</a>
+                           How to Budget Guide
                         </Button>
                     </Link>
                 </CardContent>
