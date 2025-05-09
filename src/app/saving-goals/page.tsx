@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank, Info, Target } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button"; // Import buttonVariants
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
@@ -66,12 +66,14 @@ export default function SavingGoalsPage() {
         const totalWithoutCurrent = currentTotalAllocated - existingPercentage;
 
         if (newPercentage < 0) {
+            // Schedule toast after current render cycle
             setTimeout(() => toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" }), 0);
             return;
         }
 
         if (totalWithoutCurrent + newPercentage > 100.05) {
             const maxAllowed = Math.max(0, parseFloat((100 - totalWithoutCurrent).toFixed(1)));
+             // Schedule toast after current render cycle
             setTimeout(() => toast({
                 title: "Allocation Limit Exceeded",
                 description: `Cannot allocate ${newPercentage}%. Total allocation would exceed 100% of savings budget. Available: ${maxAllowed}%`,
@@ -107,6 +109,7 @@ export default function SavingGoalsPage() {
             goals.sort((a, b) => a.name.localeCompare(b.name));
             
             if (toastMessageTitle) {
+                 // Schedule toast after current render cycle
                 setTimeout(() => toast({ title: toastMessageTitle, description: toastMessageDescription }), 0);
             }
             return { ...prev, savingGoals: goals };
@@ -122,6 +125,7 @@ export default function SavingGoalsPage() {
             ...prev,
             savingGoals: prev.savingGoals.filter(g => g.id !== goalId)
         }));
+         // Schedule toast after current render cycle
         setTimeout(() => toast({ title: "Goal Deleted", description: `Saving goal "${goalToDelete.name}" removed.` }), 0);
     };
 
@@ -134,9 +138,11 @@ export default function SavingGoalsPage() {
     return (
         <div className="flex flex-col h-screen bg-background">
              <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
-                <Link href="/" className={buttonVariants({ variant: "ghost", size: "icon" })} aria-label="Back to Home">
-                    <ArrowLeft className="h-5 w-5" />
-                </Link>
+                <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
+                    <Link href="/">
+                        <ArrowLeft className="h-5 w-5" />
+                    </Link>
+                </Button>
                 <h1 className="text-xl font-semibold ml-2">Manage Saving Goals</h1>
                  <Button size="sm" className="ml-auto" onClick={() => { setEditingGoal(null); setIsAddGoalDialogOpen(true); }} disabled={!isLoaded || totalSavingsBudgetLimit <= 0}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Goal
@@ -264,7 +270,7 @@ export default function SavingGoalsPage() {
                                                         <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
                                                         <span>{progressValue.toFixed(1)}%</span>
                                                     </div>
-                                                    <Progress value={progressValue} className="h-1.5 [&>div]:bg-accent" />
+                                                    <Progress value={progressValue} className="h-1.5 [&gt;div]:bg-accent" />
                                                     {goal.percentageAllocation !== undefined && goal.percentageAllocation > 0 && (
                                                         <p className="text-xs text-muted-foreground mt-1.5">
                                                             Alloc: {goal.percentageAllocation}% of Savings

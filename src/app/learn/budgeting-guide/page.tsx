@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -12,11 +11,11 @@ export default function BudgetingGuidePage() {
     <div className="flex flex-col h-screen p-4 bg-background">
       {/* Header */}
       <div className="flex items-center mb-4">
-        <Link href="/" asChild>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
+        <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
+            <Link href="/">
+                <ArrowLeft className="h-5 w-5" />
+            </Link>
+        </Button>
         <h1 className="text-xl font-semibold ml-2">How to Budget Guide</h1>
       </div>
 
@@ -39,7 +38,7 @@ export default function BudgetingGuidePage() {
             <section>
               <h2 className="text-lg font-semibold mb-2">2. Track Your Expenses</h2>
               <p className="text-sm text-muted-foreground">
-                Where does your money go? Start logging every expense, big or small, using the "+" button in the app. Categorize them honestly (e.g., Groceries, Food & Dining, Transport, Bills). This helps you see your spending patterns.
+                Where does your money go? Start logging every expense, big or small, using the "+" button in the app. Categorize them honestly (e.g., Groceries, Food &amp; Dining, Transport, Bills). This helps you see your spending patterns.
                 Check the 'History' tab to review past transactions.
               </p>
             </section>
@@ -60,7 +59,7 @@ export default function BudgetingGuidePage() {
               <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 mt-2">
                 <li>Start with essential needs (Housing, Bills, Groceries, Transport).</li>
                 <li>Allocate funds towards your Saving Goals (treat savings like a bill!).</li>
-                <li>Set limits for discretionary spending (Food & Dining, Clothing, Entertainment).</li>
+                <li>Set limits for discretionary spending (Food &amp; Dining, Clothing, Entertainment).</li>
                 <li>Use the percentage method: Assign a percentage of your income to each category (e.g., 50% Needs, 30% Wants, 20% Savings). The app helps calculate the monetary value.</li>
                 <li>The 'Savings' category in the app automatically holds any unallocated income.</li>
               </ul>
