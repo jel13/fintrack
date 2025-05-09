@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { formatCurrency, cn } from "@/lib/utils";
-import { usePathname } from 'next/navigation'; // Import usePathname
+import { usePathname } from 'next/navigation'; 
 import {
   Select,
   SelectContent,
@@ -42,7 +42,7 @@ export default function Home() {
   const [tempIncome, setTempIncome] = React.useState<string>('');
   const [selectedIncomeCategory, setSelectedIncomeCategory] = React.useState<string>('');
   const { toast } = useToast();
-  const pathname = usePathname(); // Get current pathname
+  const pathname = usePathname(); 
 
   const currentMonth = format(new Date(), 'yyyy-MM');
   const previousMonthDate = new Date(currentMonth + '-01T00:00:00');
@@ -375,11 +375,7 @@ export default function Home() {
         <TabsContent value="dashboard" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center mb-2">
                 <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
-                <Link href="/profile" passHref>
-                  <Button variant="ghost" size="icon" aria-label="Profile">
-                    <UserCircle className="h-6 w-6 text-primary" />
-                  </Button>
-                </Link>
+                {/* Profile Link was here, moved to bottom nav */}
             </div>
 
             {monthlyIncome === null || monthlyIncome === 0 ? (
@@ -534,6 +530,19 @@ export default function Home() {
                     </CardContent>
                 </Card>
            )}
+             <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01]" style={{"animationDelay": `${(savingGoals.length + 1) * 0.05}s`}}>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/> Financial Planning Tips</CardTitle>
+                     <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/learn/budgeting-guide" passHref>
+                        <Button asChild variant="link" className="p-0 h-auto">
+                            <a>How to Budget Guide</a>
+                        </Button>
+                    </Link>
+                </CardContent>
+             </Card>
         </TabsContent>
 
         <TabsContent value="transactions" className="flex-grow overflow-y-auto p-0">
@@ -585,6 +594,11 @@ export default function Home() {
                         <a><FolderCog className="h-4 w-4" /> Manage Categories</a>
                      </Button>
                  </Link>
+                 <Link href="/saving-goals" passHref>
+                      <Button asChild variant="outline" size="sm">
+                        <a><PiggyBank className="h-4 w-4" /> Manage Goals</a>
+                      </Button>
+                  </Link>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
                     <Button size="sm" onClick={() => setIsAddBudgetDialogOpen(true)}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
@@ -678,147 +692,6 @@ export default function Home() {
            )}
         </TabsContent>
 
-        {/* Saving Goals Tab */}
-        <TabsContent value="goals" className="flex-grow overflow-y-auto p-4 space-y-4">
-            <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">Saving Goals</h2>
-                <Link href="/saving-goals" passHref>
-                     <Button asChild variant="outline" size="sm">
-                        <a> Manage Goals <Settings className="h-4 w-4 ml-2" /></a>
-                     </Button>
-                </Link>
-            </div>
-
-             {monthlyIncome !== null && monthlyIncome > 0 && (
-                <Card className="mb-4 bg-accent/10 border-accent/30 animate-fade-in">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <PiggyBank className="h-5 w-5 text-accent"/> Savings &amp; Goals Allocation
-                        </CardTitle>
-                         <CardDescription className="text-xs">
-                            Your Savings budget is automatically calculated based on unallocated income after expenses. Allocate percentages of this savings amount to your specific goals.
-                         </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0 text-sm text-accent grid grid-cols-2 gap-x-4 gap-y-1">
-                         <div className="flex justify-between col-span-2 border-b pb-1 mb-1 border-accent/20">
-                            <span>Monthly Savings Budget:</span>
-                            <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
-                        </div>
-                         {savingsBudgetAmount > 0 && (
-                             <>
-                             <div className="flex justify-between">
-                                <span>Allocated to Goals (%):</span>
-                                 <span className="font-semibold">
-                                    {savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0).toFixed(1)}%
-                                 </span>
-                            </div>
-                             <div className="flex justify-between">
-                                <span>Allocated to Goals ($):</span>
-                                 <span className="font-semibold">
-                                    {formatCurrency(savingsBudgetAmount * (savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) / 100))}
-                                 </span>
-                            </div>
-                              <div className="flex justify-between text-accent/80">
-                                <span>Unallocated Savings (%):</span>
-                                <span className="font-semibold">
-                                    {(100 - savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0)).toFixed(1)}%
-                                </span>
-                            </div>
-                             <div className="flex justify-between text-accent/80">
-                                <span>Unallocated Savings ($):</span>
-                                 <span className="font-semibold">
-                                    {formatCurrency(savingsBudgetAmount * (1 - (savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) / 100)))}
-                                 </span>
-                            </div>
-                             </>
-                         )}
-                         {savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0) > 100.05 && ( 
-                             <p className="text-xs text-destructive font-semibold mt-1 col-span-2">Warning: Goal allocation exceeds 100% of savings budget!</p>
-                         )}
-                          {savingsBudgetAmount <= 0 && (
-                             <p className="text-xs text-accent/80 mt-1 col-span-2">Your savings budget is currently $0. Funding goals requires increasing this by reducing expense budgets or increasing income.</p>
-                          )}
-                           {!hasExpenseBudgetsSet && monthlyIncome !== null && monthlyIncome > 0 && (
-                               <p className="text-xs text-accent/80 mt-1 col-span-2">Set expense budgets first to determine your available savings.</p>
-                           )}
-                            {(monthlyIncome === null || monthlyIncome === 0) && (
-                               <p className="text-xs text-accent/80 mt-1 col-span-2">Set your income first to calculate savings.</p>
-                           )}
-                    </CardContent>
-                </Card>
-            )}
-
-
-            {savingGoals.length > 0 ? (
-                 savingGoals.map((goal, index) => {
-                     const monthlyContribution = savingsBudgetAmount > 0 && goal.percentageAllocation
-                         ? (goal.percentageAllocation / 100) * savingsBudgetAmount
-                         : 0;
-                     const progressPercent = goal.targetAmount > 0 ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100) : 0;
-                     return (
-                         <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
-                            <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] relative overflow-hidden">
-                                 <div
-                                    className="absolute top-0 left-0 h-full bg-accent/10 transition-all duration-300 ease-out"
-                                    style={{ width: `${progressPercent}%` }}
-                                  />
-                                <div className="relative z-10">
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-base">{goal.name}</CardTitle>
-                                        {goal.description && <CardDescription className="text-xs">{goal.description}</CardDescription>}
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex justify-between text-sm mb-1">
-                                            <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
-                                            <span>{progressPercent.toFixed(1)}%</span>
-                                        </div>
-                                        <Progress value={progressPercent} className="w-full h-2 [&>div]:bg-accent" />
-                                        {goal.percentageAllocation && goal.percentageAllocation > 0 && (
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                Alloc: {goal.percentageAllocation}% of Savings
-                                                {savingsBudgetAmount > 0 && ` (~${formatCurrency(monthlyContribution)}/mo)`}
-                                                {savingsBudgetAmount <= 0 && ` ($0/mo)`}
-                                            </p>
-                                        )}
-                                        {goal.targetDate && (
-                                            <p className="text-xs text-muted-foreground mt-1">Target: {format(goal.targetDate, 'MMM yyyy')}</p>
-                                        )}
-                                    </CardContent>
-                                </div>
-                            </Card>
-                         </div>
-                     );
-                 })
-            ) : (
-                  <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
-                     <CardContent className="p-6 text-center text-muted-foreground">
-                         <PiggyBank className="mx-auto h-8 w-8 mb-2 text-accent" />
-                         <p className="font-semibold">No Saving Goals Yet</p>
-                        <p className="text-sm">Go to 'Manage Goals' to create goals and allocate your savings towards them.</p>
-                        <Link href="/saving-goals" passHref>
-                            <Button asChild variant="outline" size="sm" className="mt-3">
-                                <a>Manage Goals</a>
-                            </Button>
-                        </Link>
-                     </CardContent>
-                  </Card>
-            )}
-
-             <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01]" style={{"animationDelay": `${(savingGoals.length + 1) * 0.05}s`}}>
-                <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/> Financial Planning Tips</CardTitle>
-                     <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Link href="/learn/budgeting-guide" passHref>
-                        <Button asChild variant="link" className="p-0 h-auto">
-                            <a>How to Budget Guide</a>
-                        </Button>
-                    </Link>
-                </CardContent>
-             </Card>
-        </TabsContent>
-
          <TabsContent value="insights" className="flex-grow overflow-y-auto p-4 space-y-4">
              <div className="flex justify-between items-center mb-4">
                  <h2 className="text-lg font-semibold">Financial Insights</h2>
@@ -874,7 +747,7 @@ export default function Home() {
         )}
 
 
-        <TabsList className="grid w-full grid-cols-6 h-16 rounded-none sticky bottom-0 bg-background border-t shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.1)]">
+        <TabsList className="grid w-full grid-cols-5 h-16 rounded-none sticky bottom-0 bg-background border-t shadow-[0_-2px_5px_-1px_rgba(0,0,0,0.1)]">
           <TabsTrigger value="dashboard" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <LayoutDashboard className="h-5 w-5" />
             <span className="text-xs">Dashboard</span>
@@ -886,10 +759,6 @@ export default function Home() {
           <TabsTrigger value="budgets" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <Target className="h-5 w-5" />
              <span className="text-xs">Budgets</span>
-          </TabsTrigger>
-           <TabsTrigger value="goals" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-            <PiggyBank className="h-5 w-5" />
-             <span className="text-xs">Goals</span>
           </TabsTrigger>
            <TabsTrigger value="insights" className="flex-col h-full gap-1 rounded-none data-[state=active]:border-t-2 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
             <Activity className="h-5 w-5" />
