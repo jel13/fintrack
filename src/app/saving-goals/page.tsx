@@ -1,18 +1,17 @@
-
 "use client";
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank, Info, Target } from "lucide-react"; // Added Target
-import { Button, buttonVariants } from "@/components/ui/button";
+import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank, Info, Target } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button"; // Import buttonVariants
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import type { AppData, SavingGoal } from "@/types";
-import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage"; // Import default
-import { formatCurrency, cn } from "@/lib/utils"; // Assuming utils has formatCurrency & cn
+import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage";
+import { formatCurrency, cn } from "@/lib/utils";
 import { AddSavingGoalDialog } from "@/components/add-saving-goal-dialog";
-import { format } from 'date-fns'; // Import format
+import { format } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 export default function SavingGoalsPage() {
@@ -35,50 +34,43 @@ export default function SavingGoalsPage() {
     const [editingGoal, setEditingGoal] = React.useState<SavingGoal | null>(null);
     const { toast } = useToast();
 
-     // Load data from localStorage on mount (client-side only)
     React.useEffect(() => {
         const loadedData = loadAppData();
         setAppData(loadedData);
         setIsLoaded(true);
     }, []);
 
-    // Persist data whenever appData changes *after* initial load
     React.useEffect(() => {
         if (isLoaded) {
             saveAppData(appData);
         }
     }, [appData, isLoaded]);
 
-    // Calculate the current month's savings budget LIMIT
     const totalSavingsBudgetLimit = React.useMemo(() => {
-        if (!isLoaded) return 0; // Don't calculate until loaded
+        if (!isLoaded) return 0;
         const currentMonth = format(new Date(), 'yyyy-MM');
         const savingsBudget = appData.budgets.find(b => b.category === 'savings' && b.month === currentMonth);
-        return savingsBudget?.limit ?? 0; // Get the calculated limit for savings
-    }, [appData.budgets, isLoaded]); // Depend on isLoaded
+        return savingsBudget?.limit ?? 0;
+    }, [appData.budgets, isLoaded]);
 
-    // Calculate the total percentage of the *savings budget* allocated to goals
      const totalAllocatedPercentageOfSavings = React.useMemo(() => {
-         if (!isLoaded) return 0; // Don't calculate until loaded
+         if (!isLoaded) return 0;
          return appData.savingGoals.reduce((sum, goal) => sum + (goal.percentageAllocation ?? 0), 0);
-     }, [appData.savingGoals, isLoaded]); // Depend on isLoaded
+     }, [appData.savingGoals, isLoaded]);
 
 
     const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id' | 'savedAmount'> & { id?: string }) => {
-        // Validation before updating state
         const newPercentage = goalData.percentageAllocation ?? 0;
         const currentTotalAllocated = appData.savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
         const existingPercentage = editingGoal ? (editingGoal.percentageAllocation ?? 0) : 0;
         const totalWithoutCurrent = currentTotalAllocated - existingPercentage;
 
-        // Prevent negative percentage
         if (newPercentage < 0) {
             setTimeout(() => toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" }), 0);
-            return; // Don't update state
+            return;
         }
 
-        // Prevent total allocation exceeding 100% of the savings budget
-        if (totalWithoutCurrent + newPercentage > 100.05) { // Use slight tolerance for floating point
+        if (totalWithoutCurrent + newPercentage > 100.05) {
             const maxAllowed = Math.max(0, parseFloat((100 - totalWithoutCurrent).toFixed(1)));
             setTimeout(() => toast({
                 title: "Allocation Limit Exceeded",
@@ -86,37 +78,32 @@ export default function SavingGoalsPage() {
                 variant: "destructive",
                 duration: 5000
             }), 0);
-             return; // Prevent save approach
+             return;
         }
 
-        // If validation passes, update the state
         setAppData(prev => {
             let goals = [...prev.savingGoals];
             let toastMessageTitle = "";
             let toastMessageDescription = "";
 
             if (goalData.id) {
-                // Update existing goal
                 const index = goals.findIndex(g => g.id === goalData.id);
                 if (index > -1) {
-                    // Ensure savedAmount is preserved unless explicitly modified
                     const originalSavedAmount = goals[index].savedAmount;
                     goals[index] = { ...goals[index], ...goalData, savedAmount: originalSavedAmount };
                     toastMessageTitle = "Goal Updated";
                     toastMessageDescription = `Saving goal "${goalData.name}" updated.`;
                 }
             } else {
-                // Add new goal
                 const newGoal: SavingGoal = {
                     ...goalData,
-                    id: `goal-${Date.now().toString()}`, // Consider a more robust ID generation for production
-                    savedAmount: 0, // Initialize saved amount for new goals
+                    id: `goal-${Date.now().toString()}`,
+                    savedAmount: 0,
                 };
                 goals.push(newGoal);
                 toastMessageTitle = "Goal Added";
                 toastMessageDescription = `New saving goal "${newGoal.name}" added.`;
             }
-             // Sort goals, e.g., by name, for consistent order
             goals.sort((a, b) => a.name.localeCompare(b.name));
             
             if (toastMessageTitle) {
@@ -124,12 +111,12 @@ export default function SavingGoalsPage() {
             }
             return { ...prev, savingGoals: goals };
         });
-        setEditingGoal(null); // Reset editing state
+        setEditingGoal(null);
     };
 
     const handleDeleteGoal = (goalId: string) => {
         const goalToDelete = appData.savingGoals.find(g => g.id === goalId);
-         if (!goalToDelete) return; // Should not happen
+         if (!goalToDelete) return;
 
         setAppData(prev => ({
             ...prev,
@@ -146,12 +133,9 @@ export default function SavingGoalsPage() {
 
     return (
         <div className="flex flex-col h-screen bg-background">
-            {/* Header */}
              <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
-                <Link href="/" legacyBehavior passHref>
-                    <Button variant="ghost" size="icon" aria-label="Back to Home" asChild>
-                        <a><ArrowLeft className="h-5 w-5" /></a>
-                    </Button>
+                <Link href="/" className={buttonVariants({ variant: "ghost", size: "icon" })} aria-label="Back to Home">
+                    <ArrowLeft className="h-5 w-5" />
                 </Link>
                 <h1 className="text-xl font-semibold ml-2">Manage Saving Goals</h1>
                  <Button size="sm" className="ml-auto" onClick={() => { setEditingGoal(null); setIsAddGoalDialogOpen(true); }} disabled={!isLoaded || totalSavingsBudgetLimit <= 0}>
@@ -159,7 +143,6 @@ export default function SavingGoalsPage() {
                 </Button>
             </div>
 
-            {/* Savings Budget Info */}
              <div className="p-4">
                 <Card className="mb-4 bg-accent/10 border-accent animate-fade-in">
                     <CardHeader className="pb-2">
@@ -214,12 +197,9 @@ export default function SavingGoalsPage() {
                 </Card>
             </div>
 
-
-            {/* Goals List */}
             <ScrollArea className="flex-grow px-4 pb-4">
                 {!isLoaded ? (
                      <div className="space-y-3">
-                        {/* Skeleton Loader */}
                         {[...Array(3)].map((_, i) => (
                              <Card key={`skel-goal-${i}`} className="p-4 space-y-2 animate-pulse">
                                 <div className="flex justify-between">
@@ -236,23 +216,20 @@ export default function SavingGoalsPage() {
                         {appData.savingGoals.length > 0 ? (
                             appData.savingGoals.map((goal, index) => {
                                  const progressValue = goal.targetAmount > 0 ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100) : 0;
-                                 // Calculate expected monthly contribution based on current savings budget limit
                                  const monthlyContribution = (goal.percentageAllocation ?? 0) / 100 * totalSavingsBudgetLimit;
                                  return (
                                     <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
                                         <Card className="relative group/goal overflow-hidden transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]">
-                                            {/* Progress Bar as Background */}
                                             <div
                                                 className="absolute top-0 left-0 h-full bg-accent/10 transition-all duration-500 ease-out"
                                                 style={{ width: `${progressValue}%` }}
                                              />
-                                            <div className="relative z-10"> {/* Content on top of progress */}
-                                                <CardHeader className="flex flex-row items-start justify-between pb-2 pr-12"> {/* Added padding-right */}
+                                            <div className="relative z-10">
+                                                <CardHeader className="flex flex-row items-start justify-between pb-2 pr-12">
                                                     <div>
                                                         <CardTitle className="text-base">{goal.name}</CardTitle>
                                                         {goal.description && <CardDescription className="text-xs mt-1">{goal.description}</CardDescription>}
                                                     </div>
-                                                    {/* Edit/Delete Buttons - Absolutely positioned */}
                                                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/goal:opacity-100 focus-within:opacity-100 transition-opacity">
                                                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(goal)} aria-label={`Edit ${goal.name}`}>
                                                             <Edit className="h-4 w-4" />
@@ -321,24 +298,20 @@ export default function SavingGoalsPage() {
                  )}
             </ScrollArea>
 
-            {/* Add/Edit Dialog */}
             <AddSavingGoalDialog
                 open={isAddGoalDialogOpen}
                 onOpenChange={(isOpen) => {
                     setIsAddGoalDialogOpen(isOpen);
-                    if (!isOpen) setEditingGoal(null); // Reset editing state when closing
+                    if (!isOpen) setEditingGoal(null);
                 }}
                 onSaveGoal={handleAddOrUpdateGoal}
                 existingGoal={editingGoal}
-                // Pass the percentage of the savings budget already allocated to *other* goals
                 totalAllocatedPercentage={editingGoal
                     ? totalAllocatedPercentageOfSavings - (editingGoal.percentageAllocation ?? 0)
                     : totalAllocatedPercentageOfSavings
                 }
-                 // Pass the actual monetary value of the savings budget this month
                 savingsBudgetAmount={totalSavingsBudgetLimit}
             />
         </div>
     );
 }
-
