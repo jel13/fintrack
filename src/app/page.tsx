@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -598,6 +599,11 @@ export default function Home() {
                             <span>Available for Savings ($):</span>
                             <span className="font-semibold">{formatCurrency(savingsBudgetAmount)}</span>
                         </div>
+                        <div className="flex justify-between text-primary col-span-2 pt-1 mt-1 border-t border-primary/20">
+                            <span>Total Allocated Budget:</span>
+                            <span className="font-semibold">{formatCurrency(totalAllocatedBudgetAmount + savingsBudgetAmount)}</span>
+                        </div>
+
 
                          {(totalAllocatedPercentage > 100) && (
                             <p className="text-xs text-destructive font-semibold mt-1 col-span-2">Warning: Expense allocation exceeds 100%!</p>
@@ -650,12 +656,10 @@ export default function Home() {
         <TabsContent value="goals" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">Saving Goals</h2>
-                <Link href="/saving-goals" asChild>
-                     <Button size="sm" variant="outline">
-                        <span className="flex items-center justify-center gap-2">
-                             Manage Goals <Settings className="h-4 w-4" />
-                        </span>
-                    </Button>
+                <Link href="/saving-goals" passHref legacyBehavior>
+                    <a className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex items-center justify-center gap-2")}>
+                         Manage Goals <Settings className="h-4 w-4" />
+                    </a>
                 </Link>
             </div>
 
@@ -762,10 +766,10 @@ export default function Home() {
                          <PiggyBank className="mx-auto h-8 w-8 mb-2 text-accent" />
                          <p className="font-semibold">No Saving Goals Yet</p>
                         <p className="text-sm">Go to 'Manage Goals' to create goals and allocate your savings towards them.</p>
-                        <Link href="/saving-goals" asChild>
-                            <Button size="sm" className="mt-3" variant="outline">
-                                <span className="flex items-center justify-center">Manage Goals</span>
-                            </Button>
+                         <Link href="/saving-goals" passHref legacyBehavior>
+                             <a className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3")}>
+                                Manage Goals
+                             </a>
                         </Link>
                      </CardContent>
                   </Card>
@@ -883,3 +887,4 @@ export default function Home() {
     </div>
   );
 }
+
