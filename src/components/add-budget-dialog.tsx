@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -37,16 +36,16 @@ import {
 import type { Budget, Category } from "@/types";
 import { getCategoryIconComponent } from '@/components/category-icon';
 import { Label } from "@/components/ui/label";
-import { formatCurrency } from "@/lib/utils"; // Use util function
+import { formatCurrency } from "@/lib/utils";
 
 
-// Schema focuses solely on percentage input
 const formSchema = z.object({
+  id: z.string().optional(), // ID is optional, present if editing
   category: z.string().min(1, "Category is required"),
   percentage: z.coerce.number({ invalid_type_error: "Percentage must be a number", required_error: "Percentage is required" })
-    .gte(0.1, "Percentage must be at least 0.1%") // Minimum percentage
+    .gte(0.1, "Percentage must be at least 0.1%")
     .lte(100, "Percentage cannot exceed 100%")
-    .multipleOf(0.1, { message: "Percentage can have max 1 decimal place" }), // Allow one decimal place
+    .multipleOf(0.1, { message: "Percentage can have max 1 decimal place" }),
 });
 
 
@@ -55,49 +54,54 @@ type BudgetFormValues = z.infer<typeof formSchema>;
 interface AddBudgetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // Callback provides the selected category and the *percentage* allocated
-  onAddBudget: (budget: Omit<Budget, 'id' | 'spent' | 'month' | 'limit'>) => void;
-  existingBudgetCategoryIds: string[]; // Pass IDs of categories that *already* have budgets this month (excluding savings)
-  availableSpendingCategories: Category[]; // Pass available spending categories (excluding parents and savings)
-  monthlyIncome: number | null; // Pass income for calculations
-  totalAllocatedPercentage: number; // Pass current percentage allocated to *other* expense categories
+  onSaveBudget: (budget: Budget) => void; // Changed to accept full Budget for save
+  existingBudgetCategoryIds: string[];
+  availableSpendingCategories: Category[];
+  monthlyIncome: number | null;
+  totalAllocatedPercentage: number;
+  existingBudget?: Budget | null; // To pre-fill for editing
 }
 
 export function AddBudgetDialog({
     open,
     onOpenChange,
-    onAddBudget,
+    onSaveBudget,
     existingBudgetCategoryIds,
     availableSpendingCategories,
     monthlyIncome,
-    totalAllocatedPercentage
+    totalAllocatedPercentage,
+    existingBudget
 }: AddBudgetDialogProps) {
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      category: "",
-      percentage: undefined, // Start with no preset percentage
-    },
+    // Default values handled by useEffect
   });
 
-  // Reset form when dialog opens
   React.useEffect(() => {
      if (open) {
-         form.reset({ category: "", percentage: undefined });
+         if (existingBudget) {
+             form.reset({
+                 id: existingBudget.id,
+                 category: existingBudget.category,
+                 percentage: existingBudget.percentage,
+             });
+         } else {
+             form.reset({ id: undefined, category: "", percentage: undefined });
+         }
      }
-  }, [open, form]);
+  }, [open, existingBudget, form]);
 
 
-  const { watch, setError } = form;
+  const { watch, setError, setValue } = form;
   const percentageValue = watch('percentage');
+  const categoryValue = watch('category');
 
-  // Calculate available percentage (remaining from 100% after allocating to other expense categories)
   const availablePercentage = React.useMemo(() => {
-      // Ensure precision and handle potential floating point issues
-      return Math.max(0, parseFloat((100 - totalAllocatedPercentage).toFixed(1)));
-  }, [totalAllocatedPercentage]);
+      const currentBudgetPercentage = existingBudget && existingBudget.category === categoryValue ? (existingBudget.percentage ?? 0) : 0;
+      const otherAllocated = totalAllocatedPercentage - currentBudgetPercentage;
+      return Math.max(0, parseFloat((100 - otherAllocated).toFixed(1)));
+  }, [totalAllocatedPercentage, existingBudget, categoryValue]);
 
-  // Calculate monetary value based on percentage and income
   const calculatedLimit = React.useMemo(() => {
       if (monthlyIncome && monthlyIncome > 0 && percentageValue !== undefined && percentageValue > 0) {
           return parseFloat(((percentageValue / 100) * monthlyIncome).toFixed(2));
@@ -107,33 +111,38 @@ export function AddBudgetDialog({
 
 
   const onSubmit = (values: BudgetFormValues) => {
-    // Validate against available percentage dynamically
     if (values.percentage > availablePercentage) {
-         setError("percentage", { message: `Allocation exceeds 100% of income. Max available: ${availablePercentage.toFixed(1)}%` });
+         setError("percentage", { message: `Allocation exceeds 100% of income. Max available for this budget: ${availablePercentage.toFixed(1)}%` });
          return;
     }
 
-    const finalValues = {
+    const budgetToSave: Budget = { // Constructing full Budget object
+        id: values.id || `b-${values.category}-${Date.now().toString()}`,
         category: values.category,
         percentage: values.percentage,
-        // limit and spent are calculated later when saving AppData
+        limit: calculatedLimit, // This will be recalculated in page.tsx based on final income anyway
+        spent: existingBudget?.spent ?? 0, // Preserve spent if editing, or 0 for new
+        month: existingBudget?.month ?? formatCurrency(new Date(), 'yyyy-MM'), // Preserve month or use current
     };
-    onAddBudget(finalValues);
+    onSaveBudget(budgetToSave);
     onOpenChange(false);
   };
 
-  // Filter out categories that already have a budget set for the current period
   const categoriesForSelect = React.useMemo(() => {
+    if (existingBudget) { // If editing, only show the current budget's category
+        const currentCat = availableSpendingCategories.find(cat => cat.id === existingBudget.category);
+        return currentCat ? [currentCat] : [];
+    }
     return availableSpendingCategories.filter(cat => !existingBudgetCategoryIds.includes(cat.id));
-  }, [availableSpendingCategories, existingBudgetCategoryIds]);
+  }, [availableSpendingCategories, existingBudgetCategoryIds, existingBudget]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Set Category Budget</DialogTitle>
+          <DialogTitle>{existingBudget ? "Edit Budget" : "Set Category Budget"}</DialogTitle>
           <DialogDescription>
-             Allocate a percentage of your monthly income ({formatCurrency(monthlyIncome ?? 0)}) to this expense category. The monetary limit will be calculated automatically.
+             {existingBudget ? "Update the percentage for this budget." : `Allocate a percentage of your monthly income (${formatCurrency(monthlyIncome ?? 0)}) to this expense category.`} The monetary limit will be calculated.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -144,9 +153,13 @@ export function AddBudgetDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={!!existingBudget} // Disable category change when editing
+                  >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger disabled={!!existingBudget}>
                         <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
                     </FormControl>
@@ -165,11 +178,12 @@ export function AddBudgetDialog({
                         })
                       ) : (
                         <SelectItem value="no-categories" disabled>
-                          All categories have budgets or none available
+                          {existingBudget ? "Category cannot be changed" : "All categories have budgets or none available"}
                         </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
+                  {existingBudget && <FormDescription className="text-xs">Category cannot be changed when editing.</FormDescription>}
                   <FormMessage />
                 </FormItem>
               )}
@@ -186,14 +200,12 @@ export function AddBudgetDialog({
                             type="number"
                             placeholder={`e.g., 15 (Max ${availablePercentage.toFixed(1)}% available)`}
                             {...field}
-                            step="0.1" // Allow decimals
-                            max={availablePercentage} // Set max based on availability
-                            min="0.1" // Minimum percentage
-                            // Convert undefined to empty string for controlled input
+                            step="0.1"
+                            max={availablePercentage > 0 ? availablePercentage : 100} // Ensure max is at least 0.1 if available is 0
+                            min="0.1"
                             value={field.value === undefined ? '' : field.value}
                             onChange={e => {
                                 const val = e.target.value;
-                                // Allow empty string or parse as number
                                 field.onChange(val === '' ? undefined : parseFloat(val));
                             }}
                             disabled={!monthlyIncome || monthlyIncome <= 0} />
@@ -212,7 +224,7 @@ export function AddBudgetDialog({
                     ) : null }
                      <FormMessage />
                       <p className="text-xs text-muted-foreground pt-1">
-                          Available to allocate: {availablePercentage.toFixed(1)}%
+                          Total available to allocate across all budgets: {availablePercentage.toFixed(1)}%
                       </p>
                     </FormItem>
                 )}
@@ -222,10 +234,11 @@ export function AddBudgetDialog({
         </Form>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button type="submit" form="add-budget-form" disabled={!monthlyIncome || monthlyIncome <= 0}>Save Budget</Button>
+          <Button type="submit" form="add-budget-form" disabled={!monthlyIncome || monthlyIncome <= 0}>
+            {existingBudget ? "Save Changes" : "Set Budget"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

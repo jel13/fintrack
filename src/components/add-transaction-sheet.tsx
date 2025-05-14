@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -7,8 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Paperclip, XCircle } from "lucide-react"; // Added Paperclip, XCircle
-import { ScrollArea } from "@/components/ui/scroll-area"; 
+import { Calendar as CalendarIcon, Paperclip, XCircle } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -50,13 +49,14 @@ import type { Transaction, Category } from "@/types";
 import { getCategoryIconComponent } from '@/components/category-icon';
 
 const formSchema = z.object({
+  id: z.string().optional(), // ID is optional, present if editing
   type: z.enum(["income", "expense"]),
   amount: z.coerce.number({ invalid_type_error: "Amount must be a number", required_error: "Amount is required" })
     .positive("Amount must be positive"),
-  category: z.string().min(1, "Category is required"), 
+  category: z.string().min(1, "Category is required"),
   date: z.date(),
   description: z.string().max(100, "Description max 100 chars").optional(),
-  receiptDataUrl: z.string().optional(), // Added for receipt
+  receiptDataUrl: z.string().optional(),
 });
 
 type TransactionFormValues = z.infer<typeof formSchema>;
@@ -64,30 +64,25 @@ type TransactionFormValues = z.infer<typeof formSchema>;
 interface AddTransactionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  onSaveTransaction: (transaction: Transaction) => void; // Changed prop name and type
   categoriesForSelect: Category[];
-  canAddExpense: boolean; 
-  currentMonthBudgetCategoryIds: string[]; // IDs of categories with budgets for the current month
+  canAddExpense: boolean;
+  currentMonthBudgetCategoryIds: string[];
+  existingTransaction?: Transaction | null; // To pre-fill form for editing
 }
 
 export function AddTransactionSheet({
     open,
     onOpenChange,
-    onAddTransaction,
+    onSaveTransaction,
     categoriesForSelect,
     canAddExpense,
     currentMonthBudgetCategoryIds,
+    existingTransaction,
 }: AddTransactionSheetProps) {
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      type: canAddExpense ? "expense" : "income", 
-      amount: undefined, 
-      category: "",
-      date: new Date(),
-      description: "",
-      receiptDataUrl: undefined,
-    },
+    // Default values set by useEffect below
   });
 
   const [receiptPreview, setReceiptPreview] = React.useState<string | null>(null);
@@ -95,20 +90,34 @@ export function AddTransactionSheet({
 
   React.useEffect(() => {
      if (open) {
-         form.reset({
-             type: canAddExpense ? "expense" : "income",
-             amount: undefined,
-             category: "",
-             date: new Date(),
-             description: "",
-             receiptDataUrl: undefined,
-         });
-         setReceiptPreview(null);
+         if (existingTransaction) {
+             form.reset({
+                 id: existingTransaction.id,
+                 type: existingTransaction.type,
+                 amount: existingTransaction.amount,
+                 category: existingTransaction.category,
+                 date: new Date(existingTransaction.date), // Ensure it's a Date object
+                 description: existingTransaction.description || "",
+                 receiptDataUrl: existingTransaction.receiptDataUrl || undefined,
+             });
+             setReceiptPreview(existingTransaction.receiptDataUrl || null);
+         } else {
+             form.reset({
+                 id: undefined,
+                 type: canAddExpense ? "expense" : "income",
+                 amount: undefined,
+                 category: "",
+                 date: new Date(),
+                 description: "",
+                 receiptDataUrl: undefined,
+             });
+             setReceiptPreview(null);
+         }
          if (fileInputRef.current) {
             fileInputRef.current.value = "";
          }
      }
-  }, [open, canAddExpense, form]);
+  }, [open, existingTransaction, canAddExpense, form]);
 
 
   const transactionType = form.watch("type");
@@ -139,50 +148,53 @@ export function AddTransactionSheet({
   };
 
   const onSubmit = (values: TransactionFormValues) => {
-    onAddTransaction({
+    const transactionData: Transaction = {
         ...values,
-        category: values.category, 
-        amount: values.amount, 
-        date: values.date,
-        description: values.description,
-        type: values.type,
-        receiptDataUrl: values.receiptDataUrl,
-    });
-    onOpenChange(false); 
+        id: values.id || `tx-${Date.now().toString()}`, // Use existing ID or generate new
+        amount: values.amount, // Ensure amount is a number
+        description: values.description || undefined,
+        receiptDataUrl: values.receiptDataUrl || undefined,
+    };
+    onSaveTransaction(transactionData);
+    onOpenChange(false);
   };
 
   const filteredCategories = React.useMemo(() => {
     return categoriesForSelect.filter(cat => {
         if (transactionType === 'income') {
             return cat.isIncomeSource === true;
-        } else { 
-            // For expenses, category must not be an income source, not 'savings', and must have a budget for the current month.
-            return cat.isIncomeSource !== true && cat.id !== 'savings' && currentMonthBudgetCategoryIds.includes(cat.id);
+        } else {
+            return cat.isIncomeSource !== true && cat.id !== 'savings' && (existingTransaction?.category === cat.id || currentMonthBudgetCategoryIds.includes(cat.id));
         }
     }).sort((a, b) => a.label.localeCompare(b.label));
-  }, [transactionType, categoriesForSelect, currentMonthBudgetCategoryIds]);
+  }, [transactionType, categoriesForSelect, currentMonthBudgetCategoryIds, existingTransaction]);
 
   React.useEffect(() => {
      const currentCategory = form.getValues('category');
-     if (!currentCategory) return; 
+     if (!currentCategory && !existingTransaction) return;
 
-     const isValidForType = filteredCategories.some(cat => cat.id === currentCategory);
-     if (!isValidForType) {
-         form.setValue('category', ''); 
+
+     if (existingTransaction && existingTransaction.type !== transactionType) {
+         form.setValue('category', '');
+     } else {
+        const isValidForType = filteredCategories.some(cat => cat.id === currentCategory);
+        if (!isValidForType && !existingTransaction) { // Only reset if not editing and current category is invalid
+            form.setValue('category', '');
+        }
      }
-  }, [transactionType, filteredCategories, form]);
+  }, [transactionType, filteredCategories, form, existingTransaction]);
 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-lg p-0 h-[90vh] flex flex-col">
         <SheetHeader className="p-4 pb-2 border-b">
-          <SheetTitle>Add Transaction</SheetTitle>
+          <SheetTitle>{existingTransaction ? "Edit Transaction" : "Add Transaction"}</SheetTitle>
           <SheetDescription>
-            Log a new income or expense. Description and receipt are optional.
+            {existingTransaction ? "Update the details of this transaction." : "Log a new income or expense. Description and receipt are optional."}
           </SheetDescription>
         </SheetHeader>
-         <ScrollArea className="flex-grow overflow-y-auto"> 
+         <ScrollArea className="flex-grow overflow-y-auto">
           <Form {...form}>
             <form id="add-transaction-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4">
               <FormField
@@ -194,19 +206,19 @@ export function AddTransactionSheet({
                     <FormControl>
                       <RadioGroup
                         onValueChange={(value) => {
-                            if (value === 'expense' && !canAddExpense) {
-                                return; 
+                            if (value === 'expense' && !canAddExpense && !existingTransaction) { // Allow changing type if editing
+                                return;
                             }
                             field.onChange(value);
                         }}
-                        value={field.value} 
+                        value={field.value}
                         className="flex space-x-4"
                       >
                         <FormItem className="flex items-center space-x-2 space-y-0">
                           <FormControl>
-                            <RadioGroupItem value="expense" id="expense" disabled={!canAddExpense} />
+                            <RadioGroupItem value="expense" id="expense" disabled={!canAddExpense && !existingTransaction} />
                           </FormControl>
-                          <FormLabel htmlFor="expense" className={cn("font-normal cursor-pointer", !canAddExpense && "text-muted-foreground/50 cursor-not-allowed")}>Expense</FormLabel>
+                          <FormLabel htmlFor="expense" className={cn("font-normal cursor-pointer", !canAddExpense && !existingTransaction && "text-muted-foreground/50 cursor-not-allowed")}>Expense</FormLabel>
                         </FormItem>
                         <FormItem className="flex items-center space-x-2 space-y-0">
                           <FormControl>
@@ -216,7 +228,7 @@ export function AddTransactionSheet({
                         </FormItem>
                       </RadioGroup>
                     </FormControl>
-                     {!canAddExpense && transactionType === 'expense' && <FormDescription className="text-xs text-destructive">Set expense budgets first to enable logging expenses for budgeted categories.</FormDescription>}
+                     {!canAddExpense && transactionType === 'expense' && !existingTransaction && <FormDescription className="text-xs text-destructive">Set expense budgets first to enable logging expenses for budgeted categories.</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -255,8 +267,8 @@ export function AddTransactionSheet({
                     <FormLabel>Category</FormLabel>
                      <Select onValueChange={field.onChange} value={field.value} >
                       <FormControl>
-                        <SelectTrigger disabled={transactionType === 'expense' && filteredCategories.length === 0}>
-                          <SelectValue placeholder={transactionType === 'expense' && filteredCategories.length === 0 ? 'No budgeted categories' : `Select ${transactionType} category`} />
+                        <SelectTrigger disabled={transactionType === 'expense' && filteredCategories.length === 0 && !existingTransaction}>
+                          <SelectValue placeholder={transactionType === 'expense' && filteredCategories.length === 0 && !existingTransaction ? 'No budgeted categories' : `Select ${transactionType} category`} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -302,7 +314,7 @@ export function AddTransactionSheet({
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {field.value ? (
-                              format(field.value, "PPP") 
+                              format(field.value, "PPP")
                             ) : (
                               <span>Pick a date</span>
                             )}
@@ -313,9 +325,9 @@ export function AddTransactionSheet({
                         <Calendar
                           mode="single"
                           selected={field.value}
-                          onSelect={(date) => field.onChange(date ?? new Date())} 
+                          onSelect={(date) => field.onChange(date ?? new Date())}
                           initialFocus
-                          disabled={(date) => date > new Date()} 
+                          disabled={(date) => date > new Date()}
                         />
                       </PopoverContent>
                     </Popover>
@@ -334,19 +346,19 @@ export function AddTransactionSheet({
                         <Textarea
                             placeholder="Add a note (e.g., Lunch with colleagues)"
                             {...field}
-                            rows={2} 
-                            className="resize-none" 
+                            rows={2}
+                            className="resize-none"
                          />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-            
+
                 <FormField
                     control={form.control}
                     name="receiptDataUrl"
-                    render={() => ( 
+                    render={() => (
                         <FormItem>
                             <FormLabel>Receipt (Optional)</FormLabel>
                             <FormControl>
@@ -386,15 +398,14 @@ export function AddTransactionSheet({
 
             </form>
           </Form>
-         </ScrollArea> 
+         </ScrollArea>
         <SheetFooter className="mt-auto p-4 pt-2 border-t bg-background sticky bottom-0">
             <SheetClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => { onOpenChange(false); }}>Cancel</Button>
             </SheetClose>
-            <Button type="submit" form="add-transaction-form">Save Transaction</Button>
+            <Button type="submit" form="add-transaction-form">{existingTransaction ? "Save Changes" : "Add Transaction"}</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
   );
 }
-
