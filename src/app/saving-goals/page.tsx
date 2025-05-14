@@ -168,10 +168,10 @@ export default function SavingGoalsPage() {
                              Amount leftover from income after expense budgets. Allocate percentages to specific goals below.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-3 pt-0 text-sm text-accent grid grid-cols-2 gap-x-4 gap-y-1">
+                    <CardContent className="p-3 pt-0 text-sm text-accent grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
                          {isLoaded ? (
                             <>
-                            <div className="flex justify-between col-span-2 border-b pb-1 mb-1 border-accent/20">
+                            <div className="flex justify-between col-span-1 sm:col-span-2 border-b pb-1 mb-1 border-accent/20">
                                 <span>Total Savings Budget:</span>
                                 <span className="font-semibold">{formatCurrency(totalSavingsBudgetLimit)}</span>
                             </div>
@@ -191,9 +191,9 @@ export default function SavingGoalsPage() {
                                 <span>Unallocated (₱):</span>
                                 <span className="font-semibold">{formatCurrency(totalSavingsBudgetLimit * (1 - totalAllocatedPercentageOfSavings / 100))}</span>
                             </div>
-                            {totalAllocatedPercentageOfSavings > 100.05 && <p className="text-xs text-destructive font-semibold mt-1 col-span-2">Warning: Total goal allocation exceeds 100% of savings budget!</p>}
+                            {totalAllocatedPercentageOfSavings > 100.05 && <p className="text-xs text-destructive font-semibold mt-1 col-span-1 sm:col-span-2">Warning: Total goal allocation exceeds 100% of savings budget!</p>}
                             {totalSavingsBudgetLimit <= 0 && (
-                                <Alert variant="default" className="col-span-2 mt-2 p-2 bg-accent/10 border-accent/30">
+                                <Alert variant="default" className="col-span-1 sm:col-span-2 mt-2 p-2 bg-accent/10 border-accent/30">
                                      <PiggyBank className="h-4 w-4 text-accent/80" />
                                      <AlertDescription className="text-xs text-accent/80">
                                         Your current savings budget is ₱0. Reduce expense budgets on the Budgets tab to increase available savings for goals.
@@ -202,7 +202,7 @@ export default function SavingGoalsPage() {
                              )}
                             </>
                          ) : (
-                             <div className="col-span-2 space-y-1 py-2">
+                             <div className="col-span-1 sm:col-span-2 space-y-1 py-2">
                                 <div className="h-4 bg-muted rounded w-3/4 animate-pulse"></div>
                                 <div className="h-4 bg-muted rounded w-1/2 animate-pulse"></div>
                              </div>
