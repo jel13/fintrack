@@ -684,7 +684,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 <CardContent>
                     <Link href="/learn/budgeting-guide" passHref legacyBehavior>
                         <Button asChild variant="link" className="p-0 h-auto text-base">
-                           <span className="flex items-center justify-center">How to Budget Guide</span>
+                           <a>How to Budget Guide</a>
                         </Button>
                     </Link>
                 </CardContent>
@@ -741,11 +741,6 @@ const openEditBudgetDialog = (budgetId: string) => {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Link href="/categories" passHref legacyBehavior>
-                     <Button asChild variant="outline" size="sm">
-                       <a><FolderCog className="h-4 w-4" /> Manage Categories</a>
-                     </Button>
-                 </Link>
                  <Link href="/saving-goals" passHref legacyBehavior>
                       <Button asChild variant="outline" size="sm">
                         <a><PiggyBank className="h-4 w-4" /> Manage Goals</a>
