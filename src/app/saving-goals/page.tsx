@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank, Info, Target } from "lucide-react";
+import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank, Info, Target, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,6 +24,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -233,38 +240,52 @@ export default function SavingGoalsPage() {
                                                 style={{ width: `${progressValue}%` }}
                                              />
                                             <div className="relative z-10">
-                                                <CardHeader className="flex flex-row items-start justify-between pb-2 pr-12">
+                                                <CardHeader className="flex flex-row items-start justify-between pb-2 pr-2"> {/* Reduced pr */}
                                                     <div>
                                                         <CardTitle className="text-base">{goal.name}</CardTitle>
                                                         {goal.description && <CardDescription className="text-xs mt-1">{goal.description}</CardDescription>}
                                                     </div>
-                                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/goal:opacity-100 focus-within:opacity-100 transition-opacity">
-                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(goal)} aria-label={`Edit ${goal.name}`}>
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                        <AlertDialog onOpenChange={(open) => !open && (document.activeElement as HTMLElement)?.blur()}>
-                                                            <AlertDialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => e.stopPropagation()} aria-label={`Delete ${goal.name}`}>
-                                                                    <Trash2 className="h-4 w-4" />
+                                                     <div className="absolute top-1 right-1 flex-shrink-0">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 group-hover/goal:opacity-100 focus:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                                                    <MoreVertical className="h-4 w-4" />
+                                                                    <span className="sr-only">Goal Actions</span>
                                                                 </Button>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    This action cannot be undone. This will permanently delete the "{goal.name}" saving goal and its progress.
-                                                                </AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction
-                                                                    onClick={() => handleDeleteGoal(goal.id)}
-                                                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                                                    Delete Goal
-                                                                </AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                                <DropdownMenuItem onClick={() => openEditDialog(goal)}>
+                                                                    <Edit className="mr-2 h-4 w-4" /> Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <AlertDialog onOpenChange={(open) => !open && (document.activeElement as HTMLElement)?.blur()}>
+                                                                    <AlertDialogTrigger asChild>
+                                                                        <DropdownMenuItem
+                                                                            onSelect={(event) => event.preventDefault()}
+                                                                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                                                        >
+                                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                        </DropdownMenuItem>
+                                                                    </AlertDialogTrigger>
+                                                                    <AlertDialogContent>
+                                                                        <AlertDialogHeader>
+                                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                        <AlertDialogDescription>
+                                                                            This action cannot be undone. This will permanently delete the "{goal.name}" saving goal and its progress.
+                                                                        </AlertDialogDescription>
+                                                                        </AlertDialogHeader>
+                                                                        <AlertDialogFooter>
+                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                        <AlertDialogAction
+                                                                            onClick={() => handleDeleteGoal(goal.id)}
+                                                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                                            Delete Goal
+                                                                        </AlertDialogAction>
+                                                                        </AlertDialogFooter>
+                                                                    </AlertDialogContent>
+                                                                </AlertDialog>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="pt-0">

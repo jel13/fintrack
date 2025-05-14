@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Briefcase, TrendingDown, FileText, FolderOpen, Folder } from "lucide-react"; // Changed File to FileText for more distinction
+import { ArrowLeft, PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Briefcase, TrendingDown, FileText, FolderOpen, Folder, MoreVertical } from "lucide-react"; // Changed File to FileText for more distinction
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AppData, Category } from "@/types";
@@ -21,6 +21,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -204,9 +211,8 @@ export default function CategoriesPage() {
                             level > 0 ? "border-l-4 border-muted-foreground/20" : "border",
                             isExpanded ? "bg-secondary/20 shadow-inner" : ""
                         )}
-                        onClick={() => hasChildren && toggleExpand(cat.id)}
                     >
-                        <div className="flex items-center gap-2.5 flex-1 min-w-0"> 
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0" onClick={() => hasChildren && toggleExpand(cat.id)}> 
                             <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center"> 
                                 {hasChildren ? (
                                     <Button variant="ghost" size="icon" className="h-7 w-7 opacity-70 group-hover/cat:opacity-100" onClick={(e) => { e.stopPropagation(); toggleExpand(cat.id); }}>
@@ -222,45 +228,61 @@ export default function CategoriesPage() {
                             <Icon className={cn("h-4 w-4 flex-shrink-0", isIncome ? "text-accent" : "text-primary")} />
                             <span className="text-sm font-medium truncate flex-grow">{cat.label}</span>
 
-                            <div className="flex gap-1.5 ml-auto flex-shrink-0 mr-12"> 
+                            <div className="flex gap-1.5 ml-auto flex-shrink-0 mr-2"> 
                                  {isIncome && <Badge variant="outline" className="text-xs h-5 border-accent/70 text-accent bg-accent/10">Income</Badge>}
                                  {cat.isDefault && <Badge variant="secondary" className="text-xs h-5 bg-muted/70 text-muted-foreground">Default</Badge>}
                             </div>
                         </div>
 
-                        <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex gap-0.5 opacity-0 group-hover/cat:opacity-100 focus-within:opacity-100 transition-opacity ml-1 flex-shrink-0">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEditDialog(cat); }} aria-label={`Edit ${cat.label}`}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                            {cat.isDeletable !== false ? (
-                                 <AlertDialog onOpenChange={(open) => !open && (document.activeElement as HTMLElement)?.blur()}>
-                                    <AlertDialogTrigger asChild>
-                                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => e.stopPropagation()} aria-label={`Delete ${cat.label}`}>
-                                            <Trash2 className="h-4 w-4" />
-                                         </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Deleting "{cat.label}" cannot be undone. Ensure it has no sub-categories and is not used in transactions or budgets.
-                                        </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            onClick={() => handleDeleteCategory(cat.id)}
-                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                            Delete Category
-                                        </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            ) : (
-                                 <span className="h-7 w-7 flex items-center justify-center text-muted-foreground/50 cursor-not-allowed" title={`Cannot delete ${cat.isDefault ? 'default' : ''} category "${cat.label}"`}>
-                                      <Trash2 className="h-4 w-4" />
-                                 </span>
-                            )}
+                        <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex-shrink-0">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 group-hover/cat:opacity-100 focus:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                        <MoreVertical className="h-4 w-4" />
+                                        <span className="sr-only">Category Actions</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                    <DropdownMenuItem onClick={() => openEditDialog(cat)}>
+                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                    </DropdownMenuItem>
+                                    {cat.isDeletable !== false ? (
+                                        <>
+                                            <DropdownMenuSeparator />
+                                            <AlertDialog onOpenChange={(open) => !open && (document.activeElement as HTMLElement)?.blur()}>
+                                                <AlertDialogTrigger asChild>
+                                                    <DropdownMenuItem 
+                                                        onSelect={(event) => event.preventDefault()}
+                                                        className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                                    >
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                    </DropdownMenuItem>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Deleting "{cat.label}" cannot be undone. Ensure it has no sub-categories and is not used in transactions or budgets.
+                                                    </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        onClick={() => handleDeleteCategory(cat.id)}
+                                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                        Delete Category
+                                                    </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </>
+                                    ) : (
+                                        <DropdownMenuItem disabled>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Cannot Delete
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                    </div>
                    {hasChildren && isExpanded && (
