@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, LayoutDashboard, List, Target, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, FolderCog, Edit, Trash2 } from "lucide-react"; // Added Edit, Trash2
+import { PlusCircle, LayoutDashboard, List, Target, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, FolderCog, Edit, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -91,12 +91,13 @@ export default function Home() {
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
 
-    const effectiveIncome = monthlyIncome ?? 0;
+    const effectiveIncome = monthlyIncome ?? 0; // Use the set monthlyIncome for "budgeted income"
     const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    const actualBalance = incomeFromTransactionsThisMonth - expenses;
+    const actualBalance = incomeFromTransactionsThisMonth - expenses; // Balance is based on actual transactions
 
     return { income: effectiveIncome, expenses, balance: actualBalance, incomeTransactions: incomeFromTransactionsThisMonth };
   }, [transactions, monthlyIncome, currentMonth, isLoaded]);
+
 
   const incomeCategories = React.useMemo(() => categories.filter(cat => cat.isIncomeSource), [categories]);
   const expenseCategories = React.useMemo(() => categories.filter(cat => !cat.isIncomeSource && cat.id !== 'savings'), [categories]);
@@ -155,12 +156,12 @@ export default function Home() {
                     ...currentSavingsBudget,
                     limit: leftoverForSavings,
                     spent: savingsSpent,
-                    percentage: undefined
+                    percentage: undefined // Savings percentage is not user-set
                 };
                 budgetsChanged = true;
             }
 
-        } else if (currentSetMonthlyIncome > 0) {
+        } else if (currentSetMonthlyIncome > 0) { // Only add savings budget if income is set
              const savingsSpent = prevData.transactions
                  .filter(t => t.type === 'expense' && t.category === 'savings' && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
@@ -204,43 +205,53 @@ export default function Home() {
       }
     }
 
+    let toastTitle = "";
+    let toastMessage = "";
+
     setAppData(prev => {
         let updatedTransactions;
         const existingIndex = prev.transactions.findIndex(t => t.id === transactionData.id);
-        let updatedMonthlyIncome = prev.monthlyIncome;
-        let toastMessage = "";
+        let updatedMonthlyIncome = prev.monthlyIncome; // Keep the user-set monthlyIncome for budgeting
 
         if (existingIndex > -1) { // Update
             const oldTransaction = prev.transactions[existingIndex];
             updatedTransactions = [...prev.transactions];
             updatedTransactions[existingIndex] = transactionData;
-
-            // Adjust monthlyIncome if an income transaction amount changed
-            if (oldTransaction.type === 'income' && transactionData.type === 'income') {
-                updatedMonthlyIncome = (prev.monthlyIncome ?? 0) - oldTransaction.amount + transactionData.amount;
-            } else if (oldTransaction.type === 'income' && transactionData.type === 'expense') {
-                 updatedMonthlyIncome = (prev.monthlyIncome ?? 0) - oldTransaction.amount;
-            } else if (oldTransaction.type === 'expense' && transactionData.type === 'income') {
-                 updatedMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
-            }
+            toastTitle = "Transaction Updated";
             toastMessage = `Transaction for ${getCategoryById(transactionData.category)?.label ?? transactionData.category} updated.`;
-            toast({ title: "Transaction Updated", description: toastMessage});
-
         } else { // Add new
             updatedTransactions = [transactionData, ...prev.transactions];
-            if (transactionData.type === 'income') {
+            toastTitle = "Transaction Added";
+            toastMessage = `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} logged for ${getCategoryById(transactionData.category)?.label ?? transactionData.category}.`;
+        }
+        
+        // Recalculate total actual income from transactions if an income transaction changes or is added/removed
+        // This part updates the `monthlyIncome` state which is used by `monthlySummary.income` for Budgeted Income display
+        if (transactionData.type === 'income') {
+            if (existingIndex > -1) { // If updating an existing income transaction
+                const oldAmount = prev.transactions[existingIndex].amount;
+                updatedMonthlyIncome = (prev.monthlyIncome ?? 0) - oldAmount + transactionData.amount;
+            } else { // If adding a new income transaction
                 updatedMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
             }
-            toastMessage = `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} logged for ${getCategoryById(transactionData.category)?.label ?? transactionData.category}.`;
-            toast({ title: "Transaction Added", description: toastMessage});
+        } else if (existingIndex > -1 && prev.transactions[existingIndex].type === 'income' && transactionData.type === 'expense') {
+             // Changed from income to expense
+             updatedMonthlyIncome = (prev.monthlyIncome ?? 0) - prev.transactions[existingIndex].amount;
         }
+
 
         return {
             ...prev,
             transactions: updatedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime()),
-            monthlyIncome: updatedMonthlyIncome,
+            monthlyIncome: updatedMonthlyIncome, 
         };
     });
+
+    if (toastTitle) {
+        requestAnimationFrame(() => {
+            toast({ title: toastTitle, description: toastMessage });
+        });
+    }
     setEditingTransaction(null);
   };
 
@@ -251,6 +262,7 @@ export default function Home() {
     setAppData(prev => {
         const updatedTransactions = prev.transactions.filter(t => t.id !== transactionId);
         let updatedMonthlyIncome = prev.monthlyIncome;
+        // If an income transaction is deleted, reduce the monthlyIncome
         if (transaction.type === 'income') {
             updatedMonthlyIncome = (prev.monthlyIncome ?? 0) - transaction.amount;
         }
@@ -294,6 +306,9 @@ export default function Home() {
         month: budgetData.month || currentMonth,
     };
 
+    let toastInfo: { title: string; description: string; variant?: "default" | "destructive"; duration?: number } | null = null;
+    let needsReminderInfo: { percentage: number } | null = null;
+
     setAppData(prev => {
         let updatedBudgets;
         const existingBudgetIndex = prev.budgets.findIndex(b => b.id === finalBudgetData.id);
@@ -301,31 +316,10 @@ export default function Home() {
         if (existingBudgetIndex > -1) { // Update
             updatedBudgets = [...prev.budgets];
             updatedBudgets[existingBudgetIndex] = finalBudgetData;
-            toast({ title: "Budget Updated", description: `Budget for ${getCategoryById(finalBudgetData.category)?.label ?? finalBudgetData.category} updated to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` });
+            toastInfo = { title: "Budget Updated", description: `Budget for ${getCategoryById(finalBudgetData.category)?.label ?? finalBudgetData.category} updated to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` };
         } else { // Add
             updatedBudgets = [...prev.budgets, finalBudgetData];
-            toast({ title: "Budget Set", description: `Budget for ${getCategoryById(finalBudgetData.category)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` });
-
-            const needsCategoryIds = prev.categories.filter(c =>
-                !c.isIncomeSource && (
-                c.label.toLowerCase().includes('housing') ||
-                c.label.toLowerCase().includes('groceries') ||
-                c.label.toLowerCase().includes('transport') ||
-                c.label.toLowerCase().includes('bill'))
-            ).map(c => c.id);
-
-            const currentTotalNeedsPercentage = updatedBudgets
-                .filter(b => needsCategoryIds.includes(b.category))
-                .reduce((sum, b) => sum + (b.percentage ?? 0), 0);
-
-            if (currentTotalNeedsPercentage > 50) {
-                 toast({
-                    title: "Budget Reminder",
-                    description: `Your 'Needs' categories now represent ${currentTotalNeedsPercentage.toFixed(1)}% of your income, exceeding the recommended 50%. Consider reviewing your allocations.`,
-                    variant: "default",
-                    duration: 7000,
-                 });
-            }
+             toastInfo = { title: "Budget Set", description: `Budget for ${getCategoryById(finalBudgetData.category)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` };
         }
 
         updatedBudgets.sort((a, b) => {
@@ -335,9 +329,43 @@ export default function Home() {
              const labelB = getCategoryById(b.category)?.label ?? b.category;
              return labelA.localeCompare(labelB);
          });
+        
+        // Check for Needs reminder after budgets are updated
+        const needsCategoryIds = prev.categories.filter(c =>
+            !c.isIncomeSource && (
+            c.label.toLowerCase().includes('housing') ||
+            c.label.toLowerCase().includes('groceries') ||
+            c.label.toLowerCase().includes('transport') ||
+            c.label.toLowerCase().includes('bill'))
+        ).map(c => c.id);
+
+        const currentTotalNeedsPercentage = updatedBudgets
+            .filter(b => needsCategoryIds.includes(b.category) && b.month === currentMonth)
+            .reduce((sum, b) => sum + (b.percentage ?? 0), 0);
+
+        if (currentTotalNeedsPercentage > 50) {
+            needsReminderInfo = { percentage: currentTotalNeedsPercentage };
+        }
 
         return { ...prev, budgets: updatedBudgets };
     });
+
+    if (toastInfo) {
+        requestAnimationFrame(() => {
+            toast(toastInfo as any); // Type assertion needed due to conditional properties
+        });
+    }
+    if (needsReminderInfo) {
+        requestAnimationFrame(() => {
+            toast({
+                title: "Budget Reminder",
+                description: `Your 'Needs' categories now represent ${needsReminderInfo?.percentage.toFixed(1)}% of your income, exceeding the recommended 50%. Consider reviewing your allocations.`,
+                variant: "default",
+                duration: 7000,
+            });
+        });
+    }
+
     setEditingBudget(null);
 };
 
@@ -388,15 +416,17 @@ const openEditBudgetDialog = (budgetId: string) => {
          return;
     }
 
-     const incomeTransaction: Omit<Transaction, 'id'> = {
+     // This transaction is just to log the act of setting/adjusting income.
+     // The actual `monthlyIncome` state will be updated directly.
+     const incomeAdjustmentTransaction: Omit<Transaction, 'id'> = {
          type: 'income',
          amount: incomeValue,
-         category: selectedIncomeCategory,
+         category: selectedIncomeCategory, // This is the source of the new income portion
          date: new Date(),
-         description: `Initial monthly income set via Home screen`,
+         description: `Monthly income adjusted. Added from source: ${getCategoryById(selectedIncomeCategory)?.label}.`,
          receiptDataUrl: undefined,
      };
-     const transactionWithId: Transaction = { ...incomeTransaction, id: `initial-inc-${Date.now()}` };
+     const transactionWithId: Transaction = { ...incomeAdjustmentTransaction, id: `income-adj-${Date.now()}` };
 
 
      setAppData(prev => {
@@ -406,14 +436,14 @@ const openEditBudgetDialog = (budgetId: string) => {
 
             return {
                 ...prev,
-                monthlyIncome: newTotalMonthlyIncome,
+                monthlyIncome: newTotalMonthlyIncome, // This updates the "Budgeted Income"
                 transactions: updatedTransactions
             };
        });
 
       setTempIncome('');
       setSelectedIncomeCategory('');
-      toast({ title: "Income Updated", description: `Monthly budgeted income set to ${formatCurrency(appData.monthlyIncome ? appData.monthlyIncome + incomeValue : incomeValue)}. Budgets using percentages will update.` });
+      toast({ title: "Income Updated", description: `Monthly budgeted income increased by ${formatCurrency(incomeValue)}. Budgets using percentages will update their monetary limits.` });
   };
 
    const getCategoryById = (id: string): Category | undefined => {
