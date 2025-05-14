@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Info } from "lucide-react";
+import { format } from "date-fns"; // Import format
 
 import { Button } from "@/components/ui/button";
 import {
@@ -54,12 +55,12 @@ type BudgetFormValues = z.infer<typeof formSchema>;
 interface AddBudgetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaveBudget: (budget: Budget) => void; // Changed to accept full Budget for save
+  onSaveBudget: (budget: Budget) => void;
   existingBudgetCategoryIds: string[];
   availableSpendingCategories: Category[];
   monthlyIncome: number | null;
   totalAllocatedPercentage: number;
-  existingBudget?: Budget | null; // To pre-fill for editing
+  existingBudget?: Budget | null;
 }
 
 export function AddBudgetDialog({
@@ -74,7 +75,6 @@ export function AddBudgetDialog({
 }: AddBudgetDialogProps) {
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(formSchema),
-    // Default values handled by useEffect
   });
 
   React.useEffect(() => {
@@ -97,10 +97,10 @@ export function AddBudgetDialog({
   const categoryValue = watch('category');
 
   const availablePercentage = React.useMemo(() => {
-      const currentBudgetPercentage = existingBudget && existingBudget.category === categoryValue ? (existingBudget.percentage ?? 0) : 0;
-      const otherAllocated = totalAllocatedPercentage - currentBudgetPercentage;
-      return Math.max(0, parseFloat((100 - otherAllocated).toFixed(1)));
-  }, [totalAllocatedPercentage, existingBudget, categoryValue]);
+      // totalAllocatedPercentage is the sum of percentages of *other* budgets
+      // If editing, the current budget's old percentage is already excluded from totalAllocatedPercentage
+      return Math.max(0, parseFloat((100 - totalAllocatedPercentage).toFixed(1)));
+  }, [totalAllocatedPercentage]);
 
   const calculatedLimit = React.useMemo(() => {
       if (monthlyIncome && monthlyIncome > 0 && percentageValue !== undefined && percentageValue > 0) {
@@ -111,25 +111,25 @@ export function AddBudgetDialog({
 
 
   const onSubmit = (values: BudgetFormValues) => {
-    if (values.percentage > availablePercentage) {
+    if (values.percentage > availablePercentage + 0.01) { // Add small tolerance for floating point
          setError("percentage", { message: `Allocation exceeds 100% of income. Max available for this budget: ${availablePercentage.toFixed(1)}%` });
          return;
     }
 
-    const budgetToSave: Budget = { // Constructing full Budget object
+    const budgetToSave: Budget = {
         id: values.id || `b-${values.category}-${Date.now().toString()}`,
         category: values.category,
         percentage: values.percentage,
-        limit: calculatedLimit, // This will be recalculated in page.tsx based on final income anyway
-        spent: existingBudget?.spent ?? 0, // Preserve spent if editing, or 0 for new
-        month: existingBudget?.month ?? formatCurrency(new Date(), 'yyyy-MM'), // Preserve month or use current
+        limit: calculatedLimit,
+        spent: existingBudget?.spent ?? 0,
+        month: existingBudget?.month ?? format(new Date(), 'yyyy-MM'), // Corrected: Use format from date-fns
     };
     onSaveBudget(budgetToSave);
     onOpenChange(false);
   };
 
   const categoriesForSelect = React.useMemo(() => {
-    if (existingBudget) { // If editing, only show the current budget's category
+    if (existingBudget) {
         const currentCat = availableSpendingCategories.find(cat => cat.id === existingBudget.category);
         return currentCat ? [currentCat] : [];
     }
@@ -156,7 +156,7 @@ export function AddBudgetDialog({
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={!!existingBudget} // Disable category change when editing
+                    disabled={!!existingBudget}
                   >
                     <FormControl>
                       <SelectTrigger disabled={!!existingBudget}>
@@ -201,7 +201,7 @@ export function AddBudgetDialog({
                             placeholder={`e.g., 15 (Max ${availablePercentage.toFixed(1)}% available)`}
                             {...field}
                             step="0.1"
-                            max={availablePercentage > 0 ? availablePercentage : 100} // Ensure max is at least 0.1 if available is 0
+                            max={availablePercentage > 0 ? availablePercentage : 100}
                             min="0.1"
                             value={field.value === undefined ? '' : field.value}
                             onChange={e => {
@@ -229,7 +229,6 @@ export function AddBudgetDialog({
                     </FormItem>
                 )}
                 />
-
           </form>
         </Form>
         <DialogFooter>
