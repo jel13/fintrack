@@ -55,7 +55,7 @@ export default function RegisterPage() {
         description: "A verification email has been sent. Please check your inbox (and spam folder) to verify your account before logging in.",
         duration: 10000, // Keep toast longer
       });
-      router.push('/login'); 
+      router.push('/login'); // Explicitly redirect to login page
     } catch (error: any) {
       toast({
         title: "Registration Failed",
@@ -150,3 +150,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+
