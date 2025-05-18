@@ -131,12 +131,9 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
 
    // Filter categories suitable for being parents
    const potentialParents = React.useMemo(() => {
-        // Exclude income sources, self, and potential descendants
-        // Also ensure categories prop is an array and category items themselves are valid
-        if (!Array.isArray(categories)) {
-            return []; 
-        }
-        return categories.filter(c =>
+        // Ensure categories is always an array before filtering
+        const safeCategories = Array.isArray(categories) ? categories : [];
+        return safeCategories.filter(c =>
             c && // Ensure category object 'c' is not null or undefined
             !c.isIncomeSource && // Cannot be an income source
             c.id !== existingCategory?.id // Cannot be self
@@ -260,7 +257,11 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="">-- None (Top Level Expense) --</SelectItem>
-                         {potentialParents.map((category) => {
+                         {(potentialParents || []).map((category) => {
+                            if (!category || !category.id) { // Extra safety check
+                                console.warn("AddCategoryDialog: Skipping invalid category in potentialParents during map", category);
+                                return null;
+                            }
                             const Icon = getCategoryIconComponent(category.icon);
                             return (
                              <SelectItem key={category.id} value={category.id}>
