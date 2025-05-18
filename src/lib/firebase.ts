@@ -15,8 +15,10 @@ const firebaseConfig = {
 };
 
 // --- Debugging: Log the Firebase config to the console ---
+// This line is crucial for debugging. Check your browser's developer console.
+// If NEXT_PUBLIC_FIREBASE_API_KEY (and others) are undefined or incorrect here,
+// your .env.local file is not being read correctly OR you haven't restarted the dev server.
 console.log("Firebase Config Being Used:", firebaseConfig);
-// If NEXT_PUBLIC_FIREBASE_API_KEY is undefined here, your .env.local is not being read correctly or you haven't restarted the server.
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
