@@ -73,19 +73,19 @@ export default function Home() {
 
 
   React.useEffect(() => {
-    if (user) { 
+    if (user) {
         const loadedData = loadAppData();
         setAppData(loadedData);
         setTempIncome(loadedData.monthlyIncome?.toString() ?? '');
         setIsLoaded(true);
     } else {
         setAppData(defaultAppData);
-        setIsLoaded(false); 
+        setIsLoaded(false);
     }
-  }, [user]); 
+  }, [user]);
 
   React.useEffect(() => {
-    if (isLoaded && user) { 
+    if (isLoaded && user) {
       saveAppData(appData);
     }
   }, [appData, isLoaded, user]);
@@ -94,21 +94,21 @@ export default function Home() {
 
   const monthlySummary = React.useMemo(() => {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0, incomeTransactions: 0 };
-    
+
     const currentMonthTransactions = transactions.filter(t => format(new Date(t.date), 'yyyy-MM') === currentMonth);
 
     const incomeFromTransactionsThisMonth = currentMonthTransactions
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
-    
-    const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    
-    // Actual balance calculation uses actual income transactions for the month.
-    const actualBalance = incomeFromTransactionsThisMonth - expenses; 
 
-    return { 
+    const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
+    // Actual balance calculation uses actual income transactions for the month.
+    const actualBalance = incomeFromTransactionsThisMonth - expenses;
+
+    return {
         income: monthlyIncome ?? 0, // This is the user-set budgeted income
-        expenses, 
+        expenses,
         balance: actualBalance, // This is based on actual transactions
         incomeTransactions: incomeFromTransactionsThisMonth // Total logged income for the month
     };
@@ -165,14 +165,14 @@ export default function Home() {
         const totalBudgetedExcludingSavings = updatedBudgets
             .filter(b => b.category !== 'savings' && b.month === currentMonth)
             .reduce((sum, b) => sum + b.limit, 0);
-        
+
         const leftoverForSavings = Math.max(0, currentSetMonthlyIncome - totalBudgetedExcludingSavings);
 
         if (savingsBudgetIndex > -1) {
             const savingsSpent = prevData.transactions
                 .filter(t => t.type === 'expense' && t.category === 'savings' && format(new Date(t.date), 'yyyy-MM') === currentMonth)
                 .reduce((sum, t) => sum + t.amount, 0);
-            
+
             const currentSavingsBudget = updatedBudgets[savingsBudgetIndex];
             if (currentSavingsBudget.limit !== leftoverForSavings || currentSavingsBudget.spent !== savingsSpent) {
                 updatedBudgets[savingsBudgetIndex] = {
@@ -240,30 +240,40 @@ export default function Home() {
     setAppData(prev => {
         let updatedTransactions;
         const existingIndex = prev.transactions.findIndex(t => t.id === transactionData.id);
-        
-        if (existingIndex > -1) { 
+
+        if (existingIndex > -1) {
             updatedTransactions = [...prev.transactions];
             updatedTransactions[existingIndex] = transactionData;
             toastTitle = "Transaction Updated";
             toastMessage = `Transaction for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category} updated.`;
-        } else { 
+        } else {
             updatedTransactions = [transactionData, ...prev.transactions];
             toastTitle = "Transaction Added";
             toastMessage = `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} logged for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category}.`;
         }
-        
+
         // Sort transactions after adding/updating
         updatedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
+
+        let newMonthlyIncome = prev.monthlyIncome;
+        if(transactionData.type === 'income' && existingIndex === -1) { // Only for new income transactions
+            newMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
+        } else if (transactionData.type === 'income' && existingIndex > -1) { // For updated income transactions
+            const oldAmount = prev.transactions[existingIndex].amount;
+            newMonthlyIncome = (prev.monthlyIncome ?? 0) - oldAmount + transactionData.amount;
+        }
+
+
         return {
             ...prev,
             transactions: updatedTransactions,
-            // monthlyIncome is set separately and explicitly by the user now
+            monthlyIncome: newMonthlyIncome,
         };
     });
-    
+
+    // Delay toast to ensure state update has occurred
     requestAnimationFrame(() => {
-        if (toastTitle) {
+        if (toastTitle) { // Check if toastTitle was set (i.e., transaction was valid)
             toast({ title: toastTitle, description: toastMessage });
         }
     });
@@ -276,9 +286,14 @@ export default function Home() {
 
     setAppData(prev => {
         const updatedTransactions = prev.transactions.filter(t => t.id !== transactionId);
+        let newMonthlyIncome = prev.monthlyIncome;
+        if(transaction.type === 'income') {
+            newMonthlyIncome = (prev.monthlyIncome ?? 0) - transaction.amount;
+        }
         return {
             ...prev,
             transactions: updatedTransactions,
+            monthlyIncome: newMonthlyIncome,
         };
     });
     requestAnimationFrame(() => {
@@ -319,12 +334,12 @@ export default function Home() {
     const finalBudgetData: Budget = {
         ...budgetData,
         limit: calculatedLimit,
-        spent: appData.transactions 
+        spent: appData.transactions
             .filter(t => t.type === 'expense' && t.category === budgetData.category && format(new Date(t.date), 'yyyy-MM') === (budgetData.month || currentMonth))
             .reduce((sum, t) => sum + t.amount, 0),
         month: budgetData.month || currentMonth,
     };
-    
+
 
     setAppData(prev => {
         let updatedBudgets;
@@ -344,14 +359,14 @@ export default function Home() {
              const labelB = getCategoryById(b.category, prev.categories)?.label ?? b.category;
              return labelA.localeCompare(labelB);
          });
-        
+
         const isUpdating = !!(budgetData.id && prev.budgets.find(b => b.id === budgetData.id));
         if (isUpdating) {
             localToastInfo = { title: "Budget Updated", description: `Budget for ${getCategoryById(finalBudgetData.category, prev.categories)?.label ?? finalBudgetData.category} updated to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` };
         } else {
             localToastInfo = { title: "Budget Set", description: `Budget for ${getCategoryById(finalBudgetData.category, prev.categories)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` };
         }
-    
+
         const needsCategoryIds = prev.categories.filter(c =>
             !c.isIncomeSource && (
             c.label.toLowerCase().includes('housing') ||
@@ -367,10 +382,10 @@ export default function Home() {
         if (currentTotalNeedsPercentage > 50) {
             localNeedsReminderInfo = { percentage: currentTotalNeedsPercentage };
         }
-        
+
         return { ...prev, budgets: updatedBudgets };
     });
-    
+
     requestAnimationFrame(() => {
         if (localToastInfo) {
              toast(localToastInfo as any);
@@ -445,7 +460,7 @@ const openEditBudgetDialog = (budgetId: string) => {
         });
          return;
     }
-    
+
     // Create a new income transaction
     const incomeTransaction: Omit<Transaction, 'id'> = {
         type: 'income',
@@ -511,10 +526,10 @@ const openEditBudgetDialog = (budgetId: string) => {
   }, [currentMonthBudgets]);
 
 
-    if (!user) { 
-        return null; 
+    if (!user) {
+        return null;
     }
-    if (!isLoaded && user) { 
+    if (!isLoaded && user) {
         return (
             <div className="flex flex-col h-screen p-4 bg-background items-center justify-center">
                  <svg className="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -698,11 +713,11 @@ const openEditBudgetDialog = (budgetId: string) => {
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Link href="/learn/budgeting-guide">
-                        <Button variant="link" className="p-0 h-auto text-base">
-                           How to Budget Guide
-                        </Button>
-                    </Link>
+                     <Link href="/learn/budgeting-guide">
+                         <Button variant="link" className="p-0 h-auto text-base">
+                            How to Budget Guide
+                         </Button>
+                     </Link>
                 </CardContent>
              </Card>
         </TabsContent>
@@ -759,7 +774,7 @@ const openEditBudgetDialog = (budgetId: string) => {
              <div className="flex gap-2">
                  <Link href="/saving-goals" passHref>
                       <Button asChild variant="outline" size="sm" className="rounded-lg">
-                        <a><PiggyBank className="h-4 w-4" /> Manage Goals</a>
+                        <span><PiggyBank className="h-4 w-4" /> Manage Goals</span>
                       </Button>
                   </Link>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
@@ -783,7 +798,7 @@ const openEditBudgetDialog = (budgetId: string) => {
            ) : currentMonthBudgets.length > 0 ? (
              [...currentMonthBudgets]
                 .sort((a, b) => {
-                    if (a.category === 'savings') return 1; 
+                    if (a.category === 'savings') return 1;
                     if (b.category === 'savings') return -1;
                     const catAInfo = getCategoryById(a.category, categories);
                     const catBInfo = getCategoryById(b.category, categories);
@@ -891,7 +906,7 @@ const openEditBudgetDialog = (budgetId: string) => {
               "flex flex-col items-center justify-center h-full gap-1 rounded-none text-muted-foreground hover:text-primary",
               pathname === "/profile"
                 ? "border-t-2 border-primary bg-primary/10 text-primary"
-                : "border-t-2 border-transparent" 
+                : "border-t-2 border-transparent"
             )}
           >
             <UserCircle className="h-5 w-5" />
@@ -907,8 +922,8 @@ const openEditBudgetDialog = (budgetId: string) => {
             if (!isOpen) setEditingTransaction(null);
         }}
         onSaveTransaction={handleSaveTransaction}
-        categoriesForSelect={categories} 
-        canAddExpense={hasExpenseBudgetsSet || (!!existingTransaction && existingTransaction.type ==='expense')} // Allow editing existing expense even if budgets changed
+        categoriesForSelect={categories}
+        canAddExpense={hasExpenseBudgetsSet || (!!editingTransaction && editingTransaction.type ==='expense')} // Allow editing existing expense even if budgets changed
         currentMonthBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)}
         existingTransaction={editingTransaction}
       />
@@ -924,7 +939,7 @@ const openEditBudgetDialog = (budgetId: string) => {
             .map(b => b.category)}
         availableSpendingCategories={expenseCategories.filter(cat => cat.id !== 'savings')}
         monthlyIncome={monthlyIncome}
-        totalAllocatedPercentage={totalAllocatedPercentage - (editingBudget?.percentage ?? 0)} 
+        totalAllocatedPercentage={totalAllocatedPercentage - (editingBudget?.percentage ?? 0)}
         existingBudget={editingBudget}
       />
 
@@ -968,5 +983,3 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
-
-
