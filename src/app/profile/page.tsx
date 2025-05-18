@@ -80,7 +80,7 @@ export default function ProfilePage() {
                   <p className="text-sm text-muted-foreground">
                     Logged in as: <span className="font-medium text-foreground">{user.email}</span>
                   </p>
-                  <Button variant="outline" onClick={handleLogout} className="w-full sm:w-auto">
+                  <Button variant="outline" onClick={handleLogout} className="w-full sm:w-auto rounded-lg">
                     <LogOut className="mr-2 h-4 w-4" /> Log Out
                   </Button>
                 </>
@@ -95,14 +95,14 @@ export default function ProfilePage() {
                 <CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5 text-primary"/> App Configuration</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-                <Link href="/categories" passHref>
-                    <Button asChild variant="outline" className="w-full justify-start text-left">
-                        <>
-                            <FolderCog className="mr-2 h-4 w-4 flex-shrink-0" />
+                <Button asChild variant="outline" className="w-full justify-start text-left rounded-lg">
+                    <Link href="/categories">
+                        <span className="flex items-center gap-2">
+                            <FolderCog className="h-4 w-4 flex-shrink-0" />
                             <span>Manage Categories</span>
-                        </>
-                    </Button>
-                </Link>
+                        </span>
+                    </Link>
+                </Button>
                  {/* Placeholder for future settings */}
                  {/* 
                  <Button variant="outline" className="w-full justify-start text-left" disabled>
@@ -125,11 +125,11 @@ export default function ProfilePage() {
             <CardContent>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="w-full sm:w-auto">
+                  <Button variant="destructive" className="w-full sm:w-auto rounded-lg">
                     <Trash2 className="mr-2 h-4 w-4" /> Reset Local App Data
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-xl">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -140,10 +140,10 @@ export default function ProfilePage() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleResetData}
-                      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg"
                     >
                       Yes, Reset My Local Data
                     </AlertDialogAction>
