@@ -16,6 +16,10 @@ import { UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation"; // Import useRouter
 
 const registerSchema = z.object({
+  username: z.string()
+    .min(3, { message: "Username must be at least 3 characters." })
+    .max(20, { message: "Username cannot exceed 20 characters." })
+    .regex(/^[a-zA-Z0-9_]+$/, { message: "Username can only contain letters, numbers, and underscores." }),
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
   confirmPassword: z.string(),
@@ -35,6 +39,7 @@ export default function RegisterPage() {
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      username: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -44,14 +49,13 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
     try {
-      await register(data.email, data.password);
+      await register(data.email, data.password, data.username); // Pass username to register function
       toast({ 
         title: "Registration Successful!", 
         description: "A verification email has been sent. Please check your inbox (and spam folder) to verify your account before logging in.",
         duration: 10000, // Keep toast longer
       });
-      // Optionally, redirect to a specific page like /login or a "please verify" page
-      router.push('/login'); // Redirect to login page after showing toast
+      router.push('/login'); 
     } catch (error: any) {
       toast({
         title: "Registration Failed",
@@ -73,6 +77,20 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="your_username"
+                {...form.register("username")}
+                disabled={isLoading}
+                className="rounded-lg"
+              />
+              {form.formState.errors.username && (
+                <p className="text-xs text-destructive">{form.formState.errors.username.message}</p>
+              )}
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input

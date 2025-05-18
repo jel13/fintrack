@@ -9,18 +9,19 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut,
-  sendEmailVerification, // Import sendEmailVerification
+  sendEmailVerification,
+  updateProfile, // Import updateProfile
   UserCredential
 } from 'firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton'; // For loading state
-import { useToast } from "@/hooks/use-toast"; // Import useToast for login check
+import { useToast } from "@/hooks/use-toast"; 
 
 interface AuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<UserCredential>;
-  register: (email: string, pass: string) => Promise<UserCredential>;
+  register: (email: string, pass: string, username: string) => Promise<UserCredential>; // Added username
   logout: () => Promise<void>;
   sendVerificationEmail: (user: FirebaseUser) => Promise<void>;
 }
@@ -32,7 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const { toast } = useToast(); // Initialize toast for use in login
+  const { toast } = useToast(); 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -49,8 +50,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         router.push('/login');
       }
     }
-    // Only redirect from login/register if user exists AND their email is verified (or if verification is not a strict gate for now)
-    // For now, we will allow login even if not verified, but show a toast.
     if (!loading && user && (pathname === '/login' || pathname === '/register')) {
         router.push('/');
     }
@@ -62,7 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast({
         title: "Email Not Verified",
         description: "Please check your email to verify your account. You can request a new verification email if needed.",
-        variant: "default", // Or "destructive" if you want to emphasize it
+        variant: "default", 
         duration: 7000,
       });
     }
@@ -77,9 +76,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const register = async (email: string, pass: string): Promise<UserCredential> => {
+  const register = async (email: string, pass: string, username: string): Promise<UserCredential> => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     if (userCredential.user) {
+      // Update the user's profile with the username
+      await updateProfile(userCredential.user, {
+        displayName: username
+      });
+      // Send verification email
       await sendEmailVerification(userCredential.user);
     }
     return userCredential;
@@ -87,7 +91,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     await signOut(auth);
-    // User will be redirected by the useEffect hook above after state update
   };
 
   if (loading) {

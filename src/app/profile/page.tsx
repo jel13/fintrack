@@ -47,7 +47,7 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
         onClick || href ? "hover:bg-secondary active:bg-secondary/80" : "",
         isDestructive ? "text-destructive hover:bg-destructive/10 active:bg-destructive/20" : "text-foreground"
       )}
-      onClick={onClick && !href ? onClick : undefined} // Only add onClick if no href
+      onClick={onClick && !href ? onClick : undefined} 
     >
       <Icon className={cn("h-5 w-5 mr-4 flex-shrink-0", isDestructive ? "text-destructive" : "text-primary")} />
       <div className="flex-grow">
@@ -69,7 +69,6 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
       </Link>
     );
   }
-
   return <div className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background" tabIndex={onClick ? 0 : -1} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.()}}>{content}</div>;
 };
 
@@ -86,7 +85,6 @@ export default function ProfilePage() {
         description: "All local application data has been cleared. The app will now reload.",
         variant: "default",
       });
-      // No need to manually reload, clearAppData does it.
     } catch (error) {
       toast({
         title: "Error Resetting Data",
@@ -101,7 +99,6 @@ export default function ProfilePage() {
     try {
       await logout();
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      // Navigation to /login is handled by AuthContext
     } catch (error: any) {
       toast({ title: "Logout Failed", description: error.message || "An unexpected error occurred.", variant: "destructive" });
     }
@@ -109,7 +106,6 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col h-screen bg-secondary/50">
-      {/* Header */}
       <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10 shadow-sm">
         <Link href="/" passHref>
           <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
@@ -119,19 +115,28 @@ export default function ProfilePage() {
         <h1 className="text-xl font-semibold ml-2">Profile & Settings</h1>
       </div>
 
-      {/* Content Area */}
       <ScrollArea className="flex-grow">
         <div className="p-4 space-y-6">
-          {/* Account Section */}
           <Card className="rounded-xl shadow-md overflow-hidden">
             <CardHeader className="bg-muted/30">
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><UserCircle className="h-5 w-5 text-primary" /> Account</CardTitle>
             </CardHeader>
             <CardContent className="p-0 divide-y">
               {user && (
-                <div className="p-4">
-                  <p className="text-sm text-muted-foreground">Logged in as:</p>
-                  <p className="font-medium text-foreground truncate">{user.email}</p>
+                <div className="p-4 space-y-1">
+                  {user.displayName && (
+                    <div>
+                       <p className="text-xs text-muted-foreground">Username:</p>
+                       <p className="font-medium text-foreground truncate">{user.displayName}</p>
+                    </div>
+                  )}
+                  <div>
+                     <p className="text-xs text-muted-foreground">Email:</p>
+                     <p className="font-medium text-foreground truncate">{user.email}</p>
+                  </div>
+                   {!user.emailVerified && (
+                    <p className="text-xs text-destructive">Email not verified.</p>
+                   )}
                 </div>
               )}
               <ProfileListItem
@@ -142,7 +147,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* App Configuration Section */}
           <Card className="rounded-xl shadow-md overflow-hidden">
             <CardHeader className="bg-muted/30">
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><Settings className="h-5 w-5 text-primary"/> App Configuration</CardTitle>
@@ -169,7 +173,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Data Management Section */}
           <Card className="rounded-xl shadow-md overflow-hidden">
             <CardHeader className="bg-destructive/10">
               <CardTitle className="flex items-center gap-2 text-base font-semibold text-destructive"><AlertTriangle className="h-5 w-5" /> Data Management</CardTitle>
@@ -182,7 +185,7 @@ export default function ProfilePage() {
                         title="Reset Local App Data"
                         description="Clear all transactions, budgets, etc., on this device"
                         isDestructive
-                        onClick={() => {}} // onClick is handled by AlertDialogTrigger
+                        onClick={() => {}} 
                     />
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-xl">
@@ -216,6 +219,4 @@ export default function ProfilePage() {
     </div>
   );
 }
-    
-
     
