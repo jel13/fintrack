@@ -205,7 +205,7 @@ export default function Home() {
         }
         return prevData;
     });
-  }, [transactions, appData.monthlyIncome, currentMonth, isLoaded, categories, user]); // Changed appData.budgets.length to appData.budgets
+  }, [transactions, appData.monthlyIncome, currentMonth, isLoaded, categories, user, appData.budgets]); 
 
 
   const handleSaveTransaction = (transactionData: Transaction) => {
@@ -541,12 +541,13 @@ const openEditBudgetDialog = (budgetId: string) => {
                                 placeholder="e.g., 25000"
                                 value={tempIncome}
                                 onChange={(e) => setTempIncome(e.target.value)}
+                                className="rounded-lg"
                             />
                         </div>
                          <div className="space-y-1">
                              <Label htmlFor="income-category">Source Category</Label>
                              <Select value={selectedIncomeCategory} onValueChange={setSelectedIncomeCategory}>
-                                <SelectTrigger id="income-category" className="truncate">
+                                <SelectTrigger id="income-category" className="truncate rounded-lg">
                                     <SelectValue placeholder="Select source" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -571,7 +572,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                              </Select>
                          </div>
                    </div>
-                   <Button onClick={handleSetIncome} className="w-full">Set Monthly Income</Button>
+                   <Button onClick={handleSetIncome} className="w-full rounded-lg">Set Monthly Income</Button>
                    {incomeCategories.length === 0 && (
                         <p className="text-xs text-muted-foreground text-center">No income source categories found. Please add some in 'Profile' &gt; 'Manage Categories'.</p>
                    )}
@@ -594,6 +595,16 @@ const openEditBudgetDialog = (budgetId: string) => {
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                           <CardTitle className="text-sm font-medium">Actual Balance</CardTitle>
+                           <Scale className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-primary">{formatCurrency(monthlySummary.balance)}</div>
+                           <p className="text-xs text-muted-foreground">Budgeted income minus expenses this month.</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Expenses Logged</CardTitle>
                             <TrendingDown className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
@@ -604,16 +615,6 @@ const openEditBudgetDialog = (budgetId: string) => {
                                  <Skeleton className="h-8 w-24" />
                              )}
                              <p className="text-xs text-muted-foreground">{hasExpenseBudgetsSet ? "This month" : "Set budgets first"}</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                           <CardTitle className="text-sm font-medium">Actual Balance</CardTitle>
-                           <Scale className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-primary">{formatCurrency(monthlySummary.balance)}</div>
-                           <p className="text-xs text-muted-foreground">Budgeted income minus expenses this month.</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -667,7 +668,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                         <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                         <p className="font-semibold">Ready to Budget?</p>
                         <p className="text-sm">Head over to the 'Budgets' tab to allocate your income and start tracking your spending effectively.</p>
-                         <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>
+                         <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>
                              Go to Budgets
                         </Button>
                     </CardContent>
@@ -689,9 +690,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 </CardHeader>
                 <CardContent>
                     <Link href="/learn/budgeting-guide">
-                        <Button asChild variant="link" className="p-0 h-auto text-base">
-                           <span>How to Budget Guide</span>
-                        </Button>
+                        <Button variant="link" className="p-0 h-auto text-base">How to Budget Guide</Button>
                     </Link>
                 </CardContent>
              </Card>
@@ -707,7 +706,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                             <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                             <p className="font-semibold text-destructive">Set Income First</p>
                             <p className="text-sm text-destructive/80">Please set your income on the Home screen to log transactions.</p>
-                            <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>Go to Home</Button>
+                            <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.querySelector('button[value="home"]')?.click()}>Go to Home</Button>
                         </CardContent>
                      </Card>
                )}
@@ -717,7 +716,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                             <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                              <p className="font-semibold">Set Budgets to Log Expenses</p>
                             <p className="text-sm">You can log income now. To log expenses, set budgets in the 'Budgets' tab.</p>
-                            <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>Go to Budgets</Button>
+                            <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>Go to Budgets</Button>
                          </CardContent>
                     </Card>
                )}
@@ -747,13 +746,13 @@ const openEditBudgetDialog = (budgetId: string) => {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                  <Link href="/saving-goals">
-                      <Button asChild variant="outline" size="sm">
+                  <Link href="/saving-goals" passHref>
+                      <Button asChild variant="outline" size="sm" className="rounded-lg">
                         <span><PiggyBank className="h-4 w-4" /> Manage Goals</span>
                       </Button>
                   </Link>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
-                    <Button size="sm" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
+                    <Button size="sm" className="rounded-lg" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
                     </Button>
                  )}
@@ -765,7 +764,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                     <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                     <p className="font-semibold text-destructive">Set Your Income First</p>
                     <p className="text-sm text-destructive/80">Please set your monthly income on the Home tab before creating budgets.</p>
-                    <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>
+                    <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.querySelector('button[value="home"]')?.click()}>
                        Go to Home
                     </Button>
                 </CardContent>
@@ -813,7 +812,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                            <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                             <p className="font-semibold text-destructive">Set Your Income First</p>
                           <p className="text-sm text-destructive/80">Please set your monthly income on the Home tab to view insights.</p>
-                           <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="home"]')?.click()}>
+                           <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.querySelector('button[value="home"]')?.click()}>
                               Go to Home
                            </Button>
                        </CardContent>
@@ -824,7 +823,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                           <BarChart3 className="mx-auto h-8 w-8 mb-2 text-primary" />
                            <p className="font-semibold">Set Budgets First</p>
                           <p className="text-sm">Set your budgets in the 'Budgets' tab to generate detailed spending insights.</p>
-                          <Button size="sm" className="mt-3" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>
+                          <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.querySelector('button[value="budgets"]')?.click()}>
                               Go to Budgets
                          </Button>
                        </CardContent>
@@ -932,7 +931,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setTransactionToDelete(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDeleteTransaction(transactionToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                    <AlertDialogAction onClick={() => handleDeleteTransaction(transactionToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg">Delete</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -950,7 +949,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setBudgetToDelete(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDeleteBudget(budgetToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                    <AlertDialogAction onClick={() => handleDeleteBudget(budgetToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg">Delete</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -958,3 +957,4 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
+
