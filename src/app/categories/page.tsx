@@ -303,7 +303,7 @@ export default function CategoriesPage() {
             <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
                 <Link href="/" passHref>
                     <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
-                       <a><ArrowLeft className="h-5 w-5" /></a>
+                       <ArrowLeft className="h-5 w-5" />
                     </Button>
                 </Link>
                 <h1 className="text-xl font-semibold ml-2">Manage Categories</h1>

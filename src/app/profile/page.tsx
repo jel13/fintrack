@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle, LogOut, UserCircle, Trash2, Settings, FolderCog } from "lucide-react"; // Added FolderCog
+import { ArrowLeft, AlertTriangle, LogOut, UserCircle, Trash2, Settings, FolderCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -61,7 +61,7 @@ export default function ProfilePage() {
       <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
         <Link href="/" passHref>
           <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
-            <a><ArrowLeft className="h-5 w-5" /></a>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
         <h1 className="text-xl font-semibold ml-2">Profile & Settings</h1>
@@ -97,10 +97,10 @@ export default function ProfilePage() {
             <CardContent className="space-y-3">
                 <Link href="/categories" passHref>
                     <Button asChild variant="outline" className="w-full justify-start text-left">
-                        <a>
+                        <>
                             <FolderCog className="mr-2 h-4 w-4 flex-shrink-0" />
                             <span>Manage Categories</span>
-                        </a>
+                        </>
                     </Button>
                 </Link>
                  {/* Placeholder for future settings */}
