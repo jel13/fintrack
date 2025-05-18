@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle, LogOut, UserCircle, Trash2, Settings, FolderCog } from "lucide-react";
+import { ArrowLeft, AlertTriangle, LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,6 +21,57 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { clearAppData } from "@/lib/storage";
 import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
+
+interface ProfileListItemProps {
+  icon: React.ElementType;
+  title: string;
+  description?: string;
+  onClick?: () => void;
+  href?: string;
+  isDestructive?: boolean;
+}
+
+const ProfileListItem: React.FC<ProfileListItemProps> = ({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+  href,
+  isDestructive,
+}) => {
+  const content = (
+    <div
+      className={cn(
+        "flex items-center p-4 rounded-lg transition-colors",
+        onClick || href ? "hover:bg-secondary active:bg-secondary/80" : "",
+        isDestructive ? "text-destructive hover:bg-destructive/10 active:bg-destructive/20" : "text-foreground"
+      )}
+      onClick={onClick && !href ? onClick : undefined} // Only add onClick if no href
+    >
+      <Icon className={cn("h-5 w-5 mr-4 flex-shrink-0", isDestructive ? "text-destructive" : "text-primary")} />
+      <div className="flex-grow">
+        <p className="font-medium">{title}</p>
+        {description && <p className="text-xs text-muted-foreground">{description}</p>}
+      </div>
+      {(href || onClick) && !isDestructive && <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto" />}
+      {onClick && isDestructive && <span className="ml-auto"></span>}
+    </div>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} passHref>
+        <a className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background">
+          {content}
+        </a>
+      </Link>
+    );
+  }
+
+  return <div className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background" tabIndex={onClick ? 0 : -1} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.()}}>{content}</div>;
+};
+
 
 export default function ProfilePage() {
   const { toast } = useToast();
@@ -56,9 +107,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-secondary/50">
       {/* Header */}
-      <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
+      <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10 shadow-sm">
         <Link href="/" passHref>
           <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
             <ArrowLeft className="h-5 w-5" />
@@ -68,66 +119,70 @@ export default function ProfilePage() {
       </div>
 
       {/* Content Area */}
-      <ScrollArea className="flex-grow p-4">
-        <div className="space-y-6">
-          <Card className="shadow-md rounded-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><UserCircle className="h-5 w-5 text-primary" /> Account</CardTitle>
+      <ScrollArea className="flex-grow">
+        <div className="p-4 space-y-6">
+          {/* Account Section */}
+          <Card className="rounded-xl shadow-md overflow-hidden">
+            <CardHeader className="bg-muted/30">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold"><UserCircle className="h-5 w-5 text-primary" /> Account</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {user ? (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Logged in as: <span className="font-medium text-foreground">{user.email}</span>
-                  </p>
-                  <Button variant="outline" onClick={handleLogout} className="w-full sm:w-auto rounded-lg">
-                    <LogOut className="mr-2 h-4 w-4" /> Log Out
-                  </Button>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">Not logged in.</p>
+            <CardContent className="p-0 divide-y">
+              {user && (
+                <div className="p-4">
+                  <p className="text-sm text-muted-foreground">Logged in as:</p>
+                  <p className="font-medium text-foreground truncate">{user.email}</p>
+                </div>
               )}
+              <ProfileListItem
+                icon={LogOut}
+                title="Log Out"
+                onClick={handleLogout}
+              />
             </CardContent>
           </Card>
 
-          <Card className="shadow-md rounded-xl">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5 text-primary"/> App Configuration</CardTitle>
+          {/* App Configuration Section */}
+          <Card className="rounded-xl shadow-md overflow-hidden">
+            <CardHeader className="bg-muted/30">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold"><Settings className="h-5 w-5 text-primary"/> App Configuration</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-                <Button asChild variant="outline" className="w-full justify-start text-left rounded-lg">
-                    <Link href="/categories">
-                        <span className="flex items-center gap-2">
-                            <FolderCog className="h-4 w-4 flex-shrink-0" />
-                            <span>Manage Categories</span>
-                        </span>
-                    </Link>
-                </Button>
-                 {/* Placeholder for future settings */}
-                 {/* 
-                 <Button variant="outline" className="w-full justify-start text-left" disabled>
-                     <Bell className="mr-2 h-4 w-4 flex-shrink-0" />
-                     <span>Notification Preferences (Soon)</span>
-                 </Button>
-                 <Button variant="outline" className="w-full justify-start text-left" disabled>
-                     <Palette className="mr-2 h-4 w-4 flex-shrink-0" />
-                     <span>Appearance (Soon)</span>
-                 </Button>
-                 */}
+            <CardContent className="p-0 divide-y">
+                <ProfileListItem
+                    icon={FolderCog}
+                    title="Manage Categories"
+                    description="Edit, add, or delete income/expense categories"
+                    href="/categories"
+                />
+                 <ProfileListItem
+                    icon={Bell}
+                    title="Notification Preferences"
+                    description="Manage app notifications (Coming Soon)"
+                    onClick={() => toast({title: "Coming Soon!", description: "Notification settings will be available in a future update."})}
+                />
+                 <ProfileListItem
+                    icon={Palette}
+                    title="Appearance"
+                    description="Customize app theme (Coming Soon)"
+                    onClick={() => toast({title: "Coming Soon!", description: "Theme customization will be available in a future update."})}
+                />
             </CardContent>
           </Card>
 
-          <Card className="border-destructive/50 shadow-md rounded-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Data Management</CardTitle>
-              <CardDescription>This action is irreversible and only affects data stored locally on this device.</CardDescription>
+          {/* Data Management Section */}
+          <Card className="rounded-xl shadow-md overflow-hidden">
+            <CardHeader className="bg-destructive/10">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold text-destructive"><AlertTriangle className="h-5 w-5" /> Data Management</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="w-full sm:w-auto rounded-lg">
-                    <Trash2 className="mr-2 h-4 w-4" /> Reset Local App Data
-                  </Button>
+                    <ProfileListItem
+                        icon={Trash2}
+                        title="Reset Local App Data"
+                        description="Clear all transactions, budgets, etc., on this device"
+                        isDestructive
+                        onClick={() => {}} // onClick is handled by AlertDialogTrigger
+                    />
                 </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-xl">
                   <AlertDialogHeader>
@@ -150,13 +205,15 @@ export default function ProfilePage() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Resetting will clear all your financial records stored in this browser and reload the app.
-              </p>
             </CardContent>
           </Card>
+        </div>
+         <div className="p-4 text-center text-xs text-muted-foreground">
+            Version 1.0.0
         </div>
       </ScrollArea>
     </div>
   );
 }
+
+    
