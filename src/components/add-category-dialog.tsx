@@ -132,7 +132,12 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
    // Filter categories suitable for being parents
    const potentialParents = React.useMemo(() => {
         // Exclude income sources, self, and potential descendants
+        // Also ensure categories prop is an array and category items themselves are valid
+        if (!Array.isArray(categories)) {
+            return []; 
+        }
         return categories.filter(c =>
+            c && // Ensure category object 'c' is not null or undefined
             !c.isIncomeSource && // Cannot be an income source
             c.id !== existingCategory?.id // Cannot be self
             // Add more complex check for descendants if needed
@@ -286,3 +291,4 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
     </Dialog>
   );
 }
+
