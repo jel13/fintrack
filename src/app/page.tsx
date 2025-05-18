@@ -94,12 +94,9 @@ export default function Home() {
 
   const monthlySummary = React.useMemo(() => {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0, incomeTransactions: 0 };
-
-    const currentMonthTransactions = transactions.filter(t => format(new Date(t.date), 'yyyy-MM') === currentMonth);
     
-    const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const expenses = transactions.filter(t => t.type === 'expense' && format(new Date(t.date), 'yyyy-MM') === currentMonth).reduce((sum, t) => sum + t.amount, 0);
     
-    // Balance is now Budgeted Income - Expenses
     const calculatedBalance = (monthlyIncome ?? 0) - expenses; 
 
     return {
@@ -247,25 +244,23 @@ export default function Home() {
         }
         updatedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
-        // Update monthlyIncome if an income transaction is added or updated
         let newMonthlyIncome = prev.monthlyIncome ?? 0;
         if (transactionData.type === 'income') {
             if (isUpdate && originalTypeIfUpdate === 'income') {
                  newMonthlyIncome = (prev.monthlyIncome ?? 0) - originalAmountIfUpdate + transactionData.amount;
-            } else if (isUpdate && originalTypeIfUpdate === 'expense') { // Changed from expense to income
+            } else if (isUpdate && originalTypeIfUpdate === 'expense') { 
                  newMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
-            } else if (!isUpdate) { // New income transaction
+            } else if (!isUpdate) { 
                  newMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
             }
         } else if (isUpdate && originalTypeIfUpdate === 'income' && transactionData.type === 'expense') {
-            // If an income transaction is changed to expense, reduce monthlyIncome by original amount
             newMonthlyIncome = (prev.monthlyIncome ?? 0) - originalAmountIfUpdate;
         }
         
         return {
             ...prev,
             transactions: updatedTransactions,
-            monthlyIncome: Math.max(0, newMonthlyIncome), // Ensure income doesn't go negative
+            monthlyIncome: Math.max(0, newMonthlyIncome), 
         };
     });
     
@@ -501,11 +496,9 @@ const openEditBudgetDialog = (budgetId: string) => {
 
 
     if (!user) {
-        // AuthProvider handles initial loading/redirect, so this might not be strictly necessary
-        // but kept for clarity during development.
         return null; 
     }
-    if (!isLoaded && user) { // Only show skeleton if user is determined but data isn't loaded
+    if (!isLoaded && user) { 
         return (
             <div className="flex flex-col h-screen p-4 bg-background items-center justify-center">
                  <svg className="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -583,7 +576,7 @@ const openEditBudgetDialog = (budgetId: string) => {
              {monthlyIncome !== null && monthlyIncome > 0 && (
                 <>
                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 animate-slide-up">
-                    <Card>
+                    <Card className="sm:col-span-2 lg:col-span-1">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Budgeted Income</CardTitle>
                             <Wallet className="h-4 w-4 text-muted-foreground" />
@@ -880,7 +873,7 @@ const openEditBudgetDialog = (budgetId: string) => {
               "flex flex-col items-center justify-center h-full gap-1 text-muted-foreground hover:text-primary",
               pathname === "/profile"
                 ? "border-t-2 border-primary bg-primary/10 text-primary"
-                : "border-t-2 border-transparent" // Ensure consistent border for alignment even when inactive
+                : "border-t-2 border-transparent" 
             )}
           >
             <UserCircle className="h-5 w-5" />
@@ -897,7 +890,7 @@ const openEditBudgetDialog = (budgetId: string) => {
         }}
         onSaveTransaction={handleSaveTransaction}
         categoriesForSelect={categories}
-        canAddExpense={hasExpenseBudgetsSet || (!!editingTransaction && editingTransaction.type ==='expense')}
+        canAddExpense={hasExpenseBudgetsSet || (!!editingTransaction && editingTransaction.type ==='expense')} 
         currentMonthBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)}
         existingTransaction={editingTransaction}
       />
