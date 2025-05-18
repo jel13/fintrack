@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { PiggyBank } from "lucide-react"; 
+import { auth } from '@/lib/firebase'; // Import auth from firebase
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -22,7 +23,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { login, sendVerificationEmail } = useAuth(); // Added sendVerificationEmail from useAuth
+  const { login, sendVerificationEmail } = useAuth(); 
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
   const [showResendVerification, setShowResendVerification] = React.useState(false);
@@ -38,7 +39,7 @@ export default function LoginPage() {
   });
 
   const handleResendVerification = async () => {
-    if (!auth.currentUser) { // Check if a user is signed in (even if not verified)
+    if (!auth.currentUser) { 
       toast({title: "Error", description: "Please try logging in first to resend verification.", variant: "destructive"});
       return;
     }
@@ -57,21 +58,16 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
-    setShowResendVerification(false); // Reset on new login attempt
-    setEmailForResend(data.email); // Store email for potential resend
+    setShowResendVerification(false); 
+    setEmailForResend(data.email); 
     try {
       const userCredential = await login(data.email, data.password);
-      // AuthContext now handles the toast if email is not verified, so just a success toast here
-      // If email is not verified, login in AuthContext already shows a toast.
-      // Only show general success if no specific "not verified" toast was shown by context.
+      
       if (userCredential.user && userCredential.user.emailVerified) {
          toast({ title: "Login Successful", description: "Welcome back!" });
       } else if (userCredential.user && !userCredential.user.emailVerified) {
-        // The toast is already shown by AuthContext's login function.
-        // We can enable a "Resend verification" button here.
         setShowResendVerification(true);
       }
-      // Router redirection is handled by AuthContext
     } catch (error: any) {
       toast({
         title: "Login Failed",
@@ -85,7 +81,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary p-4">
-      <Card className="w-full max-w-sm shadow-xl rounded-xl">
+      <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <PiggyBank className="mx-auto h-12 w-12 text-primary mb-2" />
           <CardTitle className="text-2xl">Welcome Back!</CardTitle>

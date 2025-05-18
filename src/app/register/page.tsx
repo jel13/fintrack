@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { UserPlus } from "lucide-react";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation"; 
 
 const registerSchema = z.object({
   username: z.string()
@@ -34,7 +34,7 @@ export default function RegisterPage() {
   const { register } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
-  const router = useRouter(); // Initialize router
+  const router = useRouter(); 
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -49,13 +49,13 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
     try {
-      await register(data.email, data.password, data.username); // Pass username to register function
+      await register(data.email, data.password, data.username); 
       toast({ 
         title: "Registration Successful!", 
         description: "A verification email has been sent. Please check your inbox (and spam folder) to verify your account before logging in.",
-        duration: 10000, // Keep toast longer
+        duration: 10000, 
       });
-      router.push('/login'); // Explicitly redirect to login page
+      router.push('/login'); 
     } catch (error: any) {
       toast({
         title: "Registration Failed",
@@ -69,7 +69,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary p-4">
-      <Card className="w-full max-w-sm shadow-xl rounded-xl">
+      <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <UserPlus className="mx-auto h-10 w-10 text-primary mb-2" />
           <CardTitle className="text-2xl">Create Account</CardTitle>

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, LayoutDashboard, List, Target, TrendingUp, PiggyBank, Settings, BookOpen, AlertCircle, Info, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, FolderCog, Edit, Trash2 } from "lucide-react";
+import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, FolderCog, Edit, Trash2, TrendingUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -184,8 +184,6 @@ export default function Home() {
                 budgetsChanged = true;
             }
         } else if (currentSetMonthlyIncome > 0 || totalBudgetedExcludingSavings < currentSetMonthlyIncome) {
-             // Create savings budget if income is set and there's potential for savings
-             // or if all expense budgets don't consume the full income
             const savingsSpent = prevData.transactions
                 .filter(t => t.type === 'expense' && t.category === 'savings' && format(new Date(t.date), 'yyyy-MM') === currentMonth)
                 .reduce((sum, t) => sum + t.amount, 0);
@@ -244,37 +242,30 @@ export default function Home() {
         if (existingIndex > -1) {
             updatedTransactions = [...prev.transactions];
             updatedTransactions[existingIndex] = transactionData;
-            toastTitle = "Transaction Updated";
-            toastMessage = `Transaction for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category} updated.`;
+            // toastTitle = "Transaction Updated"; // Moved out
+            // toastMessage = `Transaction for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category} updated.`; // Moved out
         } else {
             updatedTransactions = [transactionData, ...prev.transactions];
-            toastTitle = "Transaction Added";
-            toastMessage = `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} logged for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category}.`;
+            // toastTitle = "Transaction Added"; // Moved out
+            // toastMessage = `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} logged for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category}.`; // Moved out
         }
 
-        // Sort transactions after adding/updating
         updatedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        let newMonthlyIncome = prev.monthlyIncome;
-        if(transactionData.type === 'income' && existingIndex === -1) { // Only for new income transactions
-            newMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
-        } else if (transactionData.type === 'income' && existingIndex > -1) { // For updated income transactions
-            const oldAmount = prev.transactions[existingIndex].amount;
-            newMonthlyIncome = (prev.monthlyIncome ?? 0) - oldAmount + transactionData.amount;
-        }
-
-
+        
+        // No direct update to monthlyIncome here anymore, it's handled by handleSetIncome
         return {
             ...prev,
             transactions: updatedTransactions,
-            monthlyIncome: newMonthlyIncome,
         };
     });
-
-    // Delay toast to ensure state update has occurred
+    
+    // Toast moved outside setAppData
+    const isUpdating = !!(transactionData.id && appData.transactions.find(t => t.id === transactionData.id));
     requestAnimationFrame(() => {
-        if (toastTitle) { // Check if toastTitle was set (i.e., transaction was valid)
-            toast({ title: toastTitle, description: toastMessage });
+        if (isUpdating) {
+            toast({ title: "Transaction Updated", description: `Transaction for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category} updated.` });
+        } else {
+            toast({ title: "Transaction Added", description: `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} logged for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category}.` });
         }
     });
     setEditingTransaction(null);
@@ -286,14 +277,10 @@ export default function Home() {
 
     setAppData(prev => {
         const updatedTransactions = prev.transactions.filter(t => t.id !== transactionId);
-        let newMonthlyIncome = prev.monthlyIncome;
-        if(transaction.type === 'income') {
-            newMonthlyIncome = (prev.monthlyIncome ?? 0) - transaction.amount;
-        }
+        // No direct update to monthlyIncome here for deletion, as it's a separate user action to set budgeted income
         return {
             ...prev,
             transactions: updatedTransactions,
-            monthlyIncome: newMonthlyIncome,
         };
     });
     requestAnimationFrame(() => {
@@ -319,14 +306,13 @@ export default function Home() {
     if (budgetData.percentage !== undefined && currentSetMonthlyIncome > 0 && budgetData.category !== 'savings') {
         calculatedLimit = parseFloat(((budgetData.percentage / 100) * currentSetMonthlyIncome).toFixed(2));
     } else if (budgetData.category !== 'savings' && budgetData.percentage !== undefined && currentSetMonthlyIncome === 0) {
-        calculatedLimit = 0; // If no income, percentage-based budgets are 0
+        calculatedLimit = 0; 
     }
 
 
      if (budgetData.category !== 'savings' && (budgetData.percentage === undefined || budgetData.percentage <=0)) {
-         localToastInfo = { title: "Invalid Budget", description: "Budget percentage must be a positive value for expense categories.", variant: "destructive" };
-         requestAnimationFrame(() => {
-             if (localToastInfo) toast(localToastInfo as any);
+         requestAnimationFrame(() => { // Ensure toast is outside render
+             toast({ title: "Invalid Budget", description: "Budget percentage must be a positive value for expense categories.", variant: "destructive" });
          });
          return;
      }
@@ -359,15 +345,19 @@ export default function Home() {
              const labelB = getCategoryById(b.category, prev.categories)?.label ?? b.category;
              return labelA.localeCompare(labelB);
          });
-
-        const isUpdating = !!(budgetData.id && prev.budgets.find(b => b.id === budgetData.id));
-        if (isUpdating) {
-            localToastInfo = { title: "Budget Updated", description: `Budget for ${getCategoryById(finalBudgetData.category, prev.categories)?.label ?? finalBudgetData.category} updated to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` };
+        // Toast and reminder info will be set outside setAppData
+        return { ...prev, budgets: updatedBudgets };
+    });
+    
+    const isUpdatingAfterState = !!(budgetData.id && appData.budgets.find(b => b.id === budgetData.id));
+    requestAnimationFrame(() => {
+        if (isUpdatingAfterState) {
+            toast({ title: "Budget Updated", description: `Budget for ${getCategoryById(finalBudgetData.category, categories)?.label ?? finalBudgetData.category} updated to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` });
         } else {
-            localToastInfo = { title: "Budget Set", description: `Budget for ${getCategoryById(finalBudgetData.category, prev.categories)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` };
+            toast({ title: "Budget Set", description: `Budget for ${getCategoryById(finalBudgetData.category, categories)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` });
         }
 
-        const needsCategoryIds = prev.categories.filter(c =>
+        const needsCategoryIds = categories.filter(c =>
             !c.isIncomeSource && (
             c.label.toLowerCase().includes('housing') ||
             c.label.toLowerCase().includes('groceries') ||
@@ -375,25 +365,14 @@ export default function Home() {
             c.label.toLowerCase().includes('bill'))
         ).map(c => c.id);
 
-        const currentTotalNeedsPercentage = updatedBudgets
+        const currentTotalNeedsPercentage = appData.budgets // Use updated budgets from appData for calculation
             .filter(b => needsCategoryIds.includes(b.category) && b.month === currentMonth && b.percentage !== undefined)
             .reduce((sum, b) => sum + (b.percentage ?? 0), 0);
 
         if (currentTotalNeedsPercentage > 50) {
-            localNeedsReminderInfo = { percentage: currentTotalNeedsPercentage };
-        }
-
-        return { ...prev, budgets: updatedBudgets };
-    });
-
-    requestAnimationFrame(() => {
-        if (localToastInfo) {
-             toast(localToastInfo as any);
-        }
-        if (localNeedsReminderInfo) {
-            toast({
+             toast({
                 title: "Budget Reminder",
-                description: `Your 'Needs' categories now represent ${localNeedsReminderInfo?.percentage.toFixed(1)}% of your income, exceeding the recommended 50%. Consider reviewing your allocations.`,
+                description: `Your 'Needs' categories now represent ${currentTotalNeedsPercentage.toFixed(1)}% of your income, exceeding the recommended 50%. Consider reviewing your allocations.`,
                 variant: "default",
                 duration: 7000,
             });
@@ -454,38 +433,34 @@ const openEditBudgetDialog = (budgetId: string) => {
         });
         return;
     }
-    if (!selectedIncomeCategory) { // Ensure a category is selected
+    if (!selectedIncomeCategory) { 
          requestAnimationFrame(() => {
             toast({ title: "Select Income Source", description: "Please select an income source category.", variant: "destructive" });
         });
          return;
     }
 
-    // Create a new income transaction
     const incomeTransaction: Omit<Transaction, 'id'> = {
         type: 'income',
         amount: incomeValue,
-        category: selectedIncomeCategory, // Use the selected income category
+        category: selectedIncomeCategory, 
         date: new Date(),
         description: `Monthly income set/adjusted to ${formatCurrency(incomeValue)} from ${getCategoryById(selectedIncomeCategory, categories)?.label}.`,
     };
     const transactionWithId: Transaction = { ...incomeTransaction, id: `income-tx-${Date.now()}` };
 
      setAppData(prev => {
-            // Update monthlyIncome directly. This is the master income value for budget calculations.
-            // Add the new income transaction to the list
             const updatedTransactions = [transactionWithId, ...prev.transactions]
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
             return {
                 ...prev,
-                monthlyIncome: incomeValue, // Set the new total budgeted income
+                monthlyIncome: incomeValue, 
                 transactions: updatedTransactions
             };
        });
 
-      setTempIncome(incomeValue.toString()); // Keep the input field populated with the set income
-      // setSelectedIncomeCategory(''); // Optionally reset, or keep selected
+      setTempIncome(incomeValue.toString()); 
        requestAnimationFrame(() => {
         toast({ title: "Income Updated", description: `Monthly budgeted income set to ${formatCurrency(incomeValue)}. Percentage-based budgets will update their monetary limits.` });
     });
@@ -508,17 +483,6 @@ const openEditBudgetDialog = (budgetId: string) => {
      return currentMonthBudgets
          .filter(b => b.category !== 'savings' && b.percentage !== undefined)
          .reduce((sum, b) => sum + (b.percentage ?? 0), 0);
-  }, [currentMonthBudgets]);
-
-  const totalAllocatedBudgetAmount = React.useMemo(() => {
-      return currentMonthBudgets
-          .filter(b => b.category !== 'savings')
-          .reduce((sum, b) => sum + b.limit, 0);
-  }, [currentMonthBudgets]);
-
-  const savingsBudgetAmount = React.useMemo(() => {
-      const savings = currentMonthBudgets.find(b => b.category === 'savings');
-      return savings?.limit ?? 0;
   }, [currentMonthBudgets]);
 
   const hasExpenseBudgetsSet = React.useMemo(() => {
@@ -550,7 +514,7 @@ const openEditBudgetDialog = (budgetId: string) => {
             </div>
 
             {monthlyIncome === null || monthlyIncome === 0 ? (
-              <Card className="border-primary border-2 shadow-lg animate-fade-in rounded-xl">
+              <Card className="border-primary border-2 animate-fade-in">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2"><Wallet className="text-primary h-5 w-5"/> Set Your Monthly Income</CardTitle>
                   <CardDescription>Enter your estimated total income for the month and select its primary source category. This forms the basis for your budget.</CardDescription>
@@ -607,7 +571,7 @@ const openEditBudgetDialog = (budgetId: string) => {
              {monthlyIncome !== null && monthlyIncome > 0 && (
                 <>
                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2 animate-slide-up">
-                    <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02] rounded-xl">
+                    <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Budgeted Income</CardTitle>
                         <Wallet className="h-4 w-4 text-muted-foreground" />
@@ -617,7 +581,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                         <p className="text-xs text-muted-foreground">This month's budgeted total</p>
                     </CardContent>
                     </Card>
-                    <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02] rounded-xl">
+                    <Card className="transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Expenses Logged</CardTitle>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -632,7 +596,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                     </CardContent>
                     </Card>
                 </div>
-                <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02] rounded-xl" style={{"animationDelay": "0.1s"}}>
+                <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]" style={{"animationDelay": "0.1s"}}>
                     <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Actual Balance</CardTitle>
                     <CardDescription>Actual income transactions minus logged expenses this month.</CardDescription>
@@ -653,7 +617,7 @@ const openEditBudgetDialog = (budgetId: string) => {
            )}
 
           {monthlyIncome !== null && monthlyIncome > 0 && (
-            <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02] rounded-xl" style={{"animationDelay": "0.3s"}}>
+            <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.02]" style={{"animationDelay": "0.3s"}}>
                 <CardHeader>
                 <CardTitle>Recent Transactions</CardTitle>
                  <CardDescription>Your latest financial activity.</CardDescription>
@@ -687,7 +651,7 @@ const openEditBudgetDialog = (budgetId: string) => {
             </Card>
           )}
            {!hasExpenseBudgetsSet && monthlyIncome !== null && monthlyIncome > 0 && (
-                <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30 rounded-xl">
+                <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
                     <CardContent className="p-6 text-center text-muted-foreground">
                         <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                         <p className="font-semibold">Ready to Budget?</p>
@@ -699,7 +663,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 </Card>
            )}
            {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && (
-                 <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in rounded-xl">
+                 <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
                     <CardContent className="p-6 text-center">
                         <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                          <p className="font-semibold text-destructive">Set Your Income</p>
@@ -707,17 +671,17 @@ const openEditBudgetDialog = (budgetId: string) => {
                     </CardContent>
                 </Card>
            )}
-             <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] rounded-xl" style={{"animationDelay": `${(savingGoals.length + 1) * 0.05}s`}}>
+             <Card className="animate-slide-up transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01]" style={{"animationDelay": `${(savingGoals.length + 1) * 0.05}s`}}>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/> Financial Planning Tips</CardTitle>
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                     <Link href="/learn/budgeting-guide">
-                         <Button variant="link" className="p-0 h-auto text-base">
-                            How to Budget Guide
-                         </Button>
-                     </Link>
+                    <Link href="/learn/budgeting-guide">
+                        <Button variant="link" className="p-0 h-auto text-base">
+                           How to Budget Guide
+                        </Button>
+                    </Link>
                 </CardContent>
              </Card>
         </TabsContent>
@@ -727,7 +691,7 @@ const openEditBudgetDialog = (budgetId: string) => {
              <div className="p-4 space-y-2">
               <h2 className="text-lg font-semibold mb-2">All Transactions</h2>
                {transactions.length === 0 && monthlyIncome === null && (
-                      <Card className="border-dashed border-destructive/30 bg-destructive/10 rounded-xl">
+                      <Card className="border-dashed border-destructive/30 bg-destructive/10">
                         <CardContent className="p-6 text-center">
                             <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                             <p className="font-semibold text-destructive">Set Income First</p>
@@ -737,7 +701,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                      </Card>
                )}
                {transactions.length === 0 && monthlyIncome !== null && !hasExpenseBudgetsSet && (
-                    <Card className="border-dashed border-secondary/50 bg-secondary/30 rounded-xl">
+                    <Card className="border-dashed border-secondary/50 bg-secondary/30">
                          <CardContent className="p-6 text-center text-muted-foreground">
                             <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                              <p className="font-semibold">Set Budgets to Log Expenses</p>
@@ -772,9 +736,11 @@ const openEditBudgetDialog = (budgetId: string) => {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Link href="/saving-goals" passHref>
+                  <Link href="/saving-goals" passHref>
                       <Button asChild variant="outline" size="sm" className="rounded-lg">
-                        <span><PiggyBank className="h-4 w-4" /> Manage Goals</span>
+                        <>
+                          <PiggyBank className="h-4 w-4" /> Manage Goals
+                        </>
                       </Button>
                   </Link>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
@@ -785,7 +751,7 @@ const openEditBudgetDialog = (budgetId: string) => {
              </div>
           </div>
           {(monthlyIncome === null || monthlyIncome === 0) ? (
-            <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in rounded-xl">
+            <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
                 <CardContent className="p-6 text-center">
                     <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                     <p className="font-semibold text-destructive">Set Your Income First</p>
@@ -818,7 +784,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                     </div>
                  ))
            ) : (
-                <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in rounded-xl">
+                <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in">
                      <CardContent className="p-6 text-center text-muted-foreground">
                         <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                         <p className="font-semibold">No Budgets Yet</p>
@@ -833,7 +799,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                  <h2 className="text-lg font-semibold">Financial Insights</h2>
              </div>
              {(monthlyIncome === null || monthlyIncome === 0) ? (
-                   <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in rounded-xl">
+                   <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
                        <CardContent className="p-6 text-center">
                            <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                             <p className="font-semibold text-destructive">Set Your Income First</p>
@@ -844,7 +810,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                        </CardContent>
                    </Card>
              ) : !hasExpenseBudgetsSet ? (
-                  <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in rounded-xl">
+                  <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in">
                        <CardContent className="p-6 text-center text-muted-foreground">
                           <BarChart3 className="mx-auto h-8 w-8 mb-2 text-primary" />
                            <p className="font-semibold">Set Budgets First</p>
@@ -923,7 +889,7 @@ const openEditBudgetDialog = (budgetId: string) => {
         }}
         onSaveTransaction={handleSaveTransaction}
         categoriesForSelect={categories}
-        canAddExpense={hasExpenseBudgetsSet || (!!editingTransaction && editingTransaction.type ==='expense')} // Allow editing existing expense even if budgets changed
+        canAddExpense={hasExpenseBudgetsSet || (!!editingTransaction && editingTransaction.type ==='expense')} 
         currentMonthBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)}
         existingTransaction={editingTransaction}
       />
@@ -945,7 +911,7 @@ const openEditBudgetDialog = (budgetId: string) => {
 
       {transactionToDelete && (
         <AlertDialog open={!!transactionToDelete} onOpenChange={() => setTransactionToDelete(null)}>
-            <AlertDialogContent className="rounded-xl">
+            <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -965,7 +931,7 @@ const openEditBudgetDialog = (budgetId: string) => {
 
       {budgetToDelete && (
         <AlertDialog open={!!budgetToDelete} onOpenChange={() => setBudgetToDelete(null)}>
-            <AlertDialogContent className="rounded-xl">
+            <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Delete Budget?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -983,3 +949,4 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
+

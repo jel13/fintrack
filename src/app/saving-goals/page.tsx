@@ -78,7 +78,7 @@ export default function SavingGoalsPage() {
             return;
         }
 
-        if (totalWithoutCurrent + newPercentage > 100.05) { // Allow small floating point inaccuracies
+        if (totalWithoutCurrent + newPercentage > 100.05) { 
             const maxAllowed = Math.max(0, parseFloat((100 - totalWithoutCurrent).toFixed(1)));
             requestAnimationFrame(() => toast({
                 title: "Allocation Limit Exceeded",
@@ -145,7 +145,6 @@ export default function SavingGoalsPage() {
 
     return (
         <div className="flex flex-col h-screen bg-background">
-             {/* Header */}
              <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
                 <Link href="/" passHref>
                     <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
@@ -153,7 +152,7 @@ export default function SavingGoalsPage() {
                     </Button>
                 </Link>
                 <h1 className="text-xl font-semibold ml-2">Manage Saving Goals</h1>
-                 <Button size="sm" className="ml-auto" onClick={() => { setEditingGoal(null); setIsAddGoalDialogOpen(true); }} disabled={!isLoaded || totalSavingsBudgetLimit <= 0}>
+                 <Button size="sm" className="ml-auto rounded-lg" onClick={() => { setEditingGoal(null); setIsAddGoalDialogOpen(true); }} disabled={!isLoaded || totalSavingsBudgetLimit <= 0}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Goal
                 </Button>
             </div>
@@ -240,7 +239,7 @@ export default function SavingGoalsPage() {
                                                 style={{ width: `${progressValue}%` }}
                                              />
                                             <div className="relative z-10">
-                                                <CardHeader className="flex flex-row items-start justify-between pb-2 pr-2"> {/* Reduced pr */}
+                                                <CardHeader className="flex flex-row items-start justify-between pb-2 pr-2"> 
                                                     <div>
                                                         <CardTitle className="text-base">{goal.name}</CardTitle>
                                                         {goal.description && <CardDescription className="text-xs mt-1">{goal.description}</CardDescription>}
@@ -248,7 +247,7 @@ export default function SavingGoalsPage() {
                                                      <div className="absolute top-1 right-1 flex-shrink-0">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 group-hover/goal:opacity-100 focus:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 group-hover/goal:opacity-100 focus:opacity-100 transition-opacity rounded-full" onClick={(e) => e.stopPropagation()}>
                                                                     <MoreVertical className="h-4 w-4" />
                                                                     <span className="sr-only">Goal Actions</span>
                                                                 </Button>
@@ -275,10 +274,10 @@ export default function SavingGoalsPage() {
                                                                         </AlertDialogDescription>
                                                                         </AlertDialogHeader>
                                                                         <AlertDialogFooter>
-                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                        <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
                                                                         <AlertDialogAction
                                                                             onClick={() => handleDeleteGoal(goal.id)}
-                                                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg">
                                                                             Delete Goal
                                                                         </AlertDialogAction>
                                                                         </AlertDialogFooter>
@@ -316,7 +315,7 @@ export default function SavingGoalsPage() {
                                     <Target className="mx-auto h-10 w-10 mb-2 text-accent" />
                                     <p className="font-semibold">No Saving Goals Yet</p>
                                     <p className="text-sm mb-3">Click "Add Goal" to start planning where your savings will go!</p>
-                                    <Button size="sm" onClick={() => setIsAddGoalDialogOpen(true)} disabled={totalSavingsBudgetLimit <= 0}>
+                                    <Button size="sm" onClick={() => setIsAddGoalDialogOpen(true)} disabled={totalSavingsBudgetLimit <= 0} className="rounded-lg">
                                         <span className="flex items-center justify-center">Add New Goal</span>
                                     </Button>
                                      {totalSavingsBudgetLimit <= 0 && <p className="text-xs text-destructive mt-2">Enable Add Goal by increasing your Savings Budget.</p>}
