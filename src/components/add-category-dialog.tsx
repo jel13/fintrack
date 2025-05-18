@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -59,7 +58,17 @@ interface AddCategoryDialogProps {
 }
 
 // Get a list of available Lucide icon names
-const iconNames = Object.keys(LucideIcons).filter(key => key !== 'createLucideIcon' && key !== 'icons' && typeof LucideIcons[key as keyof typeof LucideIcons] === 'object');
+const allLucideExports = Object.keys(LucideIcons) as Array<keyof typeof LucideIcons>;
+const iconNames = allLucideExports.filter(key => {
+  // Icon components in lucide-react are functions
+  if (typeof LucideIcons[key] === 'function') {
+    // Standard Lucide icon names are PascalCase.
+    // Exclude helper functions or other non-component exports like 'createLucideIcon'.
+    const firstChar = key.charAt(0);
+    return firstChar === firstChar.toUpperCase() && key !== 'createLucideIcon';
+  }
+  return false;
+});
 
 
 export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existingCategory, categories }: AddCategoryDialogProps) {
