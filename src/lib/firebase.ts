@@ -14,14 +14,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// --- Debugging: Log the Firebase config to the console ---
-// This line is crucial for debugging. Check your browser's developer console.
-// If NEXT_PUBLIC_FIREBASE_API_KEY (and others) are undefined or incorrect here,
-// your .env.local file is not being read correctly OR you haven't restarted the dev server.
-console.log("Firebase Config Being Used:", firebaseConfig);
+// --- CRUCIAL DEBUGGING STEP ---
+// This log will show in your BROWSER'S developer console.
+// Check if NEXT_PUBLIC_FIREBASE_API_KEY (and others) are undefined or incorrect here.
+// If they are, your .env.local file is not being read correctly OR you haven't restarted the dev server.
+console.log("DEBUG: Firebase Config Loaded in src/lib/firebase.ts:", firebaseConfig);
 
 // Initialize Firebase
+// Check if Firebase has already been initialized to prevent re-initialization errors.
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
+const auth = getAuth(app); // This line will throw if firebaseConfig.apiKey is invalid or undefined
 
 export { app, auth };
