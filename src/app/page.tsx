@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, FolderCog, Edit, Trash2, TrendingUp } from "lucide-react";
+import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, FolderCog, Edit, Trash2, TrendingDown, Scale } from "lucide-react"; // Added TrendingDown, Scale
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -209,7 +209,7 @@ export default function Home() {
         }
         return prevData;
     });
-  }, [transactions, appData.monthlyIncome, currentMonth, isLoaded, categories, appData.budgets, user]);
+  }, [transactions, appData.monthlyIncome, currentMonth, isLoaded, categories, user]);
 
 
   const handleSaveTransaction = (transactionData: Transaction) => {
@@ -236,6 +236,10 @@ export default function Home() {
     setAppData(prev => {
         let updatedTransactions;
         const existingIndex = prev.transactions.findIndex(t => t.id === transactionData.id);
+        let originalAmount = 0;
+        if (existingIndex > -1 && prev.transactions[existingIndex].type === 'income') {
+            originalAmount = prev.transactions[existingIndex].amount;
+        }
 
         if (existingIndex > -1) {
             updatedTransactions = [...prev.transactions];
@@ -248,11 +252,19 @@ export default function Home() {
         
         
         let newMonthlyIncome = prev.monthlyIncome;
-        if (transactionData.type === 'income' && !transactionData.id) { // Only for new income transactions
-            newMonthlyIncome = (newMonthlyIncome ?? 0) + transactionData.amount;
-        } else if (transactionData.type === 'income' && transactionData.id && existingIndex > -1) { // For updated income transactions
-            const originalTransaction = prev.transactions[existingIndex];
-            newMonthlyIncome = (newMonthlyIncome ?? 0) - originalTransaction.amount + transactionData.amount;
+        if (transactionData.type === 'income') {
+            if (transactionData.id && existingIndex > -1) { // Updating existing income
+                newMonthlyIncome = (newMonthlyIncome ?? 0) - originalAmount + transactionData.amount;
+            } else if (!transactionData.id) { // Adding new income
+                 // This part is tricky. If income transactions are meant to *add* to the budgeted income,
+                 // this line should be: newMonthlyIncome = (newMonthlyIncome ?? 0) + transactionData.amount;
+                 // However, typically, income transactions *contribute* to reaching the *already set* monthly income.
+                 // The primary `monthlyIncome` is set via the dedicated input.
+                 // For now, let's assume income transactions don't automatically increase the *budgeted* monthlyIncome,
+                 // but rather are logged against it. The actual balance will reflect this.
+                 // If the intention is for *new* income transactions to *increase* the budgeted monthly income,
+                 // then the logic to update monthlyIncome would be here.
+            }
         }
         
         return {
@@ -279,14 +291,11 @@ export default function Home() {
 
     setAppData(prev => {
         const updatedTransactions = prev.transactions.filter(t => t.id !== transactionId);
-        let newMonthlyIncome = prev.monthlyIncome;
-        if (transaction.type === 'income') {
-            newMonthlyIncome = (newMonthlyIncome ?? 0) - transaction.amount;
-        }
+        // Note: Deleting an income transaction does not currently reduce the *budgeted* monthlyIncome.
+        // It only affects the actual balance. This behavior can be changed if needed.
         return {
             ...prev,
             transactions: updatedTransactions,
-            monthlyIncome: newMonthlyIncome < 0 ? 0 : newMonthlyIncome, // Ensure income doesn't go negative
         };
     });
     requestAnimationFrame(() => {
@@ -352,6 +361,7 @@ export default function Home() {
     });
     
     const isUpdatingAfterState = !!(budgetData.id && appData.budgets.find(b => b.id === budgetData.id));
+    
     requestAnimationFrame(() => {
         if (isUpdatingAfterState) {
             toast({ title: "Budget Updated", description: `Budget for ${getCategoryById(finalBudgetData.category, categories)?.label ?? finalBudgetData.category} updated to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` });
@@ -443,8 +453,6 @@ const openEditBudgetDialog = (budgetId: string) => {
     }
 
     setAppData(prev => ({ ...prev, monthlyIncome: incomeValue }));
-    // The actual income transaction will be logged through the normal transaction flow.
-    // This function only sets the *budgeted* monthly income.
        
     requestAnimationFrame(() => {
         toast({ title: "Income Updated", description: `Monthly budgeted income set to ${formatCurrency(incomeValue)}. Percentage-based budgets will update their monetary limits.` });
@@ -555,42 +563,43 @@ const openEditBudgetDialog = (budgetId: string) => {
 
              {monthlyIncome !== null && monthlyIncome > 0 && (
                 <>
-                 <div className="grid gap-4 grid-cols-1 md:grid-cols-2 animate-slide-up">
+                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 animate-slide-up">
                     <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Budgeted Income</CardTitle>
-                        <Wallet className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-primary">{formatCurrency(monthlySummary.income)}</div>
-                        <p className="text-xs text-muted-foreground">This month's budgeted total</p>
-                    </CardContent>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Budgeted Income</CardTitle>
+                            <Wallet className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-primary">{formatCurrency(monthlySummary.income)}</div>
+                            <p className="text-xs text-muted-foreground">This month's budgeted total</p>
+                        </CardContent>
                     </Card>
                     <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Expenses Logged</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                         {hasExpenseBudgetsSet ? (
-                            <div className="text-2xl font-bold">{formatCurrency(monthlySummary.expenses)}</div>
-                         ) : (
-                             <Skeleton className="h-8 w-24 rounded-md" />
-                         )}
-                         <p className="text-xs text-muted-foreground">{hasExpenseBudgetsSet ? "This month" : "Set budgets first"}</p>
-                    </CardContent>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Expenses Logged</CardTitle>
+                            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                             {hasExpenseBudgetsSet ? (
+                                <div className="text-2xl font-bold">{formatCurrency(monthlySummary.expenses)}</div>
+                             ) : (
+                                 <Skeleton className="h-8 w-24 rounded-md" />
+                             )}
+                             <p className="text-xs text-muted-foreground">{hasExpenseBudgetsSet ? "This month" : "Set budgets first"}</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                           <CardTitle className="text-sm font-medium">Actual Balance</CardTitle>
+                           <Scale className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold text-primary">{formatCurrency(monthlySummary.balance)}</div>
+                           <p className="text-xs text-muted-foreground">Logged income minus expenses this month.</p>
+                           {/* <p className="text-xs text-muted-foreground">Logged Income Trans: {formatCurrency(monthlySummary.incomeTransactions)}</p> */}
+                        </CardContent>
                     </Card>
                 </div>
-                <Card className="animate-slide-up" style={{"animationDelay": "0.1s"}}>
-                    <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Actual Balance</CardTitle>
-                    <CardDescription>Actual income transactions minus logged expenses this month.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold text-primary">{formatCurrency(monthlySummary.balance)}</div>
-                       <p className="text-xs text-muted-foreground">Logged Income Transactions: {formatCurrency(monthlySummary.incomeTransactions)}</p>
-                    </CardContent>
-                </Card>
                 </>
              )}
 
@@ -656,17 +665,17 @@ const openEditBudgetDialog = (budgetId: string) => {
                     </CardContent>
                 </Card>
            )}
-             <Card className="animate-slide-up" style={{"animationDelay": `${(savingGoals.length + 1) * 0.05}s`}}>
+             <Card className="animate-slide-up">
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/> Financial Planning Tips</CardTitle>
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                     <Button asChild variant="link" className="p-0 h-auto text-base">
-                        <Link href="/learn/budgeting-guide">
-                           How to Budget Guide
-                        </Link>
-                    </Button>
+                     <Link href="/learn/budgeting-guide">
+                        <Button asChild variant="link" className="p-0 h-auto text-base rounded-lg">
+                           <span>How to Budget Guide</span>
+                        </Button>
+                    </Link>
                 </CardContent>
              </Card>
         </TabsContent>
@@ -721,11 +730,11 @@ const openEditBudgetDialog = (budgetId: string) => {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                  <Button asChild variant="outline" size="sm" className="rounded-lg">
-                      <Link href="/saving-goals" className="flex items-center justify-center gap-2">
-                          <PiggyBank className="h-4 w-4" /> Manage Goals
-                      </Link>
-                  </Button>
+                  <Link href="/saving-goals" passHref>
+                      <Button asChild variant="outline" size="sm" className="rounded-lg">
+                        <span><PiggyBank className="h-4 w-4" /> Manage Goals</span>
+                      </Button>
+                  </Link>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
                     <Button size="sm" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }} className="rounded-lg">
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
@@ -855,7 +864,7 @@ const openEditBudgetDialog = (budgetId: string) => {
               "flex flex-col items-center justify-center h-full gap-1 rounded-none text-muted-foreground hover:text-primary",
               pathname === "/profile"
                 ? "border-t-2 border-primary bg-primary/10 text-primary"
-                : "border-t-2 border-transparent"
+                : "border-t-2 border-transparent" // Ensure it still participates in the border-t layout
             )}
           >
             <UserCircle className="h-5 w-5" />
