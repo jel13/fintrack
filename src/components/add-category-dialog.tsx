@@ -187,7 +187,7 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
                       </FormControl>
                       <SelectContent>
                          {/* Wrap SelectContent's children in ScrollArea if needed, although SelectContent usually handles scroll */}
-                        {iconNames.sort().map((iconName) => {
+                        {(iconNames || []).sort().map((iconName) => {
                            const Icon = getCategoryIconComponent(iconName);
                            return (
                              <SelectItem key={iconName} value={iconName}>
