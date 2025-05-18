@@ -61,10 +61,11 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
 
   if (href) {
     return (
-      <Link href={href} passHref>
-        <a className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background">
-          {content}
-        </a>
+      <Link
+        href={href}
+        className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+      >
+        {content}
       </Link>
     );
   }
@@ -215,5 +216,6 @@ export default function ProfilePage() {
     </div>
   );
 }
+    
 
     
