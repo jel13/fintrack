@@ -14,6 +14,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// --- Debugging: Log the Firebase config to the console ---
+console.log("Firebase Config Being Used:", firebaseConfig);
+// If NEXT_PUBLIC_FIREBASE_API_KEY is undefined here, your .env.local is not being read correctly or you haven't restarted the server.
+
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
