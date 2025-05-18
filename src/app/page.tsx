@@ -44,9 +44,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 
 export default function Home() {
+  const { user } = useAuth(); // Get user from AuthContext
   const [appData, setAppData] = React.useState<AppData>(defaultAppData);
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [isAddTransactionSheetOpen, setIsAddTransactionSheetOpen] = React.useState(false);
@@ -69,17 +71,24 @@ export default function Home() {
   const previousMonth = format(previousMonthDate, 'yyyy-MM');
 
   React.useEffect(() => {
-    const loadedData = loadAppData();
-    setAppData(loadedData);
-    setTempIncome(loadedData.monthlyIncome?.toString() ?? '');
-    setIsLoaded(true);
-  }, []);
+    if (user) { // Only load data if user is authenticated
+        const loadedData = loadAppData();
+        setAppData(loadedData);
+        setTempIncome(loadedData.monthlyIncome?.toString() ?? '');
+        setIsLoaded(true);
+    } else {
+        // If no user, potentially clear data or set to default if you want to reset on logout
+        // For now, just ensure isLoaded is false or appData is default
+        setAppData(defaultAppData);
+        setIsLoaded(false); // Or true, if you want to show the "Set income" prompt
+    }
+  }, [user]); // Depend on user state
 
   React.useEffect(() => {
-    if (isLoaded) {
+    if (isLoaded && user) { // Only save if loaded and user exists
       saveAppData(appData);
     }
-  }, [appData, isLoaded]);
+  }, [appData, isLoaded, user]);
 
   const { monthlyIncome, transactions, budgets, categories, savingGoals } = appData;
 
@@ -91,9 +100,8 @@ export default function Home() {
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
 
-    // const effectiveIncome = monthlyIncome ?? 0; // Budgeted income might differ from actual income logged
     const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    const actualBalance = incomeFromTransactionsThisMonth - expenses; // Balance based on actual logged transactions
+    const actualBalance = incomeFromTransactionsThisMonth - expenses; 
 
     return { income: monthlyIncome ?? 0, expenses, balance: actualBalance, incomeTransactions: incomeFromTransactionsThisMonth };
   }, [transactions, monthlyIncome, currentMonth, isLoaded]);
@@ -146,7 +154,7 @@ export default function Home() {
         const leftoverForSavings = Math.max(0, currentSetMonthlyIncome - totalBudgetedExcludingSavings);
 
         if (savingsBudgetIndex > -1) {
-            const savingsSpent = prevData.transactions // Actual spending towards "Savings" category (e.g. transfers)
+            const savingsSpent = prevData.transactions 
                  .filter(t => t.type === 'expense' && t.category === 'savings' && format(t.date, 'yyyy-MM') === currentMonth)
                  .reduce((sum, t) => sum + t.amount, 0);
 
@@ -155,7 +163,7 @@ export default function Home() {
                 updatedBudgets[savingsBudgetIndex] = {
                     ...currentSavingsBudget,
                     limit: leftoverForSavings,
-                    spent: savingsSpent, // This 'spent' is for direct transactions to 'Savings', not goal contributions
+                    spent: savingsSpent, 
                     percentage: undefined
                 };
                 budgetsChanged = true;
@@ -196,6 +204,7 @@ export default function Home() {
     let toastTitle = "";
     let toastMessage = "";
     let validTransaction = true;
+    let needsBudgetReminder = false;
 
     if (transactionData.type === 'expense' && transactionData.category !== 'savings') {
       const categoryBudget = currentMonthBudgets.find(b => b.category === transactionData.category);
@@ -219,29 +228,28 @@ export default function Home() {
         const existingIndex = prev.transactions.findIndex(t => t.id === transactionData.id);
         let updatedMonthlyIncome = prev.monthlyIncome;
 
-        if (existingIndex > -1) {
+        if (existingIndex > -1) { // Editing existing transaction
             const oldTransaction = prev.transactions[existingIndex];
             updatedTransactions = [...prev.transactions];
             updatedTransactions[existingIndex] = transactionData;
             
-            // Adjust income if an income transaction was edited
             if (oldTransaction.type === 'income' && transactionData.type === 'income') {
-                // If it's an update to an existing income transaction
                 updatedMonthlyIncome = (prev.monthlyIncome ?? 0) - oldTransaction.amount + transactionData.amount;
             } else if (oldTransaction.type === 'income' && transactionData.type === 'expense') {
-                // If an income transaction was changed to an expense
                 updatedMonthlyIncome = (prev.monthlyIncome ?? 0) - oldTransaction.amount;
             } else if (oldTransaction.type === 'expense' && transactionData.type === 'income') {
-                // If an expense transaction was changed to income
-                updatedMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
-            }
-        } else {
-            // New transaction
-            updatedTransactions = [transactionData, ...prev.transactions];
-            if (transactionData.type === 'income') {
-                 // For new income transactions, add to monthlyIncome
                  updatedMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
             }
+             toastTitle = "Transaction Updated";
+             toastMessage = `Transaction for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category} updated.`;
+
+        } else { // New transaction
+            updatedTransactions = [transactionData, ...prev.transactions];
+            if (transactionData.type === 'income') {
+                 updatedMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
+            }
+            toastTitle = "Transaction Added";
+            toastMessage = `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} logged for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category}.`;
         }
         
         return {
@@ -250,21 +258,12 @@ export default function Home() {
             monthlyIncome: updatedMonthlyIncome, 
         };
     });
-
-    const existingTxAfterUpdate = appData.transactions.find(t => t.id === transactionData.id);
-    if (existingTxAfterUpdate && transactionData.id) { 
-        toastTitle = "Transaction Updated";
-        toastMessage = `Transaction for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category} updated.`;
-    } else { 
-        toastTitle = "Transaction Added";
-        toastMessage = `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} logged for ${getCategoryById(transactionData.category, categories)?.label ?? transactionData.category}.`;
-    }
-
-    if (toastTitle) {
-        requestAnimationFrame(() => {
+    
+    requestAnimationFrame(() => {
+        if (toastTitle) {
             toast({ title: toastTitle, description: toastMessage });
-        });
-    }
+        }
+    });
     setEditingTransaction(null);
   };
 
@@ -310,23 +309,20 @@ export default function Home() {
 
      if (budgetData.category !== 'savings' && (budgetData.percentage === undefined || budgetData.percentage <=0)) {
          toastInfo = { title: "Invalid Budget", description: "Budget percentage must be a positive value for expense categories.", variant: "destructive" };
-         if (toastInfo) {
-            requestAnimationFrame(() => {
-                toast(toastInfo as any);
-            });
-         }
+         requestAnimationFrame(() => {
+             if (toastInfo) toast(toastInfo as any);
+         });
          return;
      }
 
     const finalBudgetData: Budget = {
         ...budgetData,
         limit: calculatedLimit,
-        spent: appData.transactions // Use appData.transactions for current state
+        spent: appData.transactions 
             .filter(t => t.type === 'expense' && t.category === budgetData.category && format(t.date, 'yyyy-MM') === (budgetData.month || currentMonth))
             .reduce((sum, t) => sum + t.amount, 0),
         month: budgetData.month || currentMonth,
     };
-
 
     setAppData(prev => {
         let updatedBudgets;
@@ -347,49 +343,46 @@ export default function Home() {
              return labelA.localeCompare(labelB);
          });
         
+        const isUpdating = !!(budgetData.id && prev.budgets.find(b => b.id === budgetData.id));
+        if (isUpdating) {
+            toastInfo = { title: "Budget Updated", description: `Budget for ${getCategoryById(finalBudgetData.category, prev.categories)?.label ?? finalBudgetData.category} updated to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` };
+        } else {
+            toastInfo = { title: "Budget Set", description: `Budget for ${getCategoryById(finalBudgetData.category, prev.categories)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` };
+        }
+    
+        const needsCategoryIds = prev.categories.filter(c =>
+            !c.isIncomeSource && (
+            c.label.toLowerCase().includes('housing') ||
+            c.label.toLowerCase().includes('groceries') ||
+            c.label.toLowerCase().includes('transport') ||
+            c.label.toLowerCase().includes('bill'))
+        ).map(c => c.id);
+
+        // Calculate based on *updatedBudgets* within this setAppData call
+        const currentTotalNeedsPercentage = updatedBudgets
+            .filter(b => needsCategoryIds.includes(b.category) && b.month === currentMonth)
+            .reduce((sum, b) => sum + (b.percentage ?? 0), 0);
+
+        if (currentTotalNeedsPercentage > 50) {
+            needsReminderInfo = { percentage: currentTotalNeedsPercentage };
+        }
+        
         return { ...prev, budgets: updatedBudgets };
     });
-
-    const isUpdating = !!(budgetData.id && appData.budgets.find(b => b.id === budgetData.id));
-
-    if (isUpdating) {
-        toastInfo = { title: "Budget Updated", description: `Budget for ${getCategoryById(finalBudgetData.category, appData.categories)?.label ?? finalBudgetData.category} updated to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` };
-    } else {
-        toastInfo = { title: "Budget Set", description: `Budget for ${getCategoryById(finalBudgetData.category, appData.categories)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` };
-    }
     
-    const needsCategoryIds = appData.categories.filter(c =>
-        !c.isIncomeSource && (
-        c.label.toLowerCase().includes('housing') ||
-        c.label.toLowerCase().includes('groceries') ||
-        c.label.toLowerCase().includes('transport') ||
-        c.label.toLowerCase().includes('bill'))
-    ).map(c => c.id);
-
-    const currentTotalNeedsPercentage = appData.budgets
-        .filter(b => needsCategoryIds.includes(b.category) && b.month === currentMonth)
-        .reduce((sum, b) => sum + (b.percentage ?? 0), 0);
-
-    if (currentTotalNeedsPercentage > 50) {
-        needsReminderInfo = { percentage: currentTotalNeedsPercentage };
-    }
-    
-    if (toastInfo) {
-        requestAnimationFrame(() => {
-            toast(toastInfo as any);
-        });
-    }
-    if (needsReminderInfo) {
-        requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+        if (toastInfo) {
+             toast(toastInfo as any);
+        }
+        if (needsReminderInfo) {
             toast({
                 title: "Budget Reminder",
                 description: `Your 'Needs' categories now represent ${needsReminderInfo?.percentage.toFixed(1)}% of your income, exceeding the recommended 50%. Consider reviewing your allocations.`,
                 variant: "default",
                 duration: 7000,
             });
-        });
-    }
-
+        }
+    });
     setEditingBudget(null);
 };
 
@@ -517,7 +510,10 @@ const openEditBudgetDialog = (budgetId: string) => {
   }, [currentMonthBudgets]);
 
 
-    if (!isLoaded) {
+    if (!user) { // If no user, AuthProvider will handle redirect or show loading
+        return null; // Or a minimal loading state if AuthProvider doesn't cover it fully
+    }
+    if (!isLoaded && user) { // If user exists but data hasn't loaded yet
         return (
             <div className="flex flex-col h-screen p-4 bg-background items-center justify-center">
                  <svg className="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -894,7 +890,7 @@ const openEditBudgetDialog = (budgetId: string) => {
               "flex flex-col items-center justify-center h-full gap-1 rounded-none text-muted-foreground hover:text-primary",
               pathname === "/profile"
                 ? "border-t-2 border-primary bg-primary/10 text-primary"
-                : "border-t-2 border-transparent"
+                : "border-t-2 border-transparent" // Keep border transparent for inactive
             )}
           >
             <UserCircle className="h-5 w-5" />
@@ -971,4 +967,3 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
-

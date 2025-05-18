@@ -1,16 +1,16 @@
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { Toaster } from "@/components/ui/toaster"; // Import Toaster
-// import { AppDataProvider } from "@/context/AppDataContext"; // Example context provider
+import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/context/AuthContext"; // Import AuthProvider
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "FinTrack Mobile",
   description: "Personal finance tracking and budgeting",
-  // Add viewport settings for mobile-first approach
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
 };
 
@@ -27,11 +27,10 @@ export default function RootLayout({
           inter.variable
         )}
       >
-        {/* Wrap children potentially with Context Providers if needed later */}
-        {/* <AppDataProvider> */}
+        <AuthProvider> {/* Wrap children with AuthProvider */}
             {children}
-            <Toaster /> {/* Add Toaster here */}
-        {/* </AppDataProvider> */}
+            <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
