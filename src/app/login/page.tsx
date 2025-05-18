@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { PiggyBank } from "lucide-react"; // App icon
+import { PiggyBank } from "lucide-react"; 
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -22,9 +22,12 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, sendVerificationEmail } = useAuth(); // Added sendVerificationEmail from useAuth
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
+  const [showResendVerification, setShowResendVerification] = React.useState(false);
+  const [emailForResend, setEmailForResend] = React.useState("");
+
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -34,11 +37,40 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const handleResendVerification = async () => {
+    if (!auth.currentUser) { // Check if a user is signed in (even if not verified)
+      toast({title: "Error", description: "Please try logging in first to resend verification.", variant: "destructive"});
+      return;
+    }
     setIsLoading(true);
     try {
-      await login(data.email, data.password);
-      toast({ title: "Login Successful", description: "Welcome back!" });
+      await sendVerificationEmail(auth.currentUser);
+      toast({ title: "Verification Email Sent", description: "A new verification email has been sent. Please check your inbox."});
+      setShowResendVerification(false);
+    } catch (error: any) {
+      toast({ title: "Error Sending Email", description: error.message || "Could not resend verification email.", variant: "destructive"});
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  const onSubmit = async (data: LoginFormValues) => {
+    setIsLoading(true);
+    setShowResendVerification(false); // Reset on new login attempt
+    setEmailForResend(data.email); // Store email for potential resend
+    try {
+      const userCredential = await login(data.email, data.password);
+      // AuthContext now handles the toast if email is not verified, so just a success toast here
+      // If email is not verified, login in AuthContext already shows a toast.
+      // Only show general success if no specific "not verified" toast was shown by context.
+      if (userCredential.user && userCredential.user.emailVerified) {
+         toast({ title: "Login Successful", description: "Welcome back!" });
+      } else if (userCredential.user && !userCredential.user.emailVerified) {
+        // The toast is already shown by AuthContext's login function.
+        // We can enable a "Resend verification" button here.
+        setShowResendVerification(true);
+      }
       // Router redirection is handled by AuthContext
     } catch (error: any) {
       toast({
@@ -53,7 +85,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary p-4">
-      <Card className="w-full max-w-sm shadow-xl">
+      <Card className="w-full max-w-sm shadow-xl rounded-xl">
         <CardHeader className="text-center">
           <PiggyBank className="mx-auto h-12 w-12 text-primary mb-2" />
           <CardTitle className="text-2xl">Welcome Back!</CardTitle>
@@ -69,6 +101,7 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 {...form.register("email")}
                 disabled={isLoading}
+                className="rounded-lg"
               />
               {form.formState.errors.email && (
                 <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
@@ -82,15 +115,32 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 {...form.register("password")}
                 disabled={isLoading}
+                className="rounded-lg"
               />
               {form.formState.errors.password && (
                 <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>
               )}
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full rounded-lg" disabled={isLoading}>
               {isLoading ? "Logging in..." : "Log In"}
             </Button>
           </form>
+           {showResendVerification && auth.currentUser && !auth.currentUser.emailVerified && (
+            <div className="mt-4 text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                Your email is not verified.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResendVerification}
+                disabled={isLoading}
+                className="rounded-lg"
+              >
+                {isLoading ? "Sending..." : "Resend Verification Email"}
+              </Button>
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex flex-col items-center text-sm">
           <p className="text-muted-foreground">

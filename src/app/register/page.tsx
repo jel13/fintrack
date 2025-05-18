@@ -12,7 +12,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { PiggyBank, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation"; // Import useRouter
 
 const registerSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -20,7 +21,7 @@ const registerSchema = z.object({
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match.",
-  path: ["confirmPassword"], // path of error
+  path: ["confirmPassword"], 
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -29,6 +30,7 @@ export default function RegisterPage() {
   const { register } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
+  const router = useRouter(); // Initialize router
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -43,8 +45,13 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       await register(data.email, data.password);
-      toast({ title: "Registration Successful", description: "Welcome to FinTrack! You can now log in." });
-      // Router redirection is handled by AuthContext
+      toast({ 
+        title: "Registration Successful!", 
+        description: "A verification email has been sent. Please check your inbox (and spam folder) to verify your account before logging in.",
+        duration: 10000, // Keep toast longer
+      });
+      // Optionally, redirect to a specific page like /login or a "please verify" page
+      router.push('/login'); // Redirect to login page after showing toast
     } catch (error: any) {
       toast({
         title: "Registration Failed",
@@ -58,7 +65,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary p-4">
-      <Card className="w-full max-w-sm shadow-xl">
+      <Card className="w-full max-w-sm shadow-xl rounded-xl">
         <CardHeader className="text-center">
           <UserPlus className="mx-auto h-10 w-10 text-primary mb-2" />
           <CardTitle className="text-2xl">Create Account</CardTitle>
@@ -74,6 +81,7 @@ export default function RegisterPage() {
                 placeholder="you@example.com"
                 {...form.register("email")}
                 disabled={isLoading}
+                className="rounded-lg"
               />
               {form.formState.errors.email && (
                 <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
@@ -87,6 +95,7 @@ export default function RegisterPage() {
                 placeholder="••••••••"
                 {...form.register("password")}
                 disabled={isLoading}
+                className="rounded-lg"
               />
               {form.formState.errors.password && (
                 <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>
@@ -100,12 +109,13 @@ export default function RegisterPage() {
                 placeholder="••••••••"
                 {...form.register("confirmPassword")}
                 disabled={isLoading}
+                className="rounded-lg"
               />
               {form.formState.errors.confirmPassword && (
                 <p className="text-xs text-destructive">{form.formState.errors.confirmPassword.message}</p>
               )}
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full rounded-lg" disabled={isLoading}>
               {isLoading ? "Creating Account..." : "Sign Up"}
             </Button>
           </form>

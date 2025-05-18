@@ -9,10 +9,12 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut,
+  sendEmailVerification, // Import sendEmailVerification
   UserCredential
 } from 'firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton'; // For loading state
+import { useToast } from "@/hooks/use-toast"; // Import useToast for login check
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -20,6 +22,7 @@ interface AuthContextType {
   login: (email: string, pass: string) => Promise<UserCredential>;
   register: (email: string, pass: string) => Promise<UserCredential>;
   logout: () => Promise<void>;
+  sendVerificationEmail: (user: FirebaseUser) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,6 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast(); // Initialize toast for use in login
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -45,17 +49,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         router.push('/login');
       }
     }
+    // Only redirect from login/register if user exists AND their email is verified (or if verification is not a strict gate for now)
+    // For now, we will allow login even if not verified, but show a toast.
     if (!loading && user && (pathname === '/login' || pathname === '/register')) {
         router.push('/');
     }
   }, [user, loading, pathname, router]);
 
-  const login = (email: string, pass: string) => {
-    return signInWithEmailAndPassword(auth, email, pass);
+  const login = async (email: string, pass: string): Promise<UserCredential> => {
+    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    if (userCredential.user && !userCredential.user.emailVerified) {
+      toast({
+        title: "Email Not Verified",
+        description: "Please check your email to verify your account. You can request a new verification email if needed.",
+        variant: "default", // Or "destructive" if you want to emphasize it
+        duration: 7000,
+      });
+    }
+    return userCredential;
+  };
+  
+  const sendVerificationEmail = async (currentUser: FirebaseUser): Promise<void> => {
+    if (currentUser) {
+      await sendEmailVerification(currentUser);
+    } else {
+      throw new Error("No user to send verification email to.");
+    }
   };
 
-  const register = (email: string, pass: string) => {
-    return createUserWithEmailAndPassword(auth, email, pass);
+  const register = async (email: string, pass: string): Promise<UserCredential> => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    if (userCredential.user) {
+      await sendEmailVerification(userCredential.user);
+    }
+    return userCredential;
   };
 
   const logout = async () => {
@@ -80,11 +107,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
   }
   
-  // If not loading and on a public path without a user, or if user exists, allow children
    const isPublicPath = ['/login', '/register'].includes(pathname);
    if (!user && !isPublicPath && !loading) {
-     // This state should ideally be handled by the redirect effect,
-     // but as a fallback, show loading or a minimal UI.
      return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
              <p className="text-muted-foreground text-lg">Redirecting to login...</p>
@@ -94,7 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, sendVerificationEmail }}>
       {children}
     </AuthContext.Provider>
   );
