@@ -60,12 +60,13 @@ interface AddCategoryDialogProps {
 // Get a list of available Lucide icon names
 const allLucideExports = Object.keys(LucideIcons) as Array<keyof typeof LucideIcons>;
 const iconNames = allLucideExports.filter(key => {
-  // Icon components in lucide-react are functions
-  if (typeof LucideIcons[key] === 'function') {
-    // Standard Lucide icon names are PascalCase.
-    // Exclude helper functions or other non-component exports like 'createLucideIcon'.
-    const firstChar = key.charAt(0);
-    return firstChar === firstChar.toUpperCase() && key !== 'createLucideIcon';
+  const Component = LucideIcons[key];
+  // Check if it's a function (React component) and its name starts with an uppercase letter
+  // and it's not a known helper or non-icon export like 'createLucideIcon'.
+  if (typeof Component === 'function' && /^[A-Z]/.test(key) && key !== 'createLucideIcon') {
+    // Further check if it has a 'displayName' or if its string representation looks like a component
+    // This is a heuristic and might need refinement if lucide-react structure changes
+    return Component.displayName || Component.name === key || /^[A-Z]/.test(Component.name);
   }
   return false;
 });
@@ -92,12 +93,12 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
         form.reset(existingCategory ? {
             label: existingCategory.label,
             icon: existingCategory.icon,
-            parentId: existingCategory.parentId,
+            parentId: existingCategory.parentId, // This can be null
             isIncomeSource: existingCategory.isIncomeSource ?? false,
         } : {
             label: "",
             icon: "HelpCircle",
-            parentId: null,
+            parentId: null, // Initialize parentId to null for new categories
             isIncomeSource: false,
         });
     }, [open, existingCategory, form]);
@@ -124,7 +125,7 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
 
     const dataToSave: Omit<Category, 'id'> & { id?: string } = {
         ...values,
-         parentId: values.parentId === "" ? null : values.parentId, // Ensure empty string becomes null
+         // parentId from form values will already be null if "_NONE_" was selected, or a string ID
     };
     if (existingCategory) {
       dataToSave.id = existingCategory.id;
@@ -251,13 +252,22 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
                <FormField
                 control={form.control}
                 name="parentId"
-                render={({ field }) => (
+                render={({ field }) => ( // field.value here is the actual parentId (string or null) from react-hook-form
                   <FormItem>
                     <FormLabel>Parent Category (Optional)</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? ""} /* Handle null value */
-                      disabled={isIncomeSourceChecked} // Disable if it's an income source
+                      onValueChange={(selectedValue) => { // selectedValue is the string from SelectItem's value prop
+                        if (selectedValue === "_NONE_") {
+                          field.onChange(null); // Update react-hook-form state to null
+                        } else {
+                          field.onChange(selectedValue); // Update react-hook-form state to the parentId string
+                        }
+                      }}
+                      value={field.value === null ? "_NONE_" : (field.value || undefined)}
+                      // If form's parentId is null, visually select the "_NONE_" item.
+                      // If form's parentId is a string ID, use it.
+                      // If field.value is undefined (initial state before RHF defaultValues), use undefined for placeholder.
+                      disabled={isIncomeSourceChecked}
                     >
                       <FormControl>
                         <SelectTrigger disabled={isIncomeSourceChecked}>
@@ -265,7 +275,7 @@ export function AddCategoryDialog({ open, onOpenChange, onSaveCategory, existing
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">-- None (Top Level Expense) --</SelectItem>
+                        <SelectItem value="_NONE_">-- None (Top Level Expense) --</SelectItem>
                          {(potentialParents || []).map((category) => {
                             if (!category || !category.id) { // Extra safety check
                                 console.warn("AddCategoryDialog: Skipping invalid category in potentialParents during map", category);
