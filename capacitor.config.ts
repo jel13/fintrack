@@ -17,7 +17,7 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 3000,
       launchAutoHide: true,
-      backgroundColor: "#ffffff", // Match your app's background
+      backgroundColor: "#66CC99", // Mint green to match theme
       // androidSplashResourceName: "splash", // Default is "splash"
       // showSpinner: true,
       // androidSpinnerStyle: "large",
