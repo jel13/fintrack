@@ -9,55 +9,54 @@ body {
 
 @layer base {
   :root {
-    --background: 150 20% 97%; /* Very light minty-white */
-    --foreground: 150 25% 20%; /* Dark, slightly desaturated minty-gray for text */
+    --background: 150 30% 97%; /* Very light mint */
+    --foreground: 150 25% 15%; /* Dark desaturated mint-gray for text */
 
-    --card: 0 0% 100%; /* White for cards */
-    --card-foreground: 150 25% 20%; /* Dark text on cards */
+    --card: 150 30% 99%; /* Very light off-mint for cards */
+    --card-foreground: 150 25% 15%; /* Dark text on cards */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 150 25% 20%;
+    --popover: 150 30% 99%;
+    --popover-foreground: 150 25% 15%;
 
-    --primary: 150 50% 58%; /* Soft mint green #66CC99-ish */
-    --primary-foreground: 0 0% 100%; /* White text on primary */
+    --primary: 150 55% 58%; /* Mint green: #67C7A3 */
+    --primary-foreground: 150 100% 10%; /* Dark green for text on primary: #00331A */
 
-    --secondary: 150 40% 94%; /* Very light minty gray #e6f2eb */
+    --secondary: 150 40% 94%; /* Very light minty gray: #e7f3ee */
     --secondary-foreground: 150 20% 30%; /* Darker gray-green for text on secondary */
 
     --muted: 150 30% 90%; /* Slightly darker muted minty gray */
     --muted-foreground: 150 15% 55%; /* Muted text */
 
-    --accent: 145 60% 45%; /* A slightly deeper, more vibrant green for accents #40bf70 */
-    --accent-foreground: 0 0% 100%; /* White text on accent */
+    --accent: 45 70% 55%; /* Gold: #E6B86A */
+    --accent-foreground: 30 50% 15%; /* Dark brown for text on gold: #3A2B12 */
 
-    --destructive: 0 75% 55%; /* Keeping red for destructive actions #E64A4A */
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 75% 55%; /* Red for destructive actions: #E64A4A */
+    --destructive-foreground: 0 0% 100%; /* White text on destructive */
 
     --border: 150 20% 88%; /* Light minty-gray border */
     --input: 150 20% 88%; /* Light minty-gray input background */
-    --ring: 150 50% 58%; /* Ring color based on primary mint */
+    --ring: 150 55% 58%; /* Ring color based on primary mint */
 
-    --chart-1: 150 50% 58%; /* Primary Mint */
-    --chart-2: 145 60% 45%; /* Accent Green */
-    --chart-3: 160 55% 65%; /* Another shade of green */
-    --chart-4: 170 45% 75%; /* Lighter, desaturated green */
+    --chart-1: 150 55% 58%; /* Primary Mint */
+    --chart-2: 45 70% 55%;   /* Gold Accent */
+    --chart-3: 150 60% 75%; /* Lighter Mint */
+    --chart-4: 45 65% 70%;   /* Lighter Gold */
     --chart-5: 0 75% 55%;   /* Destructive Red */
 
     --radius: 0.75rem; /* Increased for more curved UI */
 
     /* Sidebar vars (can inherit main theme or be distinct) */
-    --sidebar-background: 150 20% 97%;
-    --sidebar-foreground: 150 25% 20%;
-    --sidebar-primary: 150 50% 58%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 145 60% 45%;
-    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-background: 150 30% 97%;
+    --sidebar-foreground: 150 25% 15%;
+    --sidebar-primary: 150 55% 58%;
+    --sidebar-primary-foreground: 150 100% 10%;
+    --sidebar-accent: 45 70% 55%;
+    --sidebar-accent-foreground: 30 50% 15%;
     --sidebar-border: 150 20% 88%;
-    --sidebar-ring: 150 50% 58%;
+    --sidebar-ring: 150 55% 58%;
   }
 
   .dark {
-    /* Define dark theme variables if needed in the future - for now, using light theme as base */
     --background: 150 15% 10%; /* Dark desaturated mint-charcoal */
     --foreground: 150 20% 90%; /* Light minty gray text */
 
@@ -67,8 +66,8 @@ body {
     --popover: 150 15% 12%;
     --popover-foreground: 150 20% 90%;
 
-    --primary: 150 50% 58%; /* Mint green can work on dark too */
-    --primary-foreground: 150 25% 10%; /* Dark text on primary for contrast if primary is light enough */
+    --primary: 150 55% 58%; /* Mint green */
+    --primary-foreground: 150 25% 10%; /* Dark text on primary */
 
     --secondary: 150 15% 20%; /* Darker secondary */
     --secondary-foreground: 150 20% 85%;
@@ -76,30 +75,30 @@ body {
     --muted: 150 15% 25%;
     --muted-foreground: 150 15% 60%;
 
-    --accent: 145 60% 50%; /* Slightly brighter accent for dark mode */
-    --accent-foreground: 0 0% 100%;
+    --accent: 45 70% 60%; /* Slightly brighter gold for dark mode: #E6C073 */
+    --accent-foreground: 30 50% 10%; /* Very dark brown for text on gold */
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 150 15% 25%;
     --input: 150 15% 22%;
-    --ring: 150 50% 58%;
+    --ring: 150 55% 58%; /* Primary mint for ring */
 
-    --chart-1: 150 50% 58%;
-    --chart-2: 145 60% 50%;
-    --chart-3: 160 55% 65%;
-    --chart-4: 170 45% 75%;
-    --chart-5: 0 70% 50%;
+    --chart-1: 150 55% 58%; /* Primary Mint */
+    --chart-2: 45 70% 60%;   /* Gold Accent (dark mode) */
+    --chart-3: 150 60% 70%; /* Lighter Mint (dark mode) */
+    --chart-4: 45 65% 75%;   /* Lighter Gold (dark mode) */
+    --chart-5: 0 70% 50%;   /* Destructive Red (dark mode) */
 
     --sidebar-background: 150 15% 10%;
     --sidebar-foreground: 150 20% 90%;
-    --sidebar-primary: 150 50% 58%;
+    --sidebar-primary: 150 55% 58%;
     --sidebar-primary-foreground: 150 25% 10%;
-    --sidebar-accent: 145 60% 50%;
-    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-accent: 45 70% 60%;
+    --sidebar-accent-foreground: 30 50% 10%;
     --sidebar-border: 150 15% 25%;
-    --sidebar-ring: 150 50% 58%;
+    --sidebar-ring: 150 55% 58%;
   }
 }
 
