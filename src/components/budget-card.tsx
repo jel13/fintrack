@@ -40,13 +40,13 @@ const BudgetCard: FC<BudgetCardProps> = ({ budget, categories, monthlyIncome, on
   const displayRemaining = formatCurrency(remaining);
 
   return (
-    <Card className="group w-full shadow-sm hover:shadow-md transition-shadow border-l-4 relative"
+    <Card className="group/budgetcard w-full shadow-md hover:shadow-lg transition-shadow border-l-4 relative"
           style={{ borderLeftColor: isOverBudget ? 'hsl(var(--destructive))' : (isSavings ? 'hsl(var(--accent))' : 'hsl(var(--primary))') }}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3 px-4">
-        <div className="flex items-center gap-3">
-          <IconComponent className={cn("h-6 w-6 mt-1", isSavings ? "text-accent" : "text-primary")} />
-          <div>
-              <CardTitle className="text-base font-medium">{categoryInfo?.label ?? budget.category}</CardTitle>
+        <div className="flex items-center gap-3 flex-1 min-w-0"> {/* Allow shrinking and provide truncation context */}
+          <IconComponent className={cn("h-6 w-6 mt-1 flex-shrink-0", isSavings ? "text-accent" : "text-primary")} />
+          <div className="min-w-0"> {/* Wrapper for title/description truncation */}
+              <CardTitle className="text-base font-medium truncate">{categoryInfo?.label ?? budget.category}</CardTitle>
               <CardDescription className={cn("text-sm font-semibold", isSavings ? "text-accent" : "text-primary")}>
                  {displayPercentage}
                  {!isSavings && budget.percentage !== undefined && ` of Income`}
@@ -82,10 +82,10 @@ const BudgetCard: FC<BudgetCardProps> = ({ budget, categories, monthlyIncome, on
         </div>
       </CardContent>
       {!isSavings && (
-        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        <div className="absolute top-1 right-1 z-10"> {/* Added z-10 */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 transition-opacity rounded-full"> {/* Removed opacity classes, added rounded-full */}
                         <MoreVertical className="h-4 w-4" />
                         <span className="sr-only">Budget Actions</span>
                     </Button>
