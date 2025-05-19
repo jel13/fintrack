@@ -11,19 +11,22 @@ import {
   signOut,
   sendEmailVerification,
   updateProfile, // Import updateProfile
+  sendPasswordResetEmail, // Import sendPasswordResetEmail
   UserCredential
 } from 'firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
-import { Skeleton } from '@/components/ui/skeleton'; // For loading state
+import { Skeleton } from '@/components/ui/skeleton'; 
 import { useToast } from "@/hooks/use-toast"; 
 
 interface AuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<UserCredential>;
-  register: (email: string, pass: string, username: string) => Promise<UserCredential>; // Added username
+  register: (email: string, pass: string, username: string) => Promise<UserCredential>; 
   logout: () => Promise<void>;
   sendVerificationEmail: (user: FirebaseUser) => Promise<void>;
+  updateUserDisplayName: (newName: string) => Promise<void>;
+  sendCurrentUserPasswordResetEmail: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -79,12 +82,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (email: string, pass: string, username: string): Promise<UserCredential> => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     if (userCredential.user) {
-      // Update the user's profile with the username
       await updateProfile(userCredential.user, {
         displayName: username
       });
-      // Send verification email
       await sendEmailVerification(userCredential.user);
+      // Update local user state to reflect new displayName immediately
+      setUser(auth.currentUser); 
     }
     return userCredential;
   };
@@ -92,6 +95,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     await signOut(auth);
   };
+
+  const updateUserDisplayName = async (newName: string) => {
+    if (auth.currentUser) {
+      await updateProfile(auth.currentUser, { displayName: newName });
+      // To ensure the UI updates, we re-set the user state with the potentially updated currentUser object.
+      // Firebase's onAuthStateChanged might also pick this up, but this is more immediate.
+      setUser(auth.currentUser ? { ...auth.currentUser, displayName: newName } : null);
+    } else {
+      throw new Error("No user currently signed in to update display name.");
+    }
+  };
+
+  const sendCurrentUserPasswordResetEmail = async () => {
+    if (auth.currentUser && auth.currentUser.email) {
+      await sendPasswordResetEmail(auth, auth.currentUser.email);
+    } else {
+      throw new Error("No authenticated user or user email available to send password reset email.");
+    }
+  };
+
 
   if (loading) {
     return (
@@ -121,7 +144,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, sendVerificationEmail }}>
+    <AuthContext.Provider value={{ 
+        user, 
+        loading, 
+        login, 
+        register, 
+        logout, 
+        sendVerificationEmail,
+        updateUserDisplayName,
+        sendCurrentUserPasswordResetEmail 
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -134,3 +166,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
