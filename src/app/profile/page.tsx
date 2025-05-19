@@ -73,6 +73,8 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
   );
 
   if (href && !onClick) {
+    // When it's a link, Link component itself renders the <a> tag.
+    // The 'content' div becomes the direct child of Link.
     return (
       <Link
         href={href}
@@ -130,9 +132,7 @@ export default function ProfilePage() {
       <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10 shadow-sm">
         <Link href="/" passHref>
           <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
-            <>
-              <ArrowLeft className="h-5 w-5" />
-            </>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
         <h1 className="text-xl font-semibold ml-2">Profile & Settings</h1>
@@ -140,7 +140,7 @@ export default function ProfilePage() {
 
       <ScrollArea className="flex-grow">
         <div className="p-4 space-y-6">
-          <Card className="shadow-md">
+          <Card className="shadow-md rounded-xl">
             <CardHeader className="bg-muted/30">
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><UserCircle className="h-5 w-5 text-primary" /> Account</CardTitle>
             </CardHeader>
@@ -170,17 +170,21 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-md">
+          <Card className="shadow-md rounded-xl">
             <CardHeader className="bg-muted/30">
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><Settings className="h-5 w-5 text-primary"/> App Configuration</CardTitle>
             </CardHeader>
             <CardContent className="p-0 divide-y">
-                <ProfileListItem
-                    icon={FolderCog}
-                    title="Manage Categories"
-                    description="Edit, add, or delete income/expense categories"
-                    href="/categories"
-                />
+                <Button asChild variant="ghost" className="w-full justify-start p-0 rounded-none hover:bg-secondary active:bg-secondary/80">
+                   <Link href="/categories" className="flex items-center p-4 w-full">
+                     <FolderCog className="h-5 w-5 mr-4 flex-shrink-0 text-primary" />
+                     <div className="flex-grow text-left">
+                       <p className="font-medium text-foreground">Manage Categories</p>
+                       <p className="text-xs text-muted-foreground">Edit, add, or delete income/expense categories</p>
+                     </div>
+                     <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto" />
+                   </Link>
+                </Button>
                  <div className="p-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -214,13 +218,13 @@ export default function ProfilePage() {
                  <ProfileListItem
                     icon={Bell}
                     title="Notification Preferences"
-                    description="Manage app notifications (Coming Soon)"
+                    description="Manage app notifications"
                     onClick={() => setIsNotificationsInfoOpen(true)}
                 />
             </CardContent>
           </Card>
 
-          <Card className="shadow-md">
+          <Card className="shadow-md rounded-xl">
             <CardHeader className="bg-destructive/10">
               <CardTitle className="flex items-center gap-2 text-base font-semibold text-destructive"><AlertTriangle className="h-5 w-5" /> Data Management</CardTitle>
             </CardHeader>
