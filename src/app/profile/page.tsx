@@ -5,7 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle, LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Removed CardDescription as it's not used directly here
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
@@ -47,7 +47,7 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
         onClick || href ? "hover:bg-secondary active:bg-secondary/80" : "",
         isDestructive ? "text-destructive hover:bg-destructive/10 active:bg-destructive/20" : "text-foreground"
       )}
-      onClick={onClick && !href ? onClick : undefined} 
+      onClick={onClick && !href ? onClick : undefined}
     >
       <Icon className={cn("h-5 w-5 mr-4 flex-shrink-0", isDestructive ? "text-destructive" : "text-primary")} />
       <div className="flex-grow">
@@ -59,7 +59,7 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
     </div>
   );
 
-  if (href) {
+  if (href && !onClick) { // Ensure onClick isn't also present if href is used for direct link
     return (
       <Link
         href={href}
@@ -69,13 +69,17 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
       </Link>
     );
   }
-  return <div className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background" tabIndex={onClick ? 0 : -1} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.()}}>{content}</div>;
+  return <div className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background" tabIndex={onClick ? 0 : -1} onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && onClick) onClick()}}>{content}</div>;
 };
 
 
 export default function ProfilePage() {
   const { toast } = useToast();
   const { user, logout } = useAuth();
+  const [isResetDataDialogOpen, setIsResetDataDialogOpen] = React.useState(false);
+  const [isAppearanceInfoOpen, setIsAppearanceInfoOpen] = React.useState(false);
+  const [isNotificationsInfoOpen, setIsNotificationsInfoOpen] = React.useState(false);
+
 
   const handleResetData = () => {
     try {
@@ -85,6 +89,7 @@ export default function ProfilePage() {
         description: "All local application data has been cleared. The app will now reload.",
         variant: "default",
       });
+      // No need to manually set isResetDataDialogOpen to false, dialog closes on action.
     } catch (error) {
       toast({
         title: "Error Resetting Data",
@@ -117,7 +122,7 @@ export default function ProfilePage() {
 
       <ScrollArea className="flex-grow">
         <div className="p-4 space-y-6">
-          <Card className="rounded-xl shadow-md overflow-hidden">
+          <Card>
             <CardHeader className="bg-muted/30">
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><UserCircle className="h-5 w-5 text-primary" /> Account</CardTitle>
             </CardHeader>
@@ -147,7 +152,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-xl shadow-md overflow-hidden">
+          <Card>
             <CardHeader className="bg-muted/30">
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><Settings className="h-5 w-5 text-primary"/> App Configuration</CardTitle>
             </CardHeader>
@@ -162,53 +167,29 @@ export default function ProfilePage() {
                     icon={Bell}
                     title="Notification Preferences"
                     description="Manage app notifications (Coming Soon)"
-                    onClick={() => toast({title: "Coming Soon!", description: "Notification settings will be available in a future update."})}
+                    onClick={() => setIsNotificationsInfoOpen(true)}
                 />
                  <ProfileListItem
                     icon={Palette}
                     title="Appearance"
                     description="Customize app theme (Coming Soon)"
-                    onClick={() => toast({title: "Coming Soon!", description: "Theme customization will be available in a future update."})}
+                    onClick={() => setIsAppearanceInfoOpen(true)}
                 />
             </CardContent>
           </Card>
 
-          <Card className="rounded-xl shadow-md overflow-hidden">
+          <Card>
             <CardHeader className="bg-destructive/10">
               <CardTitle className="flex items-center gap-2 text-base font-semibold text-destructive"><AlertTriangle className="h-5 w-5" /> Data Management</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <ProfileListItem
-                        icon={Trash2}
-                        title="Reset Local App Data"
-                        description="Clear all transactions, budgets, etc., on this device"
-                        isDestructive
-                        onClick={() => {}} 
-                    />
-                </AlertDialogTrigger>
-                <AlertDialogContent className="rounded-xl">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete all
-                      your financial data (transactions, budgets, categories, goals) stored locally on this device/browser.
-                      It will not affect your account if data were synced to a server (not currently implemented).
-                      The application will reload after reset.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleResetData}
-                      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg"
-                    >
-                      Yes, Reset My Local Data
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <ProfileListItem
+                  icon={Trash2}
+                  title="Reset Local App Data"
+                  description="Clear all transactions, budgets, etc., on this device"
+                  isDestructive
+                  onClick={() => setIsResetDataDialogOpen(true)}
+              />
             </CardContent>
           </Card>
         </div>
@@ -216,7 +197,64 @@ export default function ProfilePage() {
             Version 1.0.0
         </div>
       </ScrollArea>
+
+      {/* Reset Data Dialog */}
+      <AlertDialog open={isResetDataDialogOpen} onOpenChange={setIsResetDataDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete all
+              your financial data (transactions, budgets, categories, goals) stored locally on this device/browser.
+              It will not affect your account if data were synced to a server (not currently implemented).
+              The application will reload after reset.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetData}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Yes, Reset My Local Data
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Appearance Info Dialog */}
+      <AlertDialog open={isAppearanceInfoOpen} onOpenChange={setIsAppearanceInfoOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Appearance Settings</AlertDialogTitle>
+            <AlertDialogDescription>
+              Theme customization and dark mode options are planned for a future update of FinTrack Mobile. Stay tuned!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsAppearanceInfoOpen(false)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Notifications Info Dialog */}
+      <AlertDialog open={isNotificationsInfoOpen} onOpenChange={setIsNotificationsInfoOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Notification Preferences</AlertDialogTitle>
+            <AlertDialogDescription>
+              Managing app notifications for reminders and updates is planned for a future version of FinTrack Mobile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsNotificationsInfoOpen(false)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
+    
+
     
