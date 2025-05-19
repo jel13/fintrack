@@ -5,7 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle, LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Removed CardDescription as it's not used directly here
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
@@ -16,12 +16,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { clearAppData } from "@/lib/storage";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProfileListItemProps {
   icon: React.ElementType;
@@ -30,6 +38,7 @@ interface ProfileListItemProps {
   onClick?: () => void;
   href?: string;
   isDestructive?: boolean;
+  children?: React.ReactNode; // Allow children for embedding controls
 }
 
 const ProfileListItem: React.FC<ProfileListItemProps> = ({
@@ -39,6 +48,7 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
   onClick,
   href,
   isDestructive,
+  children
 }) => {
   const content = (
     <div
@@ -48,18 +58,21 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
         isDestructive ? "text-destructive hover:bg-destructive/10 active:bg-destructive/20" : "text-foreground"
       )}
       onClick={onClick && !href ? onClick : undefined}
+      role={onClick && !href ? "button" : undefined}
+      tabIndex={onClick && !href ? 0 : -1}
+      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && onClick && !href) onClick()}}
     >
       <Icon className={cn("h-5 w-5 mr-4 flex-shrink-0", isDestructive ? "text-destructive" : "text-primary")} />
       <div className="flex-grow">
         <p className="font-medium">{title}</p>
         {description && <p className="text-xs text-muted-foreground">{description}</p>}
       </div>
-      {(href || onClick) && !isDestructive && <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto" />}
-      {onClick && isDestructive && <span className="ml-auto"></span>}
+      {children ? children : ( (href || (onClick && !isDestructive)) && <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto" />)}
+      {onClick && isDestructive && !children && <span className="ml-auto"></span>}
     </div>
   );
 
-  if (href && !onClick) { // Ensure onClick isn't also present if href is used for direct link
+  if (href && !onClick) {
     return (
       <Link
         href={href}
@@ -69,17 +82,21 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
       </Link>
     );
   }
-  return <div className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background" tabIndex={onClick ? 0 : -1} onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && onClick) onClick()}}>{content}</div>;
+  return <div className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background" >{content}</div>;
 };
 
 
 export default function ProfilePage() {
   const { toast } = useToast();
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
   const [isResetDataDialogOpen, setIsResetDataDialogOpen] = React.useState(false);
-  const [isAppearanceInfoOpen, setIsAppearanceInfoOpen] = React.useState(false);
   const [isNotificationsInfoOpen, setIsNotificationsInfoOpen] = React.useState(false);
 
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleResetData = () => {
     try {
@@ -89,7 +106,6 @@ export default function ProfilePage() {
         description: "All local application data has been cleared. The app will now reload.",
         variant: "default",
       });
-      // No need to manually set isResetDataDialogOpen to false, dialog closes on action.
     } catch (error) {
       toast({
         title: "Error Resetting Data",
@@ -114,7 +130,9 @@ export default function ProfilePage() {
       <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10 shadow-sm">
         <Link href="/" passHref>
           <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
-            <ArrowLeft className="h-5 w-5" />
+            <>
+              <ArrowLeft className="h-5 w-5" />
+            </>
           </Button>
         </Link>
         <h1 className="text-xl font-semibold ml-2">Profile & Settings</h1>
@@ -122,7 +140,7 @@ export default function ProfilePage() {
 
       <ScrollArea className="flex-grow">
         <div className="p-4 space-y-6">
-          <Card>
+          <Card className="shadow-md">
             <CardHeader className="bg-muted/30">
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><UserCircle className="h-5 w-5 text-primary" /> Account</CardTitle>
             </CardHeader>
@@ -152,7 +170,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-md">
             <CardHeader className="bg-muted/30">
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><Settings className="h-5 w-5 text-primary"/> App Configuration</CardTitle>
             </CardHeader>
@@ -163,22 +181,46 @@ export default function ProfilePage() {
                     description="Edit, add, or delete income/expense categories"
                     href="/categories"
                 />
+                 <div className="p-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <Palette className="h-5 w-5 text-primary" />
+                            <div>
+                                <p className="font-medium">Theme</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Select your preferred app theme.
+                                </p>
+                            </div>
+                        </div>
+                        {mounted ? (
+                            <Select
+                                value={theme}
+                                onValueChange={(value) => setTheme(value)}
+                            >
+                                <SelectTrigger className="w-[120px] rounded-lg" aria-label="Select theme">
+                                    <SelectValue placeholder="Theme" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="light">Light</SelectItem>
+                                    <SelectItem value="dark">Dark</SelectItem>
+                                    <SelectItem value="system">System</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Skeleton className="h-10 w-[120px] rounded-lg" />
+                        )}
+                    </div>
+                </div>
                  <ProfileListItem
                     icon={Bell}
                     title="Notification Preferences"
                     description="Manage app notifications (Coming Soon)"
                     onClick={() => setIsNotificationsInfoOpen(true)}
                 />
-                 <ProfileListItem
-                    icon={Palette}
-                    title="Appearance"
-                    description="Customize app theme (Coming Soon)"
-                    onClick={() => setIsAppearanceInfoOpen(true)}
-                />
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-md">
             <CardHeader className="bg-destructive/10">
               <CardTitle className="flex items-center gap-2 text-base font-semibold text-destructive"><AlertTriangle className="h-5 w-5" /> Data Management</CardTitle>
             </CardHeader>
@@ -198,7 +240,6 @@ export default function ProfilePage() {
         </div>
       </ScrollArea>
 
-      {/* Reset Data Dialog */}
       <AlertDialog open={isResetDataDialogOpen} onOpenChange={setIsResetDataDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -221,23 +262,7 @@ export default function ProfilePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Appearance Info Dialog */}
-      <AlertDialog open={isAppearanceInfoOpen} onOpenChange={setIsAppearanceInfoOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Appearance Settings</AlertDialogTitle>
-            <AlertDialogDescription>
-              Theme customization and dark mode options are planned for a future update of FinTrack Mobile. Stay tuned!
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setIsAppearanceInfoOpen(false)}>OK</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       
-      {/* Notifications Info Dialog */}
       <AlertDialog open={isNotificationsInfoOpen} onOpenChange={setIsNotificationsInfoOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -255,6 +280,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-    
-
-    

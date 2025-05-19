@@ -5,6 +5,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/AuthContext"; // Import AuthProvider
+import { ThemeProvider } from "next-themes"; // Import ThemeProvider
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -27,10 +28,17 @@ export default function RootLayout({
           inter.variable
         )}
       >
-        <AuthProvider> {/* Wrap children with AuthProvider */}
-            {children}
-            <Toaster />
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider> {/* Wrap children with AuthProvider */}
+              {children}
+              <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
