@@ -40,10 +40,11 @@ const BudgetCard: FC<BudgetCardProps> = ({ budget, categories, monthlyIncome, on
   const displayRemaining = formatCurrency(remaining);
 
   return (
-    <Card className="group/budgetcard w-full shadow-md hover:shadow-lg transition-shadow border-l-4 relative"
+    <Card className="w-full shadow-md hover:shadow-lg transition-shadow border-l-4"
           style={{ borderLeftColor: isOverBudget ? 'hsl(var(--destructive))' : (isSavings ? 'hsl(var(--accent))' : 'hsl(var(--primary))') }}>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3 px-4">
-        <div className="flex items-center gap-3 flex-1 min-w-0"> {/* Allow shrinking and provide truncation context */}
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4">
+        {/* Left part: Icon, Title, Description */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <IconComponent className={cn("h-6 w-6 mt-1 flex-shrink-0", isSavings ? "text-accent" : "text-primary")} />
           <div className="min-w-0"> {/* Wrapper for title/description truncation */}
               <CardTitle className="text-base font-medium truncate">{categoryInfo?.label ?? budget.category}</CardTitle>
@@ -54,10 +55,35 @@ const BudgetCard: FC<BudgetCardProps> = ({ budget, categories, monthlyIncome, on
               </CardDescription>
           </div>
         </div>
-         <div className="text-right flex flex-col items-end flex-shrink-0 pl-2">
+
+        {/* Right part: Spent/Limit Text AND Action Button */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="text-right flex flex-col items-end">
             <p className="text-sm font-semibold">{displaySpent} Spent</p>
-             <p className="text-xs text-muted-foreground">Limit: {displayLimit}</p>
-         </div>
+            <p className="text-xs text-muted-foreground">Limit: {displayLimit}</p>
+          </div>
+          {!isSavings && (
+            <div> {/* Wrapper for the dropdown menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                    <MoreVertical className="h-4 w-4" />
+                    <span className="sr-only">Budget Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onEdit(budget.id)}>
+                    <Edit className="mr-2 h-4 w-4" /> Edit Budget
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onDelete(budget.id)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete Budget
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="pt-2 px-4 pb-3">
         <Progress
@@ -72,7 +98,7 @@ const BudgetCard: FC<BudgetCardProps> = ({ budget, categories, monthlyIncome, on
              <p className="text-xs text-muted-foreground">{progressPercent.toFixed(1)}% Used</p>
              <p className={cn(
                 "text-xs font-medium flex items-center gap-1",
-                isOverBudget ? "text-destructive" : (isSavings ? "text-accent" : "text-accent")
+                isOverBudget ? "text-destructive" : (isSavings ? "text-accent" : "text-accent") // Keeping accent for non-overspent, non-savings for consistency
                 )}>
                  {isOverBudget ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
                 {isOverBudget
@@ -81,27 +107,6 @@ const BudgetCard: FC<BudgetCardProps> = ({ budget, categories, monthlyIncome, on
             </p>
         </div>
       </CardContent>
-      {!isSavings && (
-        <div className="absolute top-1 right-1 z-10"> {/* Added z-10 */}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 transition-opacity rounded-full"> {/* Removed opacity classes, added rounded-full */}
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">Budget Actions</span>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onEdit(budget.id)}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit Budget
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => onDelete(budget.id)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete Budget
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-      )}
     </Card>
   );
 };
