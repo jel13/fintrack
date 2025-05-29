@@ -5,8 +5,8 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, Paperclip, XCircle, PiggyBank as GoalIcon } from "lucide-react"; // Added GoalIcon
+import { format, parseISO } from "date-fns";
+import { Calendar as CalendarIcon, Paperclip, XCircle, PiggyBank as GoalIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { cn } from "@/lib/utils";
@@ -34,8 +34,8 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-    SelectGroup, // Added SelectGroup
-    SelectLabel,  // Added SelectLabel
+    SelectGroup,
+    SelectLabel,
 } from "@/components/ui/select";
 import {
   Sheet,
@@ -47,7 +47,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import type { Transaction, Category, SavingGoal } from "@/types"; // Added SavingGoal
+import type { Transaction, Category, SavingGoal } from "@/types";
 import { getCategoryIconComponent } from '@/components/category-icon';
 
 const formSchema = z.object({
@@ -68,7 +68,7 @@ interface AddTransactionSheetProps {
   onOpenChange: (open: boolean) => void;
   onSaveTransaction: (transaction: Transaction) => void;
   categoriesForSelect: Category[];
-  savingGoals: SavingGoal[]; // Added savingGoals prop
+  savingGoals: SavingGoal[];
   canAddExpense: boolean;
   currentMonthBudgetCategoryIds: string[];
   existingTransaction?: Transaction | null;
@@ -79,7 +79,7 @@ export function AddTransactionSheet({
     onOpenChange,
     onSaveTransaction,
     categoriesForSelect,
-    savingGoals, // Added savingGoals
+    savingGoals,
     canAddExpense,
     currentMonthBudgetCategoryIds,
     existingTransaction,
@@ -99,7 +99,7 @@ export function AddTransactionSheet({
                  type: existingTransaction.type,
                  amount: existingTransaction.amount,
                  category: existingTransaction.category,
-                 date: new Date(existingTransaction.date),
+                 date: existingTransaction.date instanceof Date ? existingTransaction.date : parseISO(existingTransaction.date as unknown as string),
                  description: existingTransaction.description || "",
                  receiptDataUrl: existingTransaction.receiptDataUrl || undefined,
              });
@@ -120,7 +120,8 @@ export function AddTransactionSheet({
             fileInputRef.current.value = "";
          }
      }
-  }, [open, existingTransaction, canAddExpense, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, existingTransaction, canAddExpense, form.reset]); // form.reset added to dep array
 
 
   const transactionType = form.watch("type");
@@ -128,7 +129,7 @@ export function AddTransactionSheet({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
             form.setError("receiptDataUrl", { message: "File size should not exceed 5MB." });
             setReceiptPreview(null);
             if (fileInputRef.current) fileInputRef.current.value = "";
@@ -168,20 +169,25 @@ export function AddTransactionSheet({
   }, [categoriesForSelect]);
 
   const regularExpenseCategories = React.useMemo(() => {
-    return categoriesForSelect.filter(cat => 
-        cat.isIncomeSource !== true && 
-        cat.id !== 'savings' && 
+    return categoriesForSelect.filter(cat =>
+        cat.isIncomeSource !== true &&
+        cat.id !== 'savings' && // Explicitly exclude the main 'savings' category
         (existingTransaction?.category === cat.id || currentMonthBudgetCategoryIds.includes(cat.id))
       )
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [categoriesForSelect, currentMonthBudgetCategoryIds, existingTransaction]);
 
   const userSavingGoals = React.useMemo(() => {
-    return (savingGoals || []).map(goal => ({
-      id: goal.id, // Use goal ID as value
-      label: goal.name,
-      icon: categoriesForSelect.find(c => c.id === goal.goalCategoryId)?.icon || 'PiggyBank', // Or a default goal icon
-    })).sort((a,b) => a.label.localeCompare(b.label));
+    return (savingGoals || []).map(goal => {
+      // Find the goal category to get its icon
+      const goalCatInfo = categoriesForSelect.find(c => c.id === goal.goalCategoryId);
+      return {
+        id: goal.id, // Use goal ID as value
+        label: goal.name,
+        // Use the icon from the saving goal's category, or PiggyBank as fallback
+        icon: goalCatInfo?.icon || 'PiggyBank',
+      };
+    }).sort((a,b) => a.label.localeCompare(b.label));
   }, [savingGoals, categoriesForSelect]);
 
 
@@ -203,7 +209,8 @@ export function AddTransactionSheet({
             form.setValue('category', '');
         }
      }
-  }, [transactionType, incomeCategories, regularExpenseCategories, userSavingGoals, form, existingTransaction]);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [transactionType, form.getValues, form.setValue, existingTransaction]); // Simplified deps for clarity
 
 
   return (
@@ -237,9 +244,9 @@ export function AddTransactionSheet({
                       >
                         <FormItem className="flex items-center space-x-2 space-y-0">
                           <FormControl>
-                            <RadioGroupItem value="expense" id="expense" disabled={!canAddExpense && !existingTransaction} />
+                            <RadioGroupItem value="expense" id="expense" disabled={!canAddExpense && !existingTransaction && !(existingTransaction?.type === 'expense')} />
                           </FormControl>
-                          <FormLabel htmlFor="expense" className={cn("font-normal cursor-pointer", !canAddExpense && !existingTransaction && "text-muted-foreground/50 cursor-not-allowed")}>Expense</FormLabel>
+                          <FormLabel htmlFor="expense" className={cn("font-normal cursor-pointer", !canAddExpense && !existingTransaction && !(existingTransaction?.type === 'expense') && "text-muted-foreground/50 cursor-not-allowed")}>Expense</FormLabel>
                         </FormItem>
                         <FormItem className="flex items-center space-x-2 space-y-0">
                           <FormControl>
@@ -333,13 +340,13 @@ export function AddTransactionSheet({
                               )}
                               {userSavingGoals.length > 0 && (
                                 <SelectGroup>
-                                  <SelectLabel>Contribute to Saving Goal</SelectLabel>
+                                  <SelectLabel>Allocate to Saving Goal (as Expense)</SelectLabel>
                                   {userSavingGoals.map((goal) => {
                                      const GoalCatIcon = getCategoryIconComponent(goal.icon);
                                     return (
                                       <SelectItem key={goal.id} value={goal.id}>
                                         <div className="flex items-center gap-2">
-                                          <GoalCatIcon className="h-4 w-4 text-accent" /> {/* Or GoalIcon */}
+                                          <GoalCatIcon className="h-4 w-4 text-accent" />
                                           <span>{goal.label}</span>
                                         </div>
                                       </SelectItem>
@@ -425,7 +432,7 @@ export function AddTransactionSheet({
                 <FormField
                     control={form.control}
                     name="receiptDataUrl"
-                    render={() => (
+                    render={() => ( // field is not directly used here, so destructuring is fine
                         <FormItem>
                             <FormLabel>Receipt (Optional)</FormLabel>
                             <FormControl>
@@ -433,7 +440,7 @@ export function AddTransactionSheet({
                                     ref={fileInputRef}
                                     id="receipt-file-input"
                                     type="file"
-                                    accept="image/*,.pdf" // Added PDF support
+                                    accept="image/*,.pdf"
                                     onChange={handleFileChange}
                                     className="text-sm file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-muted file:text-muted-foreground hover:file:bg-primary/20"
                                 />
@@ -482,3 +489,6 @@ export function AddTransactionSheet({
     </Sheet>
   );
 }
+
+
+    
