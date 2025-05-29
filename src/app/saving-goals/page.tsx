@@ -21,6 +21,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger, // Added missing import
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
@@ -77,7 +78,7 @@ export default function SavingGoalsPage() {
     }, [totalSavingsBudgetLimit, totalMonetaryAllocatedToGoals]);
 
 
-    const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id'> & { id?: string }) => {
+    const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id' | 'targetAmount' | 'targetDate'> & { id?: string }) => {
         const newPercentage = goalData.percentageAllocation ?? 0;
         
         const currentTotalAllocatedToOtherGoals = appData.savingGoals
@@ -110,7 +111,7 @@ export default function SavingGoalsPage() {
                 if (index > -1) {
                     goals[index] = { 
                         ...goals[index], 
-                        ...goalData 
+                        ...goalData,
                     }; 
                     toastMessageTitle = "Goal Updated";
                     toastMessageDescription = `Saving goal "${goalData.name}" updated.`;
@@ -119,6 +120,7 @@ export default function SavingGoalsPage() {
                 const newGoal: SavingGoal = {
                     ...goalData, 
                     id: `goal-${Date.now().toString()}`,
+                    // targetAmount and targetDate are removed as per new requirement
                 };
                 goals.push(newGoal);
                 toastMessageTitle = "Goal Added";
@@ -174,7 +176,7 @@ export default function SavingGoalsPage() {
             </div>
 
              <div className="p-4">
-                <Card className="mb-4 bg-accent/10 border-accent animate-fade-in">
+                <Card className="mb-4 bg-accent/10 border-accent">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Info className="h-5 w-5 text-accent" /> Monthly Savings Budget Allocation
@@ -324,7 +326,7 @@ export default function SavingGoalsPage() {
                                 );
                             })
                         ) : (
-                             <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
+                             <Card className="border-dashed border-muted-foreground bg-secondary/30">
                                 <CardContent className="text-center text-muted-foreground py-10">
                                     <Target className="mx-auto h-10 w-10 mb-2 text-accent" />
                                     <p className="font-semibold">No Saving Goals Yet</p>
@@ -358,3 +360,6 @@ export default function SavingGoalsPage() {
         </div>
     );
 }
+
+
+    
