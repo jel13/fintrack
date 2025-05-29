@@ -1,11 +1,12 @@
 
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { BottomNavigation } from "@/components/bottom-navigation";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/context/AuthContext"; // Import AuthProvider
-import { ThemeProvider } from "next-themes"; // Import ThemeProvider
+import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "next-themes";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -24,7 +25,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          "min-h-screen bg-background font-sans antialiased",
+          "min-h-screen bg-background font-sans antialiased flex flex-col", // Ensure body is a flex column
           inter.variable
         )}
       >
@@ -34,8 +35,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider> {/* Wrap children with AuthProvider */}
-              {children}
+          <AuthProvider>
+              {/* Main content area that grows and scrolls */}
+              <div className="flex-grow overflow-y-auto pb-16"> {/* Ensure padding-bottom for nav bar height */}
+                {children}
+              </div>
+              <BottomNavigation /> {/* Placed after the main scrollable content */}
               <Toaster />
           </AuthProvider>
         </ThemeProvider>
