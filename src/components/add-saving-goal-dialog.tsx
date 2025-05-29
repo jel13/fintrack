@@ -36,7 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { SavingGoal, SavingGoalCategory } from "@/types";
-import { formatCurrency } from "@/lib/utils"; 
+import { formatCurrency } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryIconComponent } from '@/components/category-icon';
 
@@ -45,9 +45,9 @@ const formSchema = z.object({
   goalCategoryId: z.string().min(1, "Goal category is required"),
   savedAmount: z.coerce.number({invalid_type_error: "Saved amount must be a number"}).nonnegative("Saved amount cannot be negative").optional().default(0),
   percentageAllocation: z.coerce.number({ invalid_type_error: "Percentage must be a number", required_error: "Allocation percentage is required" })
-    .gte(0.1, "Allocation must be at least 0.1%") 
+    .gte(0.1, "Allocation must be at least 0.1%")
     .lte(100, "Allocation cannot exceed 100%")
-    .multipleOf(0.1, { message: "Allocation can have max 1 decimal place" }), 
+    .multipleOf(0.1, { message: "Allocation can have max 1 decimal place" }),
   description: z.string().max(100, "Description max 100 chars").optional(),
 });
 
@@ -56,8 +56,8 @@ type GoalFormValues = z.infer<typeof formSchema>;
 interface AddSavingGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaveGoal: (goal: Omit<SavingGoal, 'id'> & { id?: string }) => void; 
-  existingGoal: SavingGoal | null; 
+  onSaveGoal: (goal: Omit<SavingGoal, 'id'> & { id?: string }) => void;
+  existingGoal: SavingGoal | null;
   totalAllocatedPercentageToOtherGoals: number;
   savingsBudgetAmount: number; // Total amount available in the main "Savings" budget for the month
   savingGoalCategories: SavingGoalCategory[];
@@ -68,7 +68,7 @@ export function AddSavingGoalDialog({
     onOpenChange,
     onSaveGoal,
     existingGoal,
-    totalAllocatedPercentageToOtherGoals, 
+    totalAllocatedPercentageToOtherGoals,
     savingsBudgetAmount,
     savingGoalCategories
 }: AddSavingGoalDialogProps) {
@@ -84,7 +84,7 @@ export function AddSavingGoalDialog({
       name: "",
       goalCategoryId: "",
       savedAmount: 0,
-      percentageAllocation: undefined, 
+      percentageAllocation: undefined,
       description: "",
     },
   });
@@ -121,7 +121,7 @@ export function AddSavingGoalDialog({
 
   const onSubmit = (values: GoalFormValues) => {
      const percentageToValidate = values.percentageAllocation ?? 0;
-     if (percentageToValidate > maxAllowedPercentage + 0.01) { 
+     if (percentageToValidate > maxAllowedPercentage + 0.01) { // Add small tolerance for floating point
          setError("percentageAllocation", { message: `Allocation exceeds 100% of savings budget (${formatCurrency(savingsBudgetAmount)}). Max available: ${maxAllowedPercentage.toFixed(1)}%` });
          return;
      }
@@ -130,14 +130,14 @@ export function AddSavingGoalDialog({
         name: values.name,
         goalCategoryId: values.goalCategoryId,
         savedAmount: values.savedAmount ?? 0,
-        percentageAllocation: percentageToValidate, 
+        percentageAllocation: percentageToValidate,
         description: values.description,
     };
      if (existingGoal) {
       dataToSave.id = existingGoal.id;
     }
     onSaveGoal(dataToSave);
-    onOpenChange(false); 
+    onOpenChange(false);
   };
 
   const isAllocationDisabled = savingsBudgetAmount <= 0;
@@ -222,7 +222,7 @@ export function AddSavingGoalDialog({
                         type="number"
                         placeholder="0.00"
                         {...field}
-                        value={field.value === undefined ? '' : field.value}
+                        value={field.value === undefined ? '' : String(field.value)}
                          onChange={e => {
                             const val = e.target.value;
                             field.onChange(val === '' ? 0 : parseFloat(val));
@@ -231,7 +231,7 @@ export function AddSavingGoalDialog({
                         min="0"
                        />
                     </FormControl>
-                    <FormDescription className="text-xs">How much have you already saved for this goal?</FormDescription>
+                    <FormDescription className="text-xs">How much have you already saved towards this goal?</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -248,15 +248,15 @@ export function AddSavingGoalDialog({
                           type="number"
                           placeholder={isAllocationDisabled ? "Savings budget is ₱0" : `Max ${maxAllowedPercentage.toFixed(1)}% available`}
                           {...field}
-                          value={field.value === undefined ? '' : field.value}
+                          value={field.value === undefined ? '' : String(field.value)}
                           onChange={e => {
                               const val = e.target.value;
                               field.onChange(val === '' ? undefined : parseFloat(val));
                           }}
                           step="0.1"
                           max={maxAllowedPercentage > 0 ? maxAllowedPercentage : 100}
-                          min="0.1" 
-                          disabled={isAllocationDisabled} 
+                          min="0.1"
+                          disabled={isAllocationDisabled}
                       />
                       </FormControl>
                       <FormDescription className="text-xs">
@@ -269,7 +269,7 @@ export function AddSavingGoalDialog({
                       )}
                       <FormMessage />
                       <p className="text-xs text-muted-foreground pt-1">
-                          Total available to allocate to other goals: {maxAllowedPercentage.toFixed(1)}%
+                          Total available percentage of savings to allocate to goals: {maxAllowedPercentage.toFixed(1)}%
                       </p>
                   </FormItem>
                   )}
@@ -285,7 +285,7 @@ export function AddSavingGoalDialog({
                         <Textarea
                            placeholder="Add a note about this goal (e.g., For a down payment on a car)"
                            {...field}
-                           rows={2} 
+                           rows={2}
                         />
                       </FormControl>
                       <FormMessage />
@@ -305,3 +305,4 @@ export function AddSavingGoalDialog({
     </Dialog>
   );
 }
+

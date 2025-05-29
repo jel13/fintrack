@@ -21,7 +21,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Added missing import
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
@@ -31,7 +31,7 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert"; // Removed AlertTitle import as it's not used
 import { getCategoryIconComponent } from '@/components/category-icon';
 
 export default function SavingGoalsPage() {
@@ -66,23 +66,23 @@ export default function SavingGoalsPage() {
      }, [appData.savingGoals, isLoaded]);
 
     const totalMonetaryAllocatedToGoals = React.useMemo(() => {
-        return totalSavingsBudgetLimit * (totalAllocatedPercentageOfSavings / 100);
+        return parseFloat((totalSavingsBudgetLimit * (totalAllocatedPercentageOfSavings / 100)).toFixed(2));
     }, [totalSavingsBudgetLimit, totalAllocatedPercentageOfSavings]);
 
     const unallocatedSavingsPercentage = React.useMemo(() => {
-        return Math.max(0, 100 - totalAllocatedPercentageOfSavings);
+        return Math.max(0, parseFloat((100 - totalAllocatedPercentageOfSavings).toFixed(1)));
     }, [totalAllocatedPercentageOfSavings]);
 
     const unallocatedSavingsAmount = React.useMemo(() => {
-        return totalSavingsBudgetLimit - totalMonetaryAllocatedToGoals;
+        return parseFloat((totalSavingsBudgetLimit - totalMonetaryAllocatedToGoals).toFixed(2));
     }, [totalSavingsBudgetLimit, totalMonetaryAllocatedToGoals]);
 
 
-    const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id' | 'targetAmount' | 'targetDate'> & { id?: string }) => {
+    const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id'> & { id?: string }) => {
         const newPercentage = goalData.percentageAllocation ?? 0;
-        
+
         const currentTotalAllocatedToOtherGoals = appData.savingGoals
-            .filter(g => g.id !== goalData.id) 
+            .filter(g => g.id !== goalData.id)
             .reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
 
         if (newPercentage < 0) {
@@ -90,7 +90,7 @@ export default function SavingGoalsPage() {
             return;
         }
 
-        if (currentTotalAllocatedToOtherGoals + newPercentage > 100.05) { 
+        if (currentTotalAllocatedToOtherGoals + newPercentage > 100.05) { // 0.05 tolerance for floating point
             const maxAllowedForThisGoal = Math.max(0, parseFloat((100 - currentTotalAllocatedToOtherGoals).toFixed(1)));
             requestAnimationFrame(() => toast({
                 title: "Allocation Limit Exceeded",
@@ -106,28 +106,31 @@ export default function SavingGoalsPage() {
             let toastMessageTitle = "";
             let toastMessageDescription = "";
 
-            if (goalData.id) { 
+            if (goalData.id) {
                 const index = goals.findIndex(g => g.id === goalData.id);
                 if (index > -1) {
-                    goals[index] = { 
-                        ...goals[index], 
+                    goals[index] = {
+                        ...goals[index],
                         ...goalData,
-                    }; 
+                    };
                     toastMessageTitle = "Goal Updated";
                     toastMessageDescription = `Saving goal "${goalData.name}" updated.`;
                 }
-            } else { 
+            } else {
                 const newGoal: SavingGoal = {
-                    ...goalData, 
                     id: `goal-${Date.now().toString()}`,
-                    // targetAmount and targetDate are removed as per new requirement
+                    name: goalData.name,
+                    goalCategoryId: goalData.goalCategoryId,
+                    savedAmount: goalData.savedAmount ?? 0,
+                    percentageAllocation: goalData.percentageAllocation,
+                    description: goalData.description,
                 };
                 goals.push(newGoal);
                 toastMessageTitle = "Goal Added";
                 toastMessageDescription = `New saving goal "${newGoal.name}" added.`;
             }
-            goals.sort((a, b) => a.name.localeCompare(b.name)); 
-            
+            goals.sort((a, b) => a.name.localeCompare(b.name));
+
             if (toastMessageTitle) {
                 requestAnimationFrame(() => {
                     toast({ title: toastMessageTitle, description: toastMessageDescription });
@@ -208,7 +211,7 @@ export default function SavingGoalsPage() {
                                 <span>Unallocated Savings (₱ this month):</span>
                                 <span className="font-semibold">{formatCurrency(unallocatedSavingsAmount)}</span>
                             </div>
-                            {totalAllocatedPercentageOfSavings > 100.05 && 
+                            {totalAllocatedPercentageOfSavings > 100.05 &&
                                 <p className="text-xs text-destructive font-semibold mt-1 col-span-1 sm:col-span-2 flex items-center gap-1">
                                     <AlertCircle className="h-3 w-3"/>Warning: Total goal allocation exceeds 100% of savings budget!
                                 </p>
@@ -252,12 +255,12 @@ export default function SavingGoalsPage() {
                             appData.savingGoals.map((goal, index) => {
                                  const goalCategory = getGoalCategoryById(goal.goalCategoryId);
                                  const CategoryIcon = getCategoryIconComponent(goalCategory?.icon ?? 'Landmark');
-                                 const monthlyContribution = (goal.percentageAllocation ?? 0) / 100 * totalSavingsBudgetLimit;
+                                 const monthlyContribution = parseFloat(((goal.percentageAllocation ?? 0) / 100 * totalSavingsBudgetLimit).toFixed(2));
                                  return (
                                     <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
                                         <Card className="relative group/goal overflow-hidden transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]">
                                             <div className="relative z-10">
-                                                <CardHeader className="flex flex-row items-start justify-between p-4 pb-2 pr-3"> 
+                                                <CardHeader className="flex flex-row items-start justify-between p-4 pb-2 pr-3">
                                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                                         <CategoryIcon className="h-6 w-6 text-accent flex-shrink-0"/>
                                                         <div className="min-w-0">
@@ -314,7 +317,7 @@ export default function SavingGoalsPage() {
                                                     </div>
                                                     {goal.percentageAllocation !== undefined && goal.percentageAllocation > 0 && (
                                                         <p className="text-xs text-muted-foreground">
-                                                            Plan: {goal.percentageAllocation.toFixed(1)}% of monthly savings 
+                                                            Plan: {goal.percentageAllocation.toFixed(1)}% of monthly savings
                                                             (approx. {formatCurrency(monthlyContribution)}/mo this month)
                                                         </p>
                                                     )}
@@ -360,6 +363,3 @@ export default function SavingGoalsPage() {
         </div>
     );
 }
-
-
-    

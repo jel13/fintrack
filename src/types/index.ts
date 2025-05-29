@@ -8,26 +8,26 @@ export interface Transaction {
   category: string; // Corresponds to Category id (e.g., 'groceries', 'salary') OR SavingGoal id
   date: Date; // Should be stored as ISO string in localStorage, but Date object in runtime state
   description?: string;
-  receiptDataUrl?: string; 
+  receiptDataUrl?: string;
 }
 
 export interface Budget {
   id: string;
-  category: string; 
-  limit: number; 
-  percentage?: number; 
-  spent: number; 
-  month: string; 
+  category: string;
+  limit: number;
+  percentage?: number;
+  spent: number;
+  month: string;
 }
 
 export interface Category {
-  id: string; 
-  label: string; 
-  icon: string; 
-  parentId?: string | null; 
-  isDefault?: boolean; 
-  isDeletable?: boolean; 
-  isIncomeSource?: boolean; 
+  id: string;
+  label: string;
+  icon: string;
+  parentId?: string | null;
+  isDefault?: boolean;
+  isDeletable?: boolean;
+  isIncomeSource?: boolean;
 }
 
 export interface SavingGoalCategory {
@@ -38,18 +38,19 @@ export interface SavingGoalCategory {
 
 export interface SavingGoal {
     id: string;
-    name: string; 
-    goalCategoryId: string; 
-    savedAmount: number; 
+    name: string; // User-defined name for their specific goal, e.g., "Trip to Japan"
+    goalCategoryId: string; // Links to a SavingGoalCategory like "travel" or "emergency-fund"
+    savedAmount: number; // Total amount accumulated for this specific goal
     percentageAllocation?: number; // Percentage of *total monthly savings budget limit* allocated to this goal
     description?: string;
 }
 
 export interface AppData {
-  monthlyIncome: number | null; 
+  monthlyIncome: number | null;
   transactions: Transaction[];
-  budgets: Budget[]; 
-  categories: Category[]; 
-  savingGoalCategories: SavingGoalCategory[]; 
-  savingGoals: SavingGoal[]; 
+  budgets: Budget[];
+  categories: Category[];
+  savingGoalCategories: SavingGoalCategory[];
+  savingGoals: SavingGoal[];
 }
+

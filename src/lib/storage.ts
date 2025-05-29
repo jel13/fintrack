@@ -1,7 +1,7 @@
 
 // Basic localStorage wrapper - consider a more robust solution for production
 import type { AppData, SavingGoalCategory, Category } from '@/types';
-import { format } from 'date-fns'; // Import format
+import { format, parseISO } from 'date-fns';
 
 const APP_DATA_KEY = 'finTrackMobileData';
 
@@ -46,18 +46,20 @@ const defaultCategories: AppData['categories'] = [
 
 const defaultSavingGoalCategories: SavingGoalCategory[] = [
   { id: 'emergency-fund', label: 'Emergency Fund', icon: 'ShieldAlert' },
-  { id: 'travel', label: 'Travel', icon: 'PlaneTakeoff' },
-  { id: 'health', label: 'Health & Wellness', icon: 'HeartHandshake' },
-  { id: 'gadgets', label: 'Gadgets/Electronics', icon: 'Laptop2' },
-  { id: 'education', label: 'Education', icon: 'GraduationCap' },
-  { id: 'home-improvement', label: 'Home Improvement', icon: 'PaintRoller' },
-  { id: 'investment-sg', label: 'Investment', icon: 'TrendingUp' }, // Suffix to avoid clash with main category
-  { id: 'debt-repayment', label: 'Debt Repayment', icon: 'CreditCardOff' },
-  { id: 'other-savings', label: 'Other Savings', icon: 'Landmark' },
+  { id: 'travel-sg', label: 'Travel', icon: 'PlaneTakeoff' }, // Added -sg to avoid id clash if a main category is named 'travel'
+  { id: 'health-sg', label: 'Health & Wellness', icon: 'HeartHandshake' },
+  { id: 'gadgets-sg', label: 'Gadgets/Electronics', icon: 'Laptop2' },
+  { id: 'education-sg', label: 'Education', icon: 'GraduationCap' },
+  { id: 'home-improvement-sg', label: 'Home Improvement', icon: 'PaintRoller' },
+  { id: 'investment-sg', label: 'Investment', icon: 'TrendingUp' },
+  { id: 'debt-repayment-sg', label: 'Debt Repayment', icon: 'CreditCardOff' },
+  { id: 'celebration-event-sg', label: 'Celebration/Event', icon: 'PartyPopper' },
+  { id: 'charity-donation-sg', label: 'Charity/Donation', icon: 'HelpingHand' },
+  { id: 'other-savings-sg', label: 'Other Savings', icon: 'Landmark' },
 ];
 
 
-export const defaultAppData: AppData = { 
+export const defaultAppData: AppData = {
   monthlyIncome: null,
   transactions: [],
   budgets: [],
@@ -68,37 +70,37 @@ export const defaultAppData: AppData = {
 
 export const loadAppData = (): AppData => {
   if (typeof window === 'undefined') {
-    return { 
+    return {
         ...defaultAppData,
         categories: defaultCategories.map(c => ({...c})),
         savingGoalCategories: defaultSavingGoalCategories.map(sgc => ({...sgc}))
-    }; 
+    };
   }
   try {
     const storedData = localStorage.getItem(APP_DATA_KEY);
     if (storedData) {
-      const parsedData: Partial<AppData> = JSON.parse(storedData); 
+      const parsedData: Partial<AppData> & { transactions?: Array<Transaction & { date: string }>} = JSON.parse(storedData);
       const currentMonth = format(new Date(), 'yyyy-MM');
 
       // Ensure all AppData fields exist, merging with defaults
       const mergedData: AppData = {
         monthlyIncome: parsedData.monthlyIncome !== undefined ? parsedData.monthlyIncome : null,
-        transactions: parsedData.transactions ? parsedData.transactions.map(t => ({ ...t, date: new Date(t.date) })) : [],
+        transactions: parsedData.transactions ? parsedData.transactions.map(t => ({ ...t, date: parseISO(t.date) })) : [],
         budgets: parsedData.budgets ? parsedData.budgets.map(b => {
             const spent = (parsedData.transactions || [])
-                .filter(t => t.type === 'expense' && t.category === b.category && format(new Date(t.date), 'yyyy-MM') === (b.month || currentMonth))
+                .filter(t => t.type === 'expense' && t.category === b.category && format(parseISO(t.date), 'yyyy-MM') === (b.month || currentMonth))
                 .reduce((sum, t) => sum + t.amount, 0);
             return { ...b, month: b.month || currentMonth, spent: spent };
         }) : [],
-        categories: parsedData.categories && parsedData.categories.length > 0 
-            ? parsedData.categories 
+        categories: parsedData.categories && parsedData.categories.length > 0
+            ? parsedData.categories
             : defaultCategories.map(c => ({...c})),
-        savingGoalCategories: parsedData.savingGoalCategories && parsedData.savingGoalCategories.length > 0 
-            ? parsedData.savingGoalCategories 
+        savingGoalCategories: parsedData.savingGoalCategories && parsedData.savingGoalCategories.length > 0
+            ? parsedData.savingGoalCategories
             : defaultSavingGoalCategories.map(sgc => ({...sgc})),
         savingGoals: parsedData.savingGoals ? parsedData.savingGoals : [],
       };
-      
+
       // Further ensure categories are well-formed and defaults are respected for non-deletable/non-income flags
       const finalCategories: Category[] = defaultCategories.map(defaultCat => {
         const storedCat = mergedData.categories.find(mc => mc.id === defaultCat.id);
@@ -141,15 +143,15 @@ export const loadAppData = (): AppData => {
       });
       mergedData.savingGoalCategories = finalSavingGoalCategories;
 
-      return mergedData; 
+      return mergedData;
     }
   } catch (error) {
     console.error("Failed to load app data from localStorage:", error);
   }
-  return { 
-      ...defaultAppData, 
+  return {
+      ...defaultAppData,
       categories: defaultCategories.map(c => ({...c})),
-      savingGoalCategories: defaultSavingGoalCategories.map(sgc => ({...sgc})) 
+      savingGoalCategories: defaultSavingGoalCategories.map(sgc => ({...sgc}))
   };
 };
 
@@ -175,5 +177,6 @@ export const saveAppData = (data: AppData) => {
 export const clearAppData = () => {
    if (typeof window === 'undefined') return;
   localStorage.removeItem(APP_DATA_KEY);
-  window.location.reload(); 
+  window.location.reload();
 };
+
