@@ -2,8 +2,9 @@
 "use client";
 
 import * as React from "react";
+import { Fragment } from 'react'; // Import Fragment
 import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog } from "lucide-react";
-import { Tabs, TabsContent } from "@/components/ui/tabs"; // TabsList and TabsTrigger are now in BottomNavigation
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,7 +14,7 @@ import BudgetCard from "@/components/budget-card";
 import TransactionListItem from "@/components/transaction-list-item";
 import { SpendingChart } from "@/components/spending-chart";
 import type { Transaction, Budget, Category, AppData, SavingGoal } from "@/types";
-import { format, parseISO } from 'date-fns'; // Added parseISO
+import { format } from 'date-fns';
 import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,7 +94,7 @@ export default function Home() {
   const monthlySummary = React.useMemo(() => {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0 };
     
-    const expenses = transactions.filter(t => t.type === 'expense' && format(parseISO(t.date as unknown as string), 'yyyy-MM') === currentMonth).reduce((sum, t) => sum + t.amount, 0);
+    const expenses = transactions.filter(t => t.type === 'expense' && t.date && format(t.date, 'yyyy-MM') === currentMonth).reduce((sum, t) => sum + t.amount, 0);
     const calculatedBalance = (monthlyIncome ?? 0) - expenses; 
 
     return {
@@ -125,14 +126,14 @@ export default function Home() {
             if (budget.category === 'savings') {
                  spent = prevData.transactions
                     .filter(t => 
-                        t.type === 'expense' && 
+                        t.type === 'expense' && t.date &&
                         (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) &&
-                        format(parseISO(t.date as unknown as string), 'yyyy-MM') === (budget.month || currentMonth)
+                        format(t.date, 'yyyy-MM') === (budget.month || currentMonth)
                     )
                     .reduce((sum, t) => sum + t.amount, 0);
             } else {
                  spent = prevData.transactions
-                    .filter(t => t.type === 'expense' && t.category === budget.category && format(parseISO(t.date as unknown as string), 'yyyy-MM') === (budget.month || currentMonth))
+                    .filter(t => t.type === 'expense' && t.date && t.category === budget.category && format(t.date, 'yyyy-MM') === (budget.month || currentMonth))
                     .reduce((sum, t) => sum + t.amount, 0);
             }
 
@@ -164,7 +165,7 @@ export default function Home() {
         const leftoverForSavings = Math.max(0, currentSetMonthlyIncome - totalBudgetedExcludingSavings);
 
         if (savingsBudgetIndex > -1) {
-            const savingsSpent = updatedBudgets[savingsBudgetIndex].spent; // Already calculated above
+            const savingsSpent = updatedBudgets[savingsBudgetIndex].spent; 
 
             const currentSavingsBudget = updatedBudgets[savingsBudgetIndex];
             if (currentSavingsBudget.limit !== leftoverForSavings || currentSavingsBudget.spent !== savingsSpent) {
@@ -179,9 +180,9 @@ export default function Home() {
         } else if (currentSetMonthlyIncome > 0 || totalBudgetedExcludingSavings < currentSetMonthlyIncome) {
              const savingsSpent = prevData.transactions
                 .filter(t => 
-                    t.type === 'expense' && 
+                    t.type === 'expense' && t.date &&
                     (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) &&
-                    format(parseISO(t.date as unknown as string), 'yyyy-MM') === currentMonth
+                    format(t.date, 'yyyy-MM') === currentMonth
                 )
                 .reduce((sum, t) => sum + t.amount, 0);
             updatedBudgets.push({
@@ -216,8 +217,7 @@ export default function Home() {
     let toastMessageDescription = "";
     let validTransaction = true;
     let isUpdate = false;
-    let originalAmountIfUpdate = 0;
-    let originalTypeIfUpdate = transactionData.type;
+    let originalTransactionIfUpdate: Transaction | undefined = undefined;
     let updatedSavingGoals: SavingGoal[] | undefined = undefined;
 
     setAppData(prev => {
@@ -225,19 +225,16 @@ export default function Home() {
         isUpdate = existingIndex > -1;
 
         if (isUpdate) {
-            const originalTransaction = prev.transactions[existingIndex];
-            originalAmountIfUpdate = originalTransaction.amount;
-            originalTypeIfUpdate = originalTransaction.type;
+            originalTransactionIfUpdate = prev.transactions[existingIndex];
         }
 
-        // Check if category is a saving goal
         const targetSavingGoal = prev.savingGoals.find(sg => sg.id === transactionData.category);
 
-        if (transactionData.type === 'expense' && !targetSavingGoal) { // Regular expense
-            const categoryBudget = prev.budgets.find(b => b.category === transactionData.category && b.month === (format(parseISO(transactionData.date as unknown as string), 'yyyy-MM')));
-            if (!categoryBudget && transactionData.category !== 'savings') { // Allow 'savings' category without explicit budget check here
+        if (transactionData.type === 'expense' && !targetSavingGoal) { 
+            const categoryBudget = prev.budgets.find(b => b.category === transactionData.category && b.month === (format(transactionData.date, 'yyyy-MM')));
+            if (!categoryBudget && transactionData.category !== 'savings') { 
                 toastTitle = "Budget Required";
-                toastMessageDescription = `Please set a budget for '${getCategoryById(transactionData.category, prev.categories)?.label ?? transactionData.category}' for ${format(parseISO(transactionData.date as unknown as string), 'MMMM yyyy')} before adding expenses.`;
+                toastMessageDescription = `Please set a budget for '${getCategoryById(transactionData.category, prev.categories)?.label ?? transactionData.category}' for ${format(transactionData.date, 'MMMM yyyy')} before adding expenses.`;
                 validTransaction = false;
             }
         }
@@ -251,26 +248,25 @@ export default function Home() {
         } else {
             updatedTransactions = [transactionData, ...prev.transactions];
         }
-        updatedTransactions.sort((a, b) => parseISO(b.date as unknown as string).getTime() - parseISO(a.date as unknown as string).getTime());
+        updatedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
         
         let newMonthlyIncome = prev.monthlyIncome ?? 0;
         if (transactionData.type === 'income') {
-            if (isUpdate && originalTypeIfUpdate === 'income') {
-                 newMonthlyIncome = (prev.monthlyIncome ?? 0) - originalAmountIfUpdate + transactionData.amount;
-            } else if (isUpdate && originalTypeIfUpdate === 'expense') { 
+            if (isUpdate && originalTransactionIfUpdate?.type === 'income') {
+                 newMonthlyIncome = (prev.monthlyIncome ?? 0) - (originalTransactionIfUpdate?.amount ?? 0) + transactionData.amount;
+            } else if (isUpdate && originalTransactionIfUpdate?.type === 'expense') { 
                  newMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
             } else if (!isUpdate) { 
                  newMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
             }
-        } else if (isUpdate && originalTypeIfUpdate === 'income' && transactionData.type === 'expense') {
-            newMonthlyIncome = (prev.monthlyIncome ?? 0) - originalAmountIfUpdate;
+        } else if (isUpdate && originalTransactionIfUpdate?.type === 'income' && transactionData.type === 'expense') {
+            newMonthlyIncome = (prev.monthlyIncome ?? 0) - (originalTransactionIfUpdate?.amount ?? 0);
         }
 
-        // If it's a contribution to a saving goal
         if (targetSavingGoal && transactionData.type === 'expense') {
             updatedSavingGoals = prev.savingGoals.map(sg => 
                 sg.id === targetSavingGoal.id 
-                ? { ...sg, savedAmount: sg.savedAmount + transactionData.amount - (isUpdate && originalTransaction?.category === sg.id ? originalAmountIfUpdate : 0) } 
+                ? { ...sg, savedAmount: sg.savedAmount + transactionData.amount - (isUpdate && originalTransactionIfUpdate?.category === sg.id ? (originalTransactionIfUpdate?.amount ?? 0) : 0) } 
                 : sg
             );
         }
@@ -315,17 +311,16 @@ export default function Home() {
 
         if (transaction.type === 'income') {
             newMonthlyIncome -= transaction.amount;
-            toastMessage += ` Budgeted income reduced by ${formatCurrency(transaction.amount)}.`;
+            // toastMessage += ` Budgeted income reduced by ${formatCurrency(transaction.amount)}.`; // Removed as it could be confusing
         }
 
-        // If the deleted transaction was a contribution to a saving goal, reduce the goal's savedAmount
         if (targetSavingGoal && transaction.type === 'expense') {
             updatedSavingGoalsData = prev.savingGoals.map(sg => 
                 sg.id === targetSavingGoal.id 
                 ? { ...sg, savedAmount: Math.max(0, sg.savedAmount - transaction.amount) } 
                 : sg
             );
-            toastMessage += ` Goal "${targetSavingGoal.name}" balance reduced.`;
+            // toastMessage += ` Goal "${targetSavingGoal.name}" balance reduced.`; // Removed for brevity
         }
         
         return {
@@ -371,12 +366,15 @@ export default function Home() {
         ...budgetData,
         limit: calculatedLimit,
         spent: appData.transactions
-            .filter(t => t.type === 'expense' && t.category === budgetData.category && format(parseISO(t.date as unknown as string), 'yyyy-MM') === (budgetData.month || currentMonth))
+            .filter(t => t.type === 'expense' && t.date && t.category === budgetData.category && format(t.date, 'yyyy-MM') === (budgetData.month || currentMonth))
             .reduce((sum, t) => sum + t.amount, 0),
         month: budgetData.month || currentMonth,
     };
 
     let needsCategoryWarning = false;
+    let toastTitle = "";
+    let toastMessageDescription = "";
+
     setAppData(prev => {
         let updatedBudgets;
         const existingBudgetIndex = prev.budgets.findIndex(b => b.id === finalBudgetData.id);
@@ -384,9 +382,14 @@ export default function Home() {
         if (existingBudgetIndex > -1) {
             updatedBudgets = [...prev.budgets];
             updatedBudgets[existingBudgetIndex] = finalBudgetData;
+            toastTitle = "Budget Updated";
+            toastMessageDescription = `Budget for ${getCategoryById(finalBudgetData.category, prev.categories)?.label ?? finalBudgetData.category} updated to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).`;
+
         } else {
             updatedBudgets = [...prev.budgets, finalBudgetData];
-            isUpdate = false;
+            toastTitle = "Budget Set";
+            toastMessageDescription = `Budget for ${getCategoryById(finalBudgetData.category, prev.categories)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).`;
+            isUpdate = false; // Explicitly set for clarity
         }
 
         updatedBudgets.sort((a, b) => {
@@ -417,13 +420,10 @@ export default function Home() {
     });
         
     requestAnimationFrame(() => {
-        if (isUpdate) {
-            toast({ title: "Budget Updated", description: `Budget for ${getCategoryById(finalBudgetData.category, categories)?.label ?? finalBudgetData.category} updated to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` });
-        } else {
-            toast({ title: "Budget Set", description: `Budget for ${getCategoryById(finalBudgetData.category, categories)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).` });
-        }
+        toast({ title: toastTitle, description: toastMessageDescription });
+        
         if (needsCategoryWarning) {
-            const needsPercentage = appData.budgets
+             const needsPercentage = appData.budgets // Use appData here to get the latest state after update
                 .filter(b => categories.find(c => c.id === b.category && (
                     c.label.toLowerCase().includes('housing') ||
                     c.label.toLowerCase().includes('groceries') ||
@@ -455,7 +455,7 @@ const handleDeleteBudget = (budgetId: string) => {
         return;
     }
 
-    const hasTransactions = transactions.some(t => t.category === budget.category && format(parseISO(t.date as unknown as string), 'yyyy-MM') === budget.month && t.type === 'expense');
+    const hasTransactions = transactions.some(t => t.category === budget.category && t.date && format(t.date, 'yyyy-MM') === budget.month && t.type === 'expense');
     if (hasTransactions) {
          requestAnimationFrame(() => {
             toast({ title: "Cannot Delete", description: `Budget for '${getCategoryById(budget.category, categories)?.label}' has associated transactions this month.`, variant: "destructive" });
@@ -708,8 +708,10 @@ const openEditBudgetDialog = (budgetId: string) => {
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Link href="/learn/budgeting-guide">
-                        <Button variant="link" className="p-0 h-auto text-base">How to Budget Guide</Button>
+                    <Link href="/learn/budgeting-guide" >
+                        <Button variant="link" className="p-0 h-auto text-base">
+                           How to Budget Guide
+                        </Button>
                     </Link>
                 </CardContent>
              </Card>
@@ -766,9 +768,9 @@ const openEditBudgetDialog = (budgetId: string) => {
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
                  <Button asChild variant="outline" size="sm">
-                    <Link href="/saving-goals" className="flex items-center gap-2">
-                        <PiggyBank className="h-4 w-4" /> Manage Goals
-                    </Link>
+                  <Link href="/saving-goals" className="flex items-center gap-2">
+                    <PiggyBank className="h-4 w-4" /> Manage Goals
+                  </Link>
                  </Button>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
                     <Button size="sm" className="rounded-lg" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
@@ -915,7 +917,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                         Are you sure you want to delete this transaction? This action cannot be undone.
                         <br/>Amount: {formatCurrency(transactionToDelete.amount)}
                         <br/>Category: {appData.savingGoals.find(sg => sg.id === transactionToDelete.category)?.name || getCategoryById(transactionToDelete.category, categories)?.label || transactionToDelete.category}
-                        <br/>Date: {format(parseISO(transactionToDelete.date as unknown as string), "PPP")}
+                        <br/>Date: {transactionToDelete.date ? format(transactionToDelete.date, "PPP") : "N/A"}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -946,3 +948,4 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
+
