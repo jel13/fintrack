@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -8,7 +7,6 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Info } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +40,6 @@ import { formatCurrency } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryIconComponent } from '@/components/category-icon';
 
-
 const formSchema = z.object({
   name: z.string().min(1, "Goal name is required").max(50, "Name max 50 chars"),
   goalCategoryId: z.string().min(1, "Goal category is required"),
@@ -62,7 +59,7 @@ interface AddSavingGoalDialogProps {
   onSaveGoal: (goal: Omit<SavingGoal, 'id'> & { id?: string }) => void; 
   existingGoal: SavingGoal | null; 
   totalAllocatedPercentageToOtherGoals: number;
-  savingsBudgetAmount: number;
+  savingsBudgetAmount: number; // Total amount available in the main "Savings" budget for the month
   savingGoalCategories: SavingGoalCategory[];
 }
 
@@ -116,12 +113,11 @@ export function AddSavingGoalDialog({
   }, [totalAllocatedPercentageToOtherGoals]);
 
   const calculatedMonthlyContribution = React.useMemo(() => {
-      if (savingsBudgetAmount > 0 && currentPercentage && currentPercentage > 0) {
+      if (savingsBudgetAmount > 0 && currentPercentage !== undefined && currentPercentage > 0) {
           return (currentPercentage / 100) * savingsBudgetAmount;
       }
       return 0;
   }, [currentPercentage, savingsBudgetAmount]);
-
 
   const onSubmit = (values: GoalFormValues) => {
      const percentageToValidate = values.percentageAllocation ?? 0;
@@ -194,7 +190,7 @@ export function AddSavingGoalDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {savingGoalCategories.map((category) => {
+                        {(savingGoalCategories || []).map((category) => {
                           const Icon = getCategoryIconComponent(category.icon);
                           return (
                             <SelectItem key={category.id} value={category.id}>
@@ -205,7 +201,7 @@ export function AddSavingGoalDialog({
                             </SelectItem>
                           );
                         })}
-                        {savingGoalCategories.length === 0 && (
+                        {(!savingGoalCategories || savingGoalCategories.length === 0) && (
                             <SelectItem value="no-goal-cats" disabled>No goal categories defined</SelectItem>
                         )}
                       </SelectContent>
@@ -255,7 +251,6 @@ export function AddSavingGoalDialog({
                           value={field.value === undefined ? '' : field.value}
                           onChange={e => {
                               const val = e.target.value;
-                              // Ensure that if the user clears the input, undefined is passed to react-hook-form, not NaN
                               field.onChange(val === '' ? undefined : parseFloat(val));
                           }}
                           step="0.1"
@@ -266,8 +261,6 @@ export function AddSavingGoalDialog({
                       </FormControl>
                       <FormDescription className="text-xs">
                          Allocate a percentage of your monthly savings budget ({formatCurrency(savingsBudgetAmount)}) towards this goal.
-                         <br/>
-                         Remaining available to allocate to other goals: {maxAllowedPercentage.toFixed(1)}%
                       </FormDescription>
                       {!isAllocationDisabled && currentPercentage !== undefined && currentPercentage > 0 && (
                          <p className="text-sm text-muted-foreground mt-1">
@@ -275,6 +268,9 @@ export function AddSavingGoalDialog({
                          </p>
                       )}
                       <FormMessage />
+                      <p className="text-xs text-muted-foreground pt-1">
+                          Total available to allocate to other goals: {maxAllowedPercentage.toFixed(1)}%
+                      </p>
                   </FormItem>
                   )}
               />
@@ -309,4 +305,3 @@ export function AddSavingGoalDialog({
     </Dialog>
   );
 }
-

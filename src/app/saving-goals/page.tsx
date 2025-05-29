@@ -7,7 +7,6 @@ import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank, Info, Target, MoreVerti
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress"; // Progress might be useful if we re-introduce a target later
 import type { AppData, SavingGoal, SavingGoalCategory } from "@/types";
 import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -33,7 +32,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryIconComponent } from '@/components/category-icon';
-
 
 export default function SavingGoalsPage() {
     const [appData, setAppData] = React.useState<AppData>(defaultAppData);
@@ -82,9 +80,8 @@ export default function SavingGoalsPage() {
     const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id'> & { id?: string }) => {
         const newPercentage = goalData.percentageAllocation ?? 0;
         
-        // Calculate total percentage allocated to *other* goals if editing
         const currentTotalAllocatedToOtherGoals = appData.savingGoals
-            .filter(g => g.id !== goalData.id) // Exclude current goal if it's being edited
+            .filter(g => g.id !== goalData.id) 
             .reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
 
         if (newPercentage < 0) {
@@ -92,7 +89,7 @@ export default function SavingGoalsPage() {
             return;
         }
 
-        if (currentTotalAllocatedToOtherGoals + newPercentage > 100.05) { // Add small tolerance for floating point
+        if (currentTotalAllocatedToOtherGoals + newPercentage > 100.05) { 
             const maxAllowedForThisGoal = Math.max(0, parseFloat((100 - currentTotalAllocatedToOtherGoals).toFixed(1)));
             requestAnimationFrame(() => toast({
                 title: "Allocation Limit Exceeded",
@@ -108,26 +105,26 @@ export default function SavingGoalsPage() {
             let toastMessageTitle = "";
             let toastMessageDescription = "";
 
-            if (goalData.id) { // Editing existing goal
+            if (goalData.id) { 
                 const index = goals.findIndex(g => g.id === goalData.id);
                 if (index > -1) {
                     goals[index] = { 
-                        ...goals[index], // Keep original ID and potentially other non-form fields
-                        ...goalData // Apply updates from form
+                        ...goals[index], 
+                        ...goalData 
                     }; 
                     toastMessageTitle = "Goal Updated";
                     toastMessageDescription = `Saving goal "${goalData.name}" updated.`;
                 }
-            } else { // Adding new goal
+            } else { 
                 const newGoal: SavingGoal = {
-                    ...goalData, // Contains name, goalCategoryId, savedAmount, percentageAllocation, description
+                    ...goalData, 
                     id: `goal-${Date.now().toString()}`,
                 };
                 goals.push(newGoal);
                 toastMessageTitle = "Goal Added";
                 toastMessageDescription = `New saving goal "${newGoal.name}" added.`;
             }
-            goals.sort((a, b) => a.name.localeCompare(b.name)); // Keep goals sorted by name
+            goals.sort((a, b) => a.name.localeCompare(b.name)); 
             
             if (toastMessageTitle) {
                 requestAnimationFrame(() => {
@@ -164,7 +161,7 @@ export default function SavingGoalsPage() {
 
     return (
         <div className="flex flex-col flex-1 bg-background">
-             <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
+             <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10 shadow-sm">
                 <Link href="/" passHref>
                     <Button variant="ghost" size="icon" aria-label="Back to Home">
                         <ArrowLeft className="h-5 w-5" />
@@ -258,7 +255,7 @@ export default function SavingGoalsPage() {
                                     <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
                                         <Card className="relative group/goal overflow-hidden transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]">
                                             <div className="relative z-10">
-                                                <CardHeader className="flex flex-row items-start justify-between pb-2 pr-3 p-4"> 
+                                                <CardHeader className="flex flex-row items-start justify-between p-4 pb-2 pr-3"> 
                                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                                         <CategoryIcon className="h-6 w-6 text-accent flex-shrink-0"/>
                                                         <div className="min-w-0">
@@ -269,12 +266,12 @@ export default function SavingGoalsPage() {
                                                      <div className="flex-shrink-0">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-60 group-hover/goal:opacity-100 focus:opacity-100 transition-opacity rounded-full" onClick={(e) => e.stopPropagation()}>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-60 group-hover/goal:opacity-100 focus:opacity-100 transition-opacity rounded-full">
                                                                     <MoreVertical className="h-4 w-4" />
                                                                     <span className="sr-only">Goal Actions</span>
                                                                 </Button>
                                                             </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                            <DropdownMenuContent align="end">
                                                                 <DropdownMenuItem onClick={() => openEditDialog(goal)}>
                                                                     <Edit className="mr-2 h-4 w-4" /> Edit Goal
                                                                 </DropdownMenuItem>
@@ -315,7 +312,7 @@ export default function SavingGoalsPage() {
                                                     </div>
                                                     {goal.percentageAllocation !== undefined && goal.percentageAllocation > 0 && (
                                                         <p className="text-xs text-muted-foreground">
-                                                            Plan: {goal.percentageAllocation}% of monthly savings 
+                                                            Plan: {goal.percentageAllocation.toFixed(1)}% of monthly savings 
                                                             (approx. {formatCurrency(monthlyContribution)}/mo this month)
                                                         </p>
                                                     )}
@@ -332,7 +329,7 @@ export default function SavingGoalsPage() {
                                     <Target className="mx-auto h-10 w-10 mb-2 text-accent" />
                                     <p className="font-semibold">No Saving Goals Yet</p>
                                     <p className="text-sm mb-3">Click "Add Goal" to start planning where your savings will go!</p>
-                                    <Button size="sm" onClick={() => setIsAddGoalDialogOpen(true)} disabled={totalSavingsBudgetLimit <= 0} className="rounded-lg">
+                                    <Button size="sm" onClick={() => {setEditingGoal(null); setIsAddGoalDialogOpen(true);}} disabled={totalSavingsBudgetLimit <= 0} className="rounded-lg">
                                         <span className="flex items-center justify-center">Add New Goal</span>
                                     </Button>
                                      {totalSavingsBudgetLimit <= 0 && <p className="text-xs text-destructive mt-2">Enable "Add Goal" by increasing your "Savings" allocation in the main Budgets tab.</p>}
@@ -361,4 +358,3 @@ export default function SavingGoalsPage() {
         </div>
     );
 }
-

@@ -1,6 +1,6 @@
 
 // Basic localStorage wrapper - consider a more robust solution for production
-import type { AppData, SavingGoalCategory } from '@/types';
+import type { AppData, SavingGoalCategory, Category } from '@/types';
 import { format } from 'date-fns'; // Import format
 
 const APP_DATA_KEY = 'finTrackMobileData';
@@ -61,123 +61,96 @@ export const defaultAppData: AppData = {
   monthlyIncome: null,
   transactions: [],
   budgets: [],
-  categories: defaultCategories,
-  savingGoalCategories: defaultSavingGoalCategories,
+  categories: defaultCategories.map(c => ({...c})), // Ensure defaults are new objects
+  savingGoalCategories: defaultSavingGoalCategories.map(sgc => ({...sgc})), // Ensure defaults are new objects
   savingGoals: [],
 };
 
 export const loadAppData = (): AppData => {
   if (typeof window === 'undefined') {
-    return { ...defaultAppData }; 
+    return { 
+        ...defaultAppData,
+        categories: defaultCategories.map(c => ({...c})),
+        savingGoalCategories: defaultSavingGoalCategories.map(sgc => ({...sgc}))
+    }; 
   }
   try {
     const storedData = localStorage.getItem(APP_DATA_KEY);
     if (storedData) {
-      const parsedData: Partial<AppData> = JSON.parse(storedData); // Parse as Partial initially
+      const parsedData: Partial<AppData> = JSON.parse(storedData); 
       const currentMonth = format(new Date(), 'yyyy-MM');
 
       // Ensure all AppData fields exist, merging with defaults
       const mergedData: AppData = {
-        ...defaultAppData, // Start with all default fields
-        ...parsedData, // Override with stored data
-        categories: parsedData.categories ? [...parsedData.categories] : [...defaultCategories.map(c => ({...c}))],
-        savingGoalCategories: parsedData.savingGoalCategories ? [...parsedData.savingGoalCategories] : [...defaultSavingGoalCategories.map(sgc => ({...sgc}))],
-        savingGoals: parsedData.savingGoals ? [...parsedData.savingGoals] : [],
-        transactions: parsedData.transactions ? [...parsedData.transactions] : [],
-        budgets: parsedData.budgets ? [...parsedData.budgets] : [],
+        monthlyIncome: parsedData.monthlyIncome !== undefined ? parsedData.monthlyIncome : null,
+        transactions: parsedData.transactions ? parsedData.transactions.map(t => ({ ...t, date: new Date(t.date) })) : [],
+        budgets: parsedData.budgets ? parsedData.budgets.map(b => {
+            const spent = (parsedData.transactions || [])
+                .filter(t => t.type === 'expense' && t.category === b.category && format(new Date(t.date), 'yyyy-MM') === (b.month || currentMonth))
+                .reduce((sum, t) => sum + t.amount, 0);
+            return { ...b, month: b.month || currentMonth, spent: spent };
+        }) : [],
+        categories: parsedData.categories && parsedData.categories.length > 0 
+            ? parsedData.categories 
+            : defaultCategories.map(c => ({...c})),
+        savingGoalCategories: parsedData.savingGoalCategories && parsedData.savingGoalCategories.length > 0 
+            ? parsedData.savingGoalCategories 
+            : defaultSavingGoalCategories.map(sgc => ({...sgc})),
+        savingGoals: parsedData.savingGoals ? parsedData.savingGoals : [],
       };
-
-
-      mergedData.transactions = mergedData.transactions.map(t => ({
-        ...t,
-        date: new Date(t.date), // Ensure date is a Date object
-      }));
       
-      // For saving goals, targetDate is removed, so no need to parse it.
-      // If other date fields were present, they'd be parsed here.
-      mergedData.savingGoals = mergedData.savingGoals.map(g => ({
-        ...g,
-        // targetDate: g.targetDate ? new Date(g.targetDate) : null, // REMOVED
-      }));
-
-
-      mergedData.budgets = mergedData.budgets.map(b => {
-           const spent = mergedData.transactions
-              .filter(t => t.type === 'expense' && t.category === b.category && format(new Date(t.date), 'yyyy-MM') === (b.month || currentMonth))
-              .reduce((sum, t) => sum + t.amount, 0);
-          return {
-            ...b,
-            month: b.month || currentMonth, 
-            spent: spent, 
-          };
+      // Further ensure categories are well-formed and defaults are respected for non-deletable/non-income flags
+      const finalCategories: Category[] = defaultCategories.map(defaultCat => {
+        const storedCat = mergedData.categories.find(mc => mc.id === defaultCat.id);
+        if (storedCat) {
+            return {
+                ...defaultCat, // Start with default to ensure flags like isDeletable, isIncomeSource are from default
+                label: storedCat.label, // User's label
+                icon: storedCat.icon,   // User's icon
+                parentId: storedCat.parentId, // User's parent
+                // isDefault is from defaultCat
+                // isDeletable is from defaultCat
+                // isIncomeSource is from defaultCat
+            };
+        }
+        return {...defaultCat}; // If not found in stored, use the default as is
       });
 
-       const finalCategories = [...defaultCategories.map(c => ({...c}))]; 
-
-       if (mergedData.categories && Array.isArray(mergedData.categories)) {
-           mergedData.categories.forEach(storedCat => {
-                const existingIndex = finalCategories.findIndex(fc => fc.id === storedCat.id);
-                if (existingIndex > -1) {
-                     finalCategories[existingIndex] = {
-                        ...finalCategories[existingIndex], 
-                        label: storedCat.label, 
-                        icon: storedCat.icon,
-                        parentId: storedCat.parentId,
-                     };
-                } else {
-                     finalCategories.push({
-                         ...storedCat,
-                         isDefault: storedCat.isDefault === undefined ? false : storedCat.isDefault,
-                         isDeletable: storedCat.isDeletable === undefined ? true : storedCat.isDeletable,
-                         isIncomeSource: storedCat.isIncomeSource === undefined ? false : storedCat.isIncomeSource,
-                     });
-                }
-           });
-       }
-       // Ensure 'savings' category exists and has correct properties
-       let savingsCategoryIndex = finalCategories.findIndex(c => c.id === 'savings');
-       if (savingsCategoryIndex === -1) {
-           finalCategories.push({ id: 'savings', label: 'Savings', icon: 'PiggyBank', isDefault: true, isDeletable: false, isIncomeSource: false });
-       } else {
-           finalCategories[savingsCategoryIndex] = {
-               ...finalCategories[savingsCategoryIndex],
-               label: finalCategories[savingsCategoryIndex].label || 'Savings',
-               icon: finalCategories[savingsCategoryIndex].icon || 'PiggyBank',
-               isDefault: true,
-               isDeletable: false, 
-               isIncomeSource: false 
-           };
-       }
-       mergedData.categories = finalCategories.filter(c => c.id !== 'income'); // Remove conceptual 'income' if it exists
-
-        // Merge default saving goal categories with stored ones
-        const finalSavingGoalCategories = [...defaultSavingGoalCategories.map(sgc => ({...sgc}))];
-        if (mergedData.savingGoalCategories && Array.isArray(mergedData.savingGoalCategories)) {
-            mergedData.savingGoalCategories.forEach(storedSgc => {
-                const existingSgcIndex = finalSavingGoalCategories.findIndex(fsgc => fsgc.id === storedSgc.id);
-                if (existingSgcIndex > -1) {
-                    finalSavingGoalCategories[existingSgcIndex] = {
-                        ...finalSavingGoalCategories[existingSgcIndex],
-                        label: storedSgc.label,
-                        icon: storedSgc.icon,
-                    };
-                } else {
-                    finalSavingGoalCategories.push(storedSgc);
-                }
+      // Add any custom categories from storedData that are not in defaults
+      mergedData.categories.forEach(storedCat => {
+        if (!finalCategories.some(fc => fc.id === storedCat.id)) {
+            finalCategories.push({
+                ...storedCat, // Take all properties from stored custom category
+                isDefault: storedCat.isDefault === undefined ? false : storedCat.isDefault, // Ensure these exist
+                isDeletable: storedCat.isDeletable === undefined ? true : storedCat.isDeletable,
+                isIncomeSource: storedCat.isIncomeSource === undefined ? false : storedCat.isIncomeSource,
             });
         }
-        mergedData.savingGoalCategories = finalSavingGoalCategories;
+      });
+      mergedData.categories = finalCategories.filter(c => c.id !== 'income'); // Remove conceptual 'income' if it exists
 
-        return mergedData; 
+      // Merge default saving goal categories with stored ones robustly
+      const finalSavingGoalCategories: SavingGoalCategory[] = defaultSavingGoalCategories.map(defaultSgc => {
+          const storedSgc = mergedData.savingGoalCategories.find(msgc => msgc.id === defaultSgc.id);
+          return storedSgc ? { ...defaultSgc, label: storedSgc.label, icon: storedSgc.icon } : {...defaultSgc};
+      });
+      mergedData.savingGoalCategories.forEach(storedSgc => {
+          if (!finalSavingGoalCategories.some(fsgc => fsgc.id === storedSgc.id)) {
+              finalSavingGoalCategories.push(storedSgc);
+          }
+      });
+      mergedData.savingGoalCategories = finalSavingGoalCategories;
+
+      return mergedData; 
     }
   } catch (error) {
     console.error("Failed to load app data from localStorage:", error);
   }
   return { 
       ...defaultAppData, 
-      categories: [...defaultAppData.categories.map(c => ({...c}))],
-      savingGoalCategories: [...defaultAppData.savingGoalCategories.map(sgc => ({...sgc}))] 
-  }; // Return a deep copy of defaults on error
+      categories: defaultCategories.map(c => ({...c})),
+      savingGoalCategories: defaultSavingGoalCategories.map(sgc => ({...sgc})) 
+  };
 };
 
 export const saveAppData = (data: AppData) => {
@@ -189,10 +162,8 @@ export const saveAppData = (data: AppData) => {
         ...t,
         date: typeof t.date === 'string' ? t.date : t.date.toISOString(),
       })),
-      // Saving goals no longer have targetDate
       savingGoals: data.savingGoals.map(g => ({
         ...g,
-        // targetDate: g.targetDate ? (typeof g.targetDate === 'string' ? g.targetDate : g.targetDate.toISOString()) : null, // REMOVED
       })),
     };
     localStorage.setItem(APP_DATA_KEY, JSON.stringify(dataToStore));
@@ -206,4 +177,3 @@ export const clearAppData = () => {
   localStorage.removeItem(APP_DATA_KEY);
   window.location.reload(); 
 };
-

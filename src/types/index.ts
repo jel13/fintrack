@@ -1,5 +1,4 @@
 
-
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
@@ -44,7 +43,6 @@ export interface SavingGoal {
     savedAmount: number; // Current total amount saved towards this goal
     percentageAllocation?: number; // Percentage of *total monthly savings budget* allocated to this goal
     description?: string;
-    // icon is now typically derived from SavingGoalCategory
 }
 
 export interface AppData {
@@ -55,5 +53,3 @@ export interface AppData {
   savingGoalCategories: SavingGoalCategory[]; // Predefined categories for saving goals
   savingGoals: SavingGoal[]; // User-defined saving goals based on the new structure
 }
-
-
