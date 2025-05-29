@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Paperclip, XCircle } from "lucide-react";
+import { Calendar as CalendarIcon, Paperclip, XCircle, PiggyBank as GoalIcon } from "lucide-react"; // Added GoalIcon
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { cn } from "@/lib/utils";
@@ -34,6 +34,8 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    SelectGroup, // Added SelectGroup
+    SelectLabel,  // Added SelectLabel
 } from "@/components/ui/select";
 import {
   Sheet,
@@ -45,11 +47,11 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import type { Transaction, Category } from "@/types";
+import type { Transaction, Category, SavingGoal } from "@/types"; // Added SavingGoal
 import { getCategoryIconComponent } from '@/components/category-icon';
 
 const formSchema = z.object({
-  id: z.string().optional(), // ID is optional, present if editing
+  id: z.string().optional(),
   type: z.enum(["income", "expense"]),
   amount: z.coerce.number({ invalid_type_error: "Amount must be a number", required_error: "Amount is required" })
     .positive("Amount must be positive"),
@@ -64,11 +66,12 @@ type TransactionFormValues = z.infer<typeof formSchema>;
 interface AddTransactionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaveTransaction: (transaction: Transaction) => void; // Changed prop name and type
+  onSaveTransaction: (transaction: Transaction) => void;
   categoriesForSelect: Category[];
+  savingGoals: SavingGoal[]; // Added savingGoals prop
   canAddExpense: boolean;
   currentMonthBudgetCategoryIds: string[];
-  existingTransaction?: Transaction | null; // To pre-fill form for editing
+  existingTransaction?: Transaction | null;
 }
 
 export function AddTransactionSheet({
@@ -76,13 +79,13 @@ export function AddTransactionSheet({
     onOpenChange,
     onSaveTransaction,
     categoriesForSelect,
+    savingGoals, // Added savingGoals
     canAddExpense,
     currentMonthBudgetCategoryIds,
     existingTransaction,
 }: AddTransactionSheetProps) {
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(formSchema),
-    // Default values set by useEffect below
   });
 
   const [receiptPreview, setReceiptPreview] = React.useState<string | null>(null);
@@ -96,7 +99,7 @@ export function AddTransactionSheet({
                  type: existingTransaction.type,
                  amount: existingTransaction.amount,
                  category: existingTransaction.category,
-                 date: new Date(existingTransaction.date), // Ensure it's a Date object
+                 date: new Date(existingTransaction.date),
                  description: existingTransaction.description || "",
                  receiptDataUrl: existingTransaction.receiptDataUrl || undefined,
              });
@@ -125,7 +128,7 @@ export function AddTransactionSheet({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        if (file.size > 5 * 1024 * 1024) {
             form.setError("receiptDataUrl", { message: "File size should not exceed 5MB." });
             setReceiptPreview(null);
             if (fileInputRef.current) fileInputRef.current.value = "";
@@ -150,8 +153,8 @@ export function AddTransactionSheet({
   const onSubmit = (values: TransactionFormValues) => {
     const transactionData: Transaction = {
         ...values,
-        id: values.id || `tx-${Date.now().toString()}`, // Use existing ID or generate new
-        amount: values.amount, // Ensure amount is a number
+        id: values.id || `tx-${Date.now().toString()}`,
+        amount: values.amount,
         description: values.description || undefined,
         receiptDataUrl: values.receiptDataUrl || undefined,
     };
@@ -159,30 +162,48 @@ export function AddTransactionSheet({
     onOpenChange(false);
   };
 
-  const filteredCategories = React.useMemo(() => {
-    return categoriesForSelect.filter(cat => {
-        if (transactionType === 'income') {
-            return cat.isIncomeSource === true;
-        } else {
-            return cat.isIncomeSource !== true && cat.id !== 'savings' && (existingTransaction?.category === cat.id || currentMonthBudgetCategoryIds.includes(cat.id));
-        }
-    }).sort((a, b) => a.label.localeCompare(b.label));
-  }, [transactionType, categoriesForSelect, currentMonthBudgetCategoryIds, existingTransaction]);
+  const incomeCategories = React.useMemo(() => {
+    return categoriesForSelect.filter(cat => cat.isIncomeSource === true)
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [categoriesForSelect]);
+
+  const regularExpenseCategories = React.useMemo(() => {
+    return categoriesForSelect.filter(cat => 
+        cat.isIncomeSource !== true && 
+        cat.id !== 'savings' && 
+        (existingTransaction?.category === cat.id || currentMonthBudgetCategoryIds.includes(cat.id))
+      )
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [categoriesForSelect, currentMonthBudgetCategoryIds, existingTransaction]);
+
+  const userSavingGoals = React.useMemo(() => {
+    return (savingGoals || []).map(goal => ({
+      id: goal.id, // Use goal ID as value
+      label: goal.name,
+      icon: categoriesForSelect.find(c => c.id === goal.goalCategoryId)?.icon || 'PiggyBank', // Or a default goal icon
+    })).sort((a,b) => a.label.localeCompare(b.label));
+  }, [savingGoals, categoriesForSelect]);
+
 
   React.useEffect(() => {
      const currentCategory = form.getValues('category');
      if (!currentCategory && !existingTransaction) return;
 
-
      if (existingTransaction && existingTransaction.type !== transactionType) {
          form.setValue('category', '');
      } else {
-        const isValidForType = filteredCategories.some(cat => cat.id === currentCategory);
-        if (!isValidForType && !existingTransaction) { // Only reset if not editing and current category is invalid
+        let isValidForType = false;
+        if (transactionType === 'income') {
+            isValidForType = incomeCategories.some(cat => cat.id === currentCategory);
+        } else { // expense
+            isValidForType = regularExpenseCategories.some(cat => cat.id === currentCategory) ||
+                             userSavingGoals.some(goal => goal.id === currentCategory);
+        }
+        if (!isValidForType && !existingTransaction) {
             form.setValue('category', '');
         }
      }
-  }, [transactionType, filteredCategories, form, existingTransaction]);
+  }, [transactionType, incomeCategories, regularExpenseCategories, userSavingGoals, form, existingTransaction]);
 
 
   return (
@@ -206,7 +227,7 @@ export function AddTransactionSheet({
                     <FormControl>
                       <RadioGroup
                         onValueChange={(value) => {
-                            if (value === 'expense' && !canAddExpense && !existingTransaction) { // Allow changing type if editing
+                            if (value === 'expense' && !canAddExpense && !existingTransaction) {
                                 return;
                             }
                             field.onChange(value);
@@ -267,13 +288,20 @@ export function AddTransactionSheet({
                     <FormLabel>Category</FormLabel>
                      <Select onValueChange={field.onChange} value={field.value} >
                       <FormControl>
-                        <SelectTrigger disabled={transactionType === 'expense' && filteredCategories.length === 0 && !existingTransaction}>
-                          <SelectValue placeholder={transactionType === 'expense' && filteredCategories.length === 0 && !existingTransaction ? 'No budgeted categories' : `Select ${transactionType} category`} />
+                        <SelectTrigger disabled={
+                            (transactionType === 'income' && incomeCategories.length === 0) ||
+                            (transactionType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0 && !existingTransaction)
+                        }>
+                          <SelectValue placeholder={
+                            transactionType === 'income' && incomeCategories.length === 0 ? 'No income categories' :
+                            (transactionType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0 && !existingTransaction) ? 'No budgeted categories or goals' :
+                            `Select ${transactionType} category`
+                          } />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {filteredCategories.length > 0 ? (
-                            filteredCategories.map((category) => {
+                        {transactionType === 'income' && incomeCategories.length > 0 && (
+                            incomeCategories.map((category) => {
                                const Icon = getCategoryIconComponent(category.icon);
                                return (
                                  <SelectItem key={category.id} value={category.id}>
@@ -284,9 +312,48 @@ export function AddTransactionSheet({
                                  </SelectItem>
                                );
                              })
-                         ) : (
+                         )}
+                         {transactionType === 'expense' && (
+                            <>
+                              {regularExpenseCategories.length > 0 && (
+                                <SelectGroup>
+                                  <SelectLabel>Expense Categories</SelectLabel>
+                                  {regularExpenseCategories.map((category) => {
+                                    const Icon = getCategoryIconComponent(category.icon);
+                                    return (
+                                      <SelectItem key={category.id} value={category.id}>
+                                        <div className="flex items-center gap-2">
+                                          <Icon className="h-4 w-4 text-muted-foreground" />
+                                          <span>{category.label}</span>
+                                        </div>
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectGroup>
+                              )}
+                              {userSavingGoals.length > 0 && (
+                                <SelectGroup>
+                                  <SelectLabel>Contribute to Saving Goal</SelectLabel>
+                                  {userSavingGoals.map((goal) => {
+                                     const GoalCatIcon = getCategoryIconComponent(goal.icon);
+                                    return (
+                                      <SelectItem key={goal.id} value={goal.id}>
+                                        <div className="flex items-center gap-2">
+                                          <GoalCatIcon className="h-4 w-4 text-accent" /> {/* Or GoalIcon */}
+                                          <span>{goal.label}</span>
+                                        </div>
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectGroup>
+                              )}
+                            </>
+                         )}
+                         {((transactionType === 'income' && incomeCategories.length === 0) ||
+                           (transactionType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0)
+                         ) && (
                               <SelectItem value="no-cat" disabled>
-                                {transactionType === 'expense' ? 'No categories with active budgets' : `No ${transactionType} categories available`}
+                                {transactionType === 'expense' ? 'No categories with active budgets or saving goals' : `No ${transactionType} categories available`}
                               </SelectItem>
                          )}
                       </SelectContent>
@@ -366,14 +433,22 @@ export function AddTransactionSheet({
                                     ref={fileInputRef}
                                     id="receipt-file-input"
                                     type="file"
-                                    accept="image/*"
+                                    accept="image/*,.pdf" // Added PDF support
                                     onChange={handleFileChange}
                                     className="text-sm file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-muted file:text-muted-foreground hover:file:bg-primary/20"
                                 />
                             </FormControl>
                             {receiptPreview && (
                                 <div className="mt-2 relative w-24 h-24 border rounded-md overflow-hidden shadow-sm">
-                                    <img src={receiptPreview} alt="Receipt preview" className="object-cover w-full h-full" />
+                                    {receiptPreview.startsWith('data:image') ? (
+                                      <img src={receiptPreview} alt="Receipt preview" className="object-cover w-full h-full" />
+                                    ) : receiptPreview.startsWith('data:application/pdf') ? (
+                                      <div className="flex flex-col items-center justify-center w-full h-full bg-muted text-muted-foreground text-xs p-1">
+                                        <Paperclip className="h-6 w-6 mb-1"/> PDF Attached
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center justify-center w-full h-full bg-muted text-muted-foreground text-xs">Invalid file</div>
+                                    )}
                                     <Button
                                         type="button"
                                         variant="ghost"
@@ -389,13 +464,11 @@ export function AddTransactionSheet({
                                     </Button>
                                 </div>
                             )}
-                            <FormDescription className="text-xs">Max file size: 5MB. Accepted formats: JPG, PNG, GIF.</FormDescription>
+                            <FormDescription className="text-xs">Max file size: 5MB. Accepted formats: JPG, PNG, GIF, PDF.</FormDescription>
                             <FormMessage />
                         </FormItem>
                     )}
                 />
-
-
             </form>
           </Form>
          </ScrollArea>
