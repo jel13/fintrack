@@ -3,12 +3,12 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank, Info, Target, MoreVertical } from "lucide-react";
+import { ArrowLeft, PlusCircle, Edit, Trash2, PiggyBank, Info, Target, MoreVertical, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
-import type { AppData, SavingGoal } from "@/types";
+import { Progress } from "@/components/ui/progress"; // Progress might be useful if we re-introduce a target later
+import type { AppData, SavingGoal, SavingGoalCategory } from "@/types";
 import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage";
 import { formatCurrency, cn } from "@/lib/utils";
 import { AddSavingGoalDialog } from "@/components/add-saving-goal-dialog";
@@ -22,7 +22,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
@@ -33,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getCategoryIconComponent } from '@/components/category-icon';
 
 
 export default function SavingGoalsPage() {
@@ -55,36 +55,50 @@ export default function SavingGoalsPage() {
     }, [appData, isLoaded]);
 
     const totalSavingsBudgetLimit = React.useMemo(() => {
-        if (!isLoaded) return 0;
+        if (!isLoaded || !appData.budgets) return 0;
         const currentMonth = format(new Date(), 'yyyy-MM');
         const savingsBudget = appData.budgets.find(b => b.category === 'savings' && b.month === currentMonth);
         return savingsBudget?.limit ?? 0;
     }, [appData.budgets, isLoaded]);
 
      const totalAllocatedPercentageOfSavings = React.useMemo(() => {
-         if (!isLoaded) return 0;
+         if (!isLoaded || !appData.savingGoals) return 0;
          return appData.savingGoals.reduce((sum, goal) => sum + (goal.percentageAllocation ?? 0), 0);
      }, [appData.savingGoals, isLoaded]);
 
+    const totalMonetaryAllocatedToGoals = React.useMemo(() => {
+        return totalSavingsBudgetLimit * (totalAllocatedPercentageOfSavings / 100);
+    }, [totalSavingsBudgetLimit, totalAllocatedPercentageOfSavings]);
 
-    const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id' | 'savedAmount'> & { id?: string }) => {
+    const unallocatedSavingsPercentage = React.useMemo(() => {
+        return Math.max(0, 100 - totalAllocatedPercentageOfSavings);
+    }, [totalAllocatedPercentageOfSavings]);
+
+    const unallocatedSavingsAmount = React.useMemo(() => {
+        return totalSavingsBudgetLimit - totalMonetaryAllocatedToGoals;
+    }, [totalSavingsBudgetLimit, totalMonetaryAllocatedToGoals]);
+
+
+    const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id'> & { id?: string }) => {
         const newPercentage = goalData.percentageAllocation ?? 0;
-        const currentTotalAllocated = appData.savingGoals.reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
-        const existingPercentage = editingGoal ? (editingGoal.percentageAllocation ?? 0) : 0;
-        const totalWithoutCurrent = currentTotalAllocated - existingPercentage;
+        
+        // Calculate total percentage allocated to *other* goals if editing
+        const currentTotalAllocatedToOtherGoals = appData.savingGoals
+            .filter(g => g.id !== goalData.id) // Exclude current goal if it's being edited
+            .reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
 
         if (newPercentage < 0) {
             requestAnimationFrame(() => toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" }));
             return;
         }
 
-        if (totalWithoutCurrent + newPercentage > 100.05) { 
-            const maxAllowed = Math.max(0, parseFloat((100 - totalWithoutCurrent).toFixed(1)));
+        if (currentTotalAllocatedToOtherGoals + newPercentage > 100.05) { // Add small tolerance for floating point
+            const maxAllowedForThisGoal = Math.max(0, parseFloat((100 - currentTotalAllocatedToOtherGoals).toFixed(1)));
             requestAnimationFrame(() => toast({
                 title: "Allocation Limit Exceeded",
-                description: `Cannot allocate ${newPercentage}%. Total allocation would exceed 100% of savings budget. Available: ${maxAllowed}%`,
+                description: `Cannot allocate ${newPercentage}%. Total allocation would exceed 100% of savings budget. Max available for this goal: ${maxAllowedForThisGoal}%`,
                 variant: "destructive",
-                duration: 5000
+                duration: 6000
             }));
              return;
         }
@@ -94,25 +108,26 @@ export default function SavingGoalsPage() {
             let toastMessageTitle = "";
             let toastMessageDescription = "";
 
-            if (goalData.id) {
+            if (goalData.id) { // Editing existing goal
                 const index = goals.findIndex(g => g.id === goalData.id);
                 if (index > -1) {
-                    const originalSavedAmount = goals[index].savedAmount;
-                    goals[index] = { ...goals[index], ...goalData, savedAmount: originalSavedAmount };
+                    goals[index] = { 
+                        ...goals[index], // Keep original ID and potentially other non-form fields
+                        ...goalData // Apply updates from form
+                    }; 
                     toastMessageTitle = "Goal Updated";
                     toastMessageDescription = `Saving goal "${goalData.name}" updated.`;
                 }
-            } else {
+            } else { // Adding new goal
                 const newGoal: SavingGoal = {
-                    ...goalData,
+                    ...goalData, // Contains name, goalCategoryId, savedAmount, percentageAllocation, description
                     id: `goal-${Date.now().toString()}`,
-                    savedAmount: 0,
                 };
                 goals.push(newGoal);
                 toastMessageTitle = "Goal Added";
                 toastMessageDescription = `New saving goal "${newGoal.name}" added.`;
             }
-            goals.sort((a, b) => a.name.localeCompare(b.name));
+            goals.sort((a, b) => a.name.localeCompare(b.name)); // Keep goals sorted by name
             
             if (toastMessageTitle) {
                 requestAnimationFrame(() => {
@@ -142,16 +157,20 @@ export default function SavingGoalsPage() {
         setIsAddGoalDialogOpen(true);
     }
 
+    const getGoalCategoryById = (id: string): SavingGoalCategory | undefined => {
+        return appData.savingGoalCategories.find(sgc => sgc.id === id);
+    }
+
 
     return (
-        <div className="flex flex-col h-screen bg-background">
+        <div className="flex flex-col flex-1 bg-background">
              <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10">
                 <Link href="/" passHref>
-                    <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
+                    <Button variant="ghost" size="icon" aria-label="Back to Home">
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                 </Link>
-                <h1 className="text-xl font-semibold ml-2">Manage Saving Goals</h1>
+                <h1 className="text-xl font-semibold ml-2">Saving Goals</h1>
                  <Button size="sm" className="ml-auto rounded-lg" onClick={() => { setEditingGoal(null); setIsAddGoalDialogOpen(true); }} disabled={!isLoaded || totalSavingsBudgetLimit <= 0}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Goal
                 </Button>
@@ -161,41 +180,45 @@ export default function SavingGoalsPage() {
                 <Card className="mb-4 bg-accent/10 border-accent animate-fade-in">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
-                            <Info className="h-5 w-5 text-accent" /> Monthly Savings Allocation
+                            <Info className="h-5 w-5 text-accent" /> Monthly Savings Budget Allocation
                         </CardTitle>
                         <CardDescription className="text-xs">
-                             Amount leftover from income after expense budgets. Allocate percentages to specific goals below.
+                             This is the total amount from your main budget allocated to "Savings" this month. Allocate percentages of this amount to specific goals below.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-3 pt-0 text-sm text-accent grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
                          {isLoaded ? (
                             <>
                             <div className="flex justify-between col-span-1 sm:col-span-2 border-b pb-1 mb-1 border-accent/20">
-                                <span>Total Savings Budget:</span>
+                                <span>Total Savings Budget (this month):</span>
                                 <span className="font-semibold">{formatCurrency(totalSavingsBudgetLimit)}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span>Allocated to Goals (%):</span>
+                                <span>Allocated to Goals (% of Savings):</span>
                                 <span className="font-semibold">{totalAllocatedPercentageOfSavings.toFixed(1)}%</span>
                             </div>
                              <div className="flex justify-between">
-                                <span>Allocated to Goals (₱):</span>
-                                <span className="font-semibold">{formatCurrency(totalSavingsBudgetLimit * (totalAllocatedPercentageOfSavings / 100))}</span>
+                                <span>Allocated to Goals (₱ this month):</span>
+                                <span className="font-semibold">{formatCurrency(totalMonetaryAllocatedToGoals)}</span>
                             </div>
                              <div className="flex justify-between text-accent/80">
-                                <span>Unallocated (%):</span>
-                                <span className="font-semibold">{(100 - totalAllocatedPercentageOfSavings).toFixed(1)}%</span>
+                                <span>Unallocated Savings (%):</span>
+                                <span className="font-semibold">{unallocatedSavingsPercentage.toFixed(1)}%</span>
                             </div>
                              <div className="flex justify-between text-accent/80">
-                                <span>Unallocated (₱):</span>
-                                <span className="font-semibold">{formatCurrency(totalSavingsBudgetLimit * (1 - totalAllocatedPercentageOfSavings / 100))}</span>
+                                <span>Unallocated Savings (₱ this month):</span>
+                                <span className="font-semibold">{formatCurrency(unallocatedSavingsAmount)}</span>
                             </div>
-                            {totalAllocatedPercentageOfSavings > 100.05 && <p className="text-xs text-destructive font-semibold mt-1 col-span-1 sm:col-span-2">Warning: Total goal allocation exceeds 100% of savings budget!</p>}
+                            {totalAllocatedPercentageOfSavings > 100.05 && 
+                                <p className="text-xs text-destructive font-semibold mt-1 col-span-1 sm:col-span-2 flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3"/>Warning: Total goal allocation exceeds 100% of savings budget!
+                                </p>
+                            }
                             {totalSavingsBudgetLimit <= 0 && (
                                 <Alert variant="default" className="col-span-1 sm:col-span-2 mt-2 p-2 bg-accent/10 border-accent/30">
                                      <PiggyBank className="h-4 w-4 text-accent/80" />
                                      <AlertDescription className="text-xs text-accent/80">
-                                        Your current savings budget is ₱0. Reduce expense budgets on the Budgets tab to increase available savings for goals.
+                                        Your current "Savings" budget (from the Budgets tab) is ₱0. To fund goals, increase your Savings allocation in the main Budgets section by reducing other expense budgets.
                                      </AlertDescription>
                                 </Alert>
                              )}
@@ -206,7 +229,6 @@ export default function SavingGoalsPage() {
                                 <div className="h-4 bg-muted rounded w-1/2 animate-pulse"></div>
                              </div>
                          )}
-
                     </CardContent>
                 </Card>
             </div>
@@ -220,8 +242,8 @@ export default function SavingGoalsPage() {
                                     <div className="h-5 bg-muted rounded w-1/3"></div>
                                     <div className="h-4 bg-muted rounded w-1/4"></div>
                                 </div>
-                                 <div className="h-2 bg-muted rounded w-full"></div>
-                                <div className="h-3 bg-muted rounded w-1/2"></div>
+                                 <div className="h-3 bg-muted rounded w-1/2"></div>
+                                 <div className="h-3 bg-muted rounded w-2/3"></div>
                              </Card>
                          ))}
                     </div>
@@ -229,32 +251,32 @@ export default function SavingGoalsPage() {
                     <div className="space-y-3">
                         {appData.savingGoals.length > 0 ? (
                             appData.savingGoals.map((goal, index) => {
-                                 const progressValue = goal.targetAmount > 0 ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100) : 0;
+                                 const goalCategory = getGoalCategoryById(goal.goalCategoryId);
+                                 const CategoryIcon = getCategoryIconComponent(goalCategory?.icon ?? 'Landmark');
                                  const monthlyContribution = (goal.percentageAllocation ?? 0) / 100 * totalSavingsBudgetLimit;
                                  return (
                                     <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
                                         <Card className="relative group/goal overflow-hidden transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]">
-                                            <div
-                                                className="absolute top-0 left-0 h-full bg-accent/10 transition-all duration-500 ease-out"
-                                                style={{ width: `${progressValue}%` }}
-                                             />
                                             <div className="relative z-10">
-                                                <CardHeader className="flex flex-row items-start justify-between pb-2 pr-2"> 
-                                                    <div>
-                                                        <CardTitle className="text-base">{goal.name}</CardTitle>
-                                                        {goal.description && <CardDescription className="text-xs mt-1">{goal.description}</CardDescription>}
+                                                <CardHeader className="flex flex-row items-start justify-between pb-2 pr-3 p-4"> 
+                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                        <CategoryIcon className="h-6 w-6 text-accent flex-shrink-0"/>
+                                                        <div className="min-w-0">
+                                                            <CardTitle className="text-base truncate">{goal.name}</CardTitle>
+                                                            <CardDescription className="text-xs mt-0.5">{goalCategory?.label ?? "General Goal"}</CardDescription>
+                                                        </div>
                                                     </div>
-                                                     <div className="absolute top-1 right-1 flex-shrink-0">
+                                                     <div className="flex-shrink-0">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 group-hover/goal:opacity-100 focus:opacity-100 transition-opacity rounded-full" onClick={(e) => e.stopPropagation()}>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-60 group-hover/goal:opacity-100 focus:opacity-100 transition-opacity rounded-full" onClick={(e) => e.stopPropagation()}>
                                                                     <MoreVertical className="h-4 w-4" />
                                                                     <span className="sr-only">Goal Actions</span>
                                                                 </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                                                                 <DropdownMenuItem onClick={() => openEditDialog(goal)}>
-                                                                    <Edit className="mr-2 h-4 w-4" /> Edit
+                                                                    <Edit className="mr-2 h-4 w-4" /> Edit Goal
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator />
                                                                 <AlertDialog onOpenChange={(open) => !open && (document.activeElement as HTMLElement)?.blur()}>
@@ -263,7 +285,7 @@ export default function SavingGoalsPage() {
                                                                             onSelect={(event) => event.preventDefault()}
                                                                             className="text-destructive focus:bg-destructive/10 focus:text-destructive"
                                                                         >
-                                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete Goal
                                                                         </DropdownMenuItem>
                                                                     </AlertDialogTrigger>
                                                                     <AlertDialogContent>
@@ -287,22 +309,17 @@ export default function SavingGoalsPage() {
                                                         </DropdownMenu>
                                                     </div>
                                                 </CardHeader>
-                                                <CardContent className="pt-0">
-                                                    <div className="flex justify-between text-xs mb-1 text-muted-foreground">
-                                                        <span>{formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}</span>
-                                                        <span>{progressValue.toFixed(1)}%</span>
+                                                <CardContent className="px-4 pb-3 pt-2">
+                                                    <div className="text-sm font-semibold mb-1">
+                                                        Total Saved: {formatCurrency(goal.savedAmount)}
                                                     </div>
-                                                    <Progress value={progressValue} className="h-1.5 [&>div]:bg-accent" />
                                                     {goal.percentageAllocation !== undefined && goal.percentageAllocation > 0 && (
-                                                        <p className="text-xs text-muted-foreground mt-1.5">
-                                                            Alloc: {goal.percentageAllocation}% of Savings
-                                                            {totalSavingsBudgetLimit > 0 && ` (~${formatCurrency(monthlyContribution)}/mo)`}
-                                                            {totalSavingsBudgetLimit <= 0 && ` (₱0/mo)`}
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Plan: {goal.percentageAllocation}% of monthly savings 
+                                                            (approx. {formatCurrency(monthlyContribution)}/mo this month)
                                                         </p>
                                                     )}
-                                                     {goal.targetDate && (
-                                                         <p className="text-xs text-muted-foreground mt-0.5">Target: {format(goal.targetDate, 'MMM yyyy')}</p>
-                                                     )}
+                                                    {goal.description && <p className="text-xs text-muted-foreground italic mt-1">"{goal.description}"</p>}
                                                 </CardContent>
                                             </div>
                                         </Card>
@@ -318,7 +335,7 @@ export default function SavingGoalsPage() {
                                     <Button size="sm" onClick={() => setIsAddGoalDialogOpen(true)} disabled={totalSavingsBudgetLimit <= 0} className="rounded-lg">
                                         <span className="flex items-center justify-center">Add New Goal</span>
                                     </Button>
-                                     {totalSavingsBudgetLimit <= 0 && <p className="text-xs text-destructive mt-2">Enable Add Goal by increasing your Savings Budget.</p>}
+                                     {totalSavingsBudgetLimit <= 0 && <p className="text-xs text-destructive mt-2">Enable "Add Goal" by increasing your "Savings" allocation in the main Budgets tab.</p>}
                                 </CardContent>
                              </Card>
                         )}
@@ -334,11 +351,12 @@ export default function SavingGoalsPage() {
                 }}
                 onSaveGoal={handleAddOrUpdateGoal}
                 existingGoal={editingGoal}
-                totalAllocatedPercentage={editingGoal
+                totalAllocatedPercentageToOtherGoals={editingGoal
                     ? totalAllocatedPercentageOfSavings - (editingGoal.percentageAllocation ?? 0)
                     : totalAllocatedPercentageOfSavings
                 }
                 savingsBudgetAmount={totalSavingsBudgetLimit}
+                savingGoalCategories={appData.savingGoalCategories}
             />
         </div>
     );

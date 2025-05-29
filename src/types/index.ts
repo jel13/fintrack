@@ -31,16 +31,20 @@ export interface Category {
   isIncomeSource?: boolean; // Flag to identify categories specifically for income sources
 }
 
+export interface SavingGoalCategory {
+  id: string;
+  label: string;
+  icon: string;
+}
+
 export interface SavingGoal {
     id: string;
-    name: string;
-    targetAmount: number;
-    savedAmount: number; // Current amount saved towards the goal
-    targetDate?: Date | null;
-    // Percentage of the *monthly savings budget limit* allocated to this goal.
-    percentageAllocation?: number;
+    name: string; // User-defined name for their specific goal, e.g., "Trip to Japan"
+    goalCategoryId: string; // Links to a SavingGoalCategory id like "travel" or "emergency-fund"
+    savedAmount: number; // Current total amount saved towards this goal
+    percentageAllocation?: number; // Percentage of *total monthly savings budget* allocated to this goal
     description?: string;
-    icon?: string; // Icon name for the goal (optional)
+    // icon is now typically derived from SavingGoalCategory
 }
 
 export interface AppData {
@@ -48,6 +52,8 @@ export interface AppData {
   transactions: Transaction[];
   budgets: Budget[]; // Budgets for expense categories AND the 'savings' category
   categories: Category[]; // All categories (income sources, expenses, parents)
-  savingGoals: SavingGoal[]; // User-defined saving goals
+  savingGoalCategories: SavingGoalCategory[]; // Predefined categories for saving goals
+  savingGoals: SavingGoal[]; // User-defined saving goals based on the new structure
 }
+
 

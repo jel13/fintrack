@@ -6,13 +6,11 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, Info } from "lucide-react"; // Added Info
-import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
+import { Info } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -32,39 +30,40 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { SavingGoal } from "@/types";
-import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/utils"; // Assuming formatCurrency is here
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { SavingGoal, SavingGoalCategory } from "@/types";
+import { formatCurrency } from "@/lib/utils"; 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getCategoryIconComponent } from '@/components/category-icon';
 
 
 const formSchema = z.object({
   name: z.string().min(1, "Goal name is required").max(50, "Name max 50 chars"),
-  targetAmount: z.coerce.number({invalid_type_error: "Target must be a number", required_error: "Target amount is required"})
-    .positive("Target amount must be positive"),
-  // Percentage of the *monthly savings budget* to allocate
+  goalCategoryId: z.string().min(1, "Goal category is required"),
+  savedAmount: z.coerce.number({invalid_type_error: "Saved amount must be a number"}).nonnegative("Saved amount cannot be negative").optional().default(0),
   percentageAllocation: z.coerce.number({ invalid_type_error: "Percentage must be a number", required_error: "Allocation percentage is required" })
-    .gte(0.1, "Allocation must be at least 0.1%") // Minimum allocation
+    .gte(0.1, "Allocation must be at least 0.1%") 
     .lte(100, "Allocation cannot exceed 100%")
-    .multipleOf(0.1, { message: "Allocation can have max 1 decimal place" }), // Allow one decimal place
-  targetDate: z.date().optional().nullable(),
+    .multipleOf(0.1, { message: "Allocation can have max 1 decimal place" }), 
   description: z.string().max(100, "Description max 100 chars").optional(),
-  icon: z.string().optional(), // Assuming icon name string
 });
-// Removed refine, validation now happens in onSubmit based on available percentage
 
 type GoalFormValues = z.infer<typeof formSchema>;
 
 interface AddSavingGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaveGoal: (goal: Omit<SavingGoal, 'id' | 'savedAmount'> & { id?: string }) => void; // id is optional for create
-  existingGoal: SavingGoal | null; // Pass goal data for editing
-  // Percentage of the *savings budget* already allocated to *other* goals
-  totalAllocatedPercentage: number;
-  // The actual monetary value of the savings budget this month
+  onSaveGoal: (goal: Omit<SavingGoal, 'id'> & { id?: string }) => void; 
+  existingGoal: SavingGoal | null; 
+  totalAllocatedPercentageToOtherGoals: number; // Renamed for clarity
   savingsBudgetAmount: number;
+  savingGoalCategories: SavingGoalCategory[]; // To populate the category dropdown
 }
 
 export function AddSavingGoalDialog({
@@ -72,58 +71,50 @@ export function AddSavingGoalDialog({
     onOpenChange,
     onSaveGoal,
     existingGoal,
-    totalAllocatedPercentage, // Percentage allocated to *other* goals
-    savingsBudgetAmount // The actual amount available in savings this month
+    totalAllocatedPercentageToOtherGoals, 
+    savingsBudgetAmount,
+    savingGoalCategories
 }: AddSavingGoalDialogProps) {
   const form = useForm<GoalFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: existingGoal ? {
         name: existingGoal.name,
-        targetAmount: existingGoal.targetAmount,
+        goalCategoryId: existingGoal.goalCategoryId,
+        savedAmount: existingGoal.savedAmount,
         percentageAllocation: existingGoal.percentageAllocation,
-        targetDate: existingGoal.targetDate ? new Date(existingGoal.targetDate) : null, // Ensure Date object
         description: existingGoal.description,
-        icon: existingGoal.icon,
     } : {
       name: "",
-      targetAmount: undefined, // Use undefined for number coercion
-      percentageAllocation: undefined, // Use undefined for number coercion
-      targetDate: null,
+      goalCategoryId: "",
+      savedAmount: 0,
+      percentageAllocation: undefined, 
       description: "",
-      icon: "",
     },
   });
 
-   // Reset form when dialog opens/closes or existingGoal changes
    React.useEffect(() => {
         form.reset(existingGoal ? {
             name: existingGoal.name,
-            targetAmount: existingGoal.targetAmount,
+            goalCategoryId: existingGoal.goalCategoryId,
+            savedAmount: existingGoal.savedAmount,
             percentageAllocation: existingGoal.percentageAllocation,
-            targetDate: existingGoal.targetDate ? new Date(existingGoal.targetDate) : null,
             description: existingGoal.description,
-            icon: existingGoal.icon,
         } : {
             name: "",
-            targetAmount: undefined,
+            goalCategoryId: "",
+            savedAmount: 0,
             percentageAllocation: undefined,
-            targetDate: null,
             description: "",
-            icon: "",
         });
     }, [open, existingGoal, form]);
 
   const { watch, setError } = form;
-  const currentPercentage = watch('percentageAllocation'); // Watch returns number or undefined
+  const currentPercentage = watch('percentageAllocation');
 
-  // Calculate available allocation percentage WITHIN the savings budget
   const maxAllowedPercentage = React.useMemo(() => {
-      // `totalAllocatedPercentage` is the percentage allocated to *other* goals
-      return Math.max(0, parseFloat((100 - totalAllocatedPercentage).toFixed(1)));
-  }, [totalAllocatedPercentage]);
+      return Math.max(0, parseFloat((100 - totalAllocatedPercentageToOtherGoals).toFixed(1)));
+  }, [totalAllocatedPercentageToOtherGoals]);
 
-
-  // Calculate the monetary amount this goal would receive based on its percentage and the total savings budget amount
   const calculatedMonthlyContribution = React.useMemo(() => {
       if (savingsBudgetAmount > 0 && currentPercentage && currentPercentage > 0) {
           return (currentPercentage / 100) * savingsBudgetAmount;
@@ -133,24 +124,25 @@ export function AddSavingGoalDialog({
 
 
   const onSubmit = (values: GoalFormValues) => {
-     // Double-check allocation percentage against available within savings budget
-     // Ensure currentPercentage is treated as 0 if undefined
      const percentageToValidate = values.percentageAllocation ?? 0;
-     if (percentageToValidate > maxAllowedPercentage) {
+     // Add a small tolerance (e.g., 0.01) for floating point comparisons
+     if (percentageToValidate > maxAllowedPercentage + 0.01) { 
          setError("percentageAllocation", { message: `Allocation exceeds 100% of savings budget (${formatCurrency(savingsBudgetAmount)}). Max available: ${maxAllowedPercentage.toFixed(1)}%` });
          return;
      }
 
-    const dataToSave: Omit<SavingGoal, 'id' | 'savedAmount'> & { id?: string } = {
-        ...values,
-        percentageAllocation: percentageToValidate, // Use validated percentage
-        targetDate: values.targetDate, // Already Date or null
+    const dataToSave: Omit<SavingGoal, 'id'> & { id?: string } = {
+        name: values.name,
+        goalCategoryId: values.goalCategoryId,
+        savedAmount: values.savedAmount ?? 0,
+        percentageAllocation: percentageToValidate, 
+        description: values.description,
     };
      if (existingGoal) {
       dataToSave.id = existingGoal.id;
     }
     onSaveGoal(dataToSave);
-    onOpenChange(false); // Close dialog
+    onOpenChange(false); 
   };
 
   const isAllocationDisabled = savingsBudgetAmount <= 0;
@@ -161,7 +153,7 @@ export function AddSavingGoalDialog({
         <DialogHeader>
           <DialogTitle>{existingGoal ? "Edit Saving Goal" : "Add Saving Goal"}</DialogTitle>
           <DialogDescription>
-            {existingGoal ? "Update the details for your saving goal." : "Set a target and allocate a portion of your monthly savings budget towards it."}
+            {existingGoal ? "Update the details for your saving goal." : "Define a saving goal by category and allocate a portion of your monthly savings budget."}
           </DialogDescription>
         </DialogHeader>
         {isAllocationDisabled && (
@@ -169,7 +161,7 @@ export function AddSavingGoalDialog({
                  <Info className="h-4 w-4" />
                  <AlertTitle>Savings Budget is ₱0</AlertTitle>
                  <AlertDescription className="text-xs">
-                    You cannot allocate funds to goals until your monthly Savings Budget is positive. Reduce expense budgets on the Budgets tab to increase available savings.
+                    You cannot allocate funds to goals until your monthly Savings Budget is positive. Adjust expense budgets on the Budgets tab to free up funds for savings.
                  </AlertDescription>
              </Alert>
         )}
@@ -192,26 +184,59 @@ export function AddSavingGoalDialog({
 
               <FormField
                 control={form.control}
-                name="targetAmount"
+                name="goalCategoryId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Target Amount (₱)</FormLabel>
+                    <FormLabel>Goal Category</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a goal category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {savingGoalCategories.map((category) => {
+                          const Icon = getCategoryIconComponent(category.icon);
+                          return (
+                            <SelectItem key={category.id} value={category.id}>
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-4 w-4 text-muted-foreground" />
+                                <span>{category.label}</span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                        {savingGoalCategories.length === 0 && (
+                            <SelectItem value="no-goal-cats" disabled>No goal categories defined</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="savedAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current Saved Amount (₱)</FormLabel>
                     <FormControl>
                        <Input
                         type="number"
-                        placeholder="1000.00"
+                        placeholder="0.00"
                         {...field}
-                        // Handle undefined for input value consistency
                         value={field.value === undefined ? '' : field.value}
                          onChange={e => {
                             const val = e.target.value;
-                            // Allow empty string or parse as number
-                            field.onChange(val === '' ? undefined : parseFloat(val));
+                            field.onChange(val === '' ? 0 : parseFloat(val));
                         }}
                         step="0.01"
-                        min="0.01"
+                        min="0"
                        />
                     </FormControl>
+                    <FormDescription className="text-xs">How much have you already saved for this goal?</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -228,69 +253,27 @@ export function AddSavingGoalDialog({
                           type="number"
                           placeholder={isAllocationDisabled ? "Savings budget is ₱0" : `Max ${maxAllowedPercentage.toFixed(1)}% available`}
                           {...field}
-                          // Handle undefined for input value consistency
                           value={field.value === undefined ? '' : field.value}
                           onChange={e => {
                               const val = e.target.value;
                               field.onChange(val === '' ? undefined : parseFloat(val));
                           }}
                           step="0.1"
-                          max={maxAllowedPercentage}
-                          min="0.1" // Minimum allocation
-                          disabled={isAllocationDisabled} // Disable if savings budget is zero
+                          max={maxAllowedPercentage > 0 ? maxAllowedPercentage : 100}
+                          min="0.1" 
+                          disabled={isAllocationDisabled} 
                       />
                       </FormControl>
                       {!isAllocationDisabled && (
                           <FormDescription className="text-xs">
-                             Allocate {field.value ?? 0}% of your monthly savings ({formatCurrency(savingsBudgetAmount)}) towards this goal.
-                             <br/> Approx. {formatCurrency(calculatedMonthlyContribution)} per month.
-                             <br/> Available to allocate: {maxAllowedPercentage.toFixed(1)}%
+                             Allocate {field.value ?? 0}% of your monthly savings budget ({formatCurrency(savingsBudgetAmount)}) towards this goal.
+                             <br/> This would be approx. {formatCurrency(calculatedMonthlyContribution)} per month.
+                             <br/> Remaining available to allocate to goals: {maxAllowedPercentage.toFixed(1)}%
                           </FormDescription>
                       )}
                       <FormMessage />
                   </FormItem>
                   )}
-              />
-
-
-              <FormField
-                control={form.control}
-                name="targetDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Target Date (Optional)</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value ?? undefined} // Pass undefined if null
-                          onSelect={(date) => field.onChange(date ?? null)} // Ensure null is passed if cleared
-                          initialFocus
-                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))} // Disable past dates
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
               />
 
                <FormField
@@ -301,26 +284,21 @@ export function AddSavingGoalDialog({
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
                         <Textarea
-                           placeholder="Add a note about this goal (e.g., Trip to Japan, Down payment)"
+                           placeholder="Add a note about this goal (e.g., For a down payment)"
                            {...field}
-                           rows={2} // Make textarea smaller
+                           rows={2} 
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                  {/* Icon Selector Placeholder - Implement later if needed */}
-                  {/* <FormField control={form.control} name="icon" render={...} /> */}
-
             </form>
           </Form>
          </ScrollArea>
         <DialogFooter className="mt-auto pt-4 border-t">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-           {/* Disable save if allocation is disabled */}
-          <Button type="submit" form="saving-goal-form" disabled={isAllocationDisabled}>
+          <Button type="submit" form="saving-goal-form" disabled={isAllocationDisabled && !existingGoal /* Allow saving if editing, even if budget is 0 */}>
              {existingGoal ? "Save Changes" : "Add Goal"}
           </Button>
         </DialogFooter>
