@@ -11,7 +11,7 @@ const defaultCategories: AppData['categories'] = [
   { id: 'salary', label: 'Salary', icon: 'Briefcase', isDefault: true, isDeletable: true, isIncomeSource: true },
   { id: 'freelance', label: 'Freelance', icon: 'Laptop', isDefault: true, isDeletable: true, isIncomeSource: true },
   { id: 'allowance', label: 'Allowance', icon: 'Wallet', isDefault: true, isDeletable: true, isIncomeSource: true },
-  { id: 'investment', label: 'Investment', icon: 'Landmark', isDefault: true, isDeletable: true, isIncomeSource: true },
+  { id: 'investment_income', label: 'Investment Income', icon: 'Landmark', isDefault: true, isDeletable: true, isIncomeSource: true }, // Renamed to avoid clash with saving goal category
   { id: 'other_income', label: 'Other Income', icon: 'TrendingUp', isDefault: true, isDeletable: true, isIncomeSource: true },
 
   // Core Non-Deletable Categories
@@ -25,11 +25,11 @@ const defaultCategories: AppData['categories'] = [
   { id: 'bills', label: 'Bills & Utilities', icon: 'Receipt', isDefault: true, isDeletable: true, isIncomeSource: false }, // Parent Category
   { id: 'clothing', label: 'Clothing', icon: 'Shirt', isDefault: true, isDeletable: true, isIncomeSource: false },
   { id: 'gifts', label: 'Gifts', icon: 'Gift', isDefault: true, isDeletable: true, isIncomeSource: false },
-  { id: 'health', label: 'Health & Wellness', icon: 'HeartPulse', isDefault: true, isDeletable: true, isIncomeSource: false },
-  { id: 'travel', label: 'Travel', icon: 'Plane', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'health_wellness_expense', label: 'Health & Wellness', icon: 'HeartPulse', isDefault: true, isDeletable: true, isIncomeSource: false }, // Renamed for clarity
+  { id: 'travel_expense', label: 'Travel (Expenses)', icon: 'Plane', isDefault: true, isDeletable: true, isIncomeSource: false }, // Renamed for clarity
   { id: 'entertainment', label: 'Entertainment', icon: 'Gamepad2', isDefault: true, isDeletable: true, isIncomeSource: false },
   { id: 'personal_care', label: 'Personal Care', icon: 'Smile', isDefault: true, isDeletable: true, isIncomeSource: false },
-  { id: 'education', label: 'Education', icon: 'BookOpen', isDefault: true, isDeletable: true, isIncomeSource: false },
+  { id: 'education_expense', label: 'Education (Expenses)', icon: 'BookOpen', isDefault: true, isDeletable: true, isIncomeSource: false }, // Renamed for clarity
   { id: 'other_expense', label: 'Other Expense', icon: 'Archive', isDefault: true, isDeletable: true, isIncomeSource: false },
 
   // Default Expense Sub-Categories
@@ -46,16 +46,19 @@ const defaultCategories: AppData['categories'] = [
 
 const defaultSavingGoalCategories: SavingGoalCategory[] = [
   { id: 'emergency-fund', label: 'Emergency Fund', icon: 'ShieldAlert' },
-  { id: 'travel-sg', label: 'Travel', icon: 'PlaneTakeoff' }, // Added -sg to avoid id clash if a main category is named 'travel'
+  { id: 'travel-sg', label: 'Travel', icon: 'PlaneTakeoff' },
   { id: 'health-sg', label: 'Health & Wellness', icon: 'HeartHandshake' },
   { id: 'gadgets-sg', label: 'Gadgets/Electronics', icon: 'Laptop2' },
   { id: 'education-sg', label: 'Education', icon: 'GraduationCap' },
   { id: 'home-improvement-sg', label: 'Home Improvement', icon: 'PaintRoller' },
-  { id: 'investment-sg', label: 'Investment', icon: 'TrendingUp' },
+  { id: 'investment-sg', label: 'Investment', icon: 'TrendingUp' }, // Note: "Investment Income" is a separate income category
   { id: 'debt-repayment-sg', label: 'Debt Repayment', icon: 'CreditCardOff' },
   { id: 'celebration-event-sg', label: 'Celebration/Event', icon: 'PartyPopper' },
   { id: 'charity-donation-sg', label: 'Charity/Donation', icon: 'HelpingHand' },
-  { id: 'other-savings-sg', label: 'Other Savings', icon: 'Landmark' },
+  { id: 'new-car-sg', label: 'New Car', icon: 'Car'},
+  { id: 'down-payment-house-sg', label: 'House Down Payment', icon: 'Home'},
+  { id: 'large-purchase-sg', label: 'Large Purchase (Other)', icon: 'Package'},
+  { id: 'other-savings-sg', label: 'Other Savings', icon: 'Landmark' }, // General fallback
 ];
 
 
@@ -98,7 +101,10 @@ export const loadAppData = (): AppData => {
         savingGoalCategories: parsedData.savingGoalCategories && parsedData.savingGoalCategories.length > 0
             ? parsedData.savingGoalCategories
             : defaultSavingGoalCategories.map(sgc => ({...sgc})),
-        savingGoals: parsedData.savingGoals ? parsedData.savingGoals : [],
+        savingGoals: parsedData.savingGoals ? parsedData.savingGoals.map(sg => ({ // Ensure old goals without percentageAllocation get a default
+            ...sg,
+            percentageAllocation: sg.percentageAllocation ?? 0,
+        })) : [],
       };
 
       // Further ensure categories are well-formed and defaults are respected for non-deletable/non-income flags
@@ -110,9 +116,6 @@ export const loadAppData = (): AppData => {
                 label: storedCat.label, // User's label
                 icon: storedCat.icon,   // User's icon
                 parentId: storedCat.parentId, // User's parent
-                // isDefault is from defaultCat
-                // isDeletable is from defaultCat
-                // isIncomeSource is from defaultCat
             };
         }
         return {...defaultCat}; // If not found in stored, use the default as is
@@ -122,8 +125,8 @@ export const loadAppData = (): AppData => {
       mergedData.categories.forEach(storedCat => {
         if (!finalCategories.some(fc => fc.id === storedCat.id)) {
             finalCategories.push({
-                ...storedCat, // Take all properties from stored custom category
-                isDefault: storedCat.isDefault === undefined ? false : storedCat.isDefault, // Ensure these exist
+                ...storedCat, 
+                isDefault: storedCat.isDefault === undefined ? false : storedCat.isDefault, 
                 isDeletable: storedCat.isDeletable === undefined ? true : storedCat.isDeletable,
                 isIncomeSource: storedCat.isIncomeSource === undefined ? false : storedCat.isIncomeSource,
             });
@@ -142,6 +145,7 @@ export const loadAppData = (): AppData => {
           }
       });
       mergedData.savingGoalCategories = finalSavingGoalCategories;
+      
 
       return mergedData;
     }
@@ -164,8 +168,13 @@ export const saveAppData = (data: AppData) => {
         ...t,
         date: typeof t.date === 'string' ? t.date : t.date.toISOString(),
       })),
-      savingGoals: data.savingGoals.map(g => ({
-        ...g,
+      savingGoals: data.savingGoals.map(g => ({ // Ensure only valid fields are saved
+        id: g.id,
+        name: g.name,
+        goalCategoryId: g.goalCategoryId,
+        savedAmount: g.savedAmount,
+        percentageAllocation: g.percentageAllocation,
+        description: g.description,
       })),
     };
     localStorage.setItem(APP_DATA_KEY, JSON.stringify(dataToStore));
@@ -179,4 +188,3 @@ export const clearAppData = () => {
   localStorage.removeItem(APP_DATA_KEY);
   window.location.reload();
 };
-

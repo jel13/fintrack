@@ -40,15 +40,16 @@ import { formatCurrency } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryIconComponent } from '@/components/category-icon';
 
+// Schema for the new SavingGoal structure
 const formSchema = z.object({
-  name: z.string().min(1, "Goal name is required").max(50, "Name max 50 chars"),
+  name: z.string().min(1, "Goal name is required").max(50, "Name max 50 characters"),
   goalCategoryId: z.string().min(1, "Goal category is required"),
   savedAmount: z.coerce.number({invalid_type_error: "Saved amount must be a number"}).nonnegative("Saved amount cannot be negative").optional().default(0),
   percentageAllocation: z.coerce.number({ invalid_type_error: "Percentage must be a number", required_error: "Allocation percentage is required" })
     .gte(0.1, "Allocation must be at least 0.1%")
     .lte(100, "Allocation cannot exceed 100%")
     .multipleOf(0.1, { message: "Allocation can have max 1 decimal place" }),
-  description: z.string().max(100, "Description max 100 chars").optional(),
+  description: z.string().max(100, "Description max 100 characters").optional(),
 });
 
 type GoalFormValues = z.infer<typeof formSchema>;
@@ -90,22 +91,24 @@ export function AddSavingGoalDialog({
   });
 
    React.useEffect(() => {
-        form.reset(existingGoal ? {
-            name: existingGoal.name,
-            goalCategoryId: existingGoal.goalCategoryId,
-            savedAmount: existingGoal.savedAmount,
-            percentageAllocation: existingGoal.percentageAllocation,
-            description: existingGoal.description,
-        } : {
-            name: "",
-            goalCategoryId: "",
-            savedAmount: 0,
-            percentageAllocation: undefined,
-            description: "",
-        });
+        if (open) { // Reset form only when dialog opens
+            form.reset(existingGoal ? {
+                name: existingGoal.name,
+                goalCategoryId: existingGoal.goalCategoryId,
+                savedAmount: existingGoal.savedAmount,
+                percentageAllocation: existingGoal.percentageAllocation,
+                description: existingGoal.description || "",
+            } : {
+                name: "",
+                goalCategoryId: "",
+                savedAmount: 0,
+                percentageAllocation: undefined,
+                description: "",
+            });
+        }
     }, [open, existingGoal, form]);
 
-  const { watch, setError, setValue } = form;
+  const { watch, setError } = form; // Removed setValue as it's not explicitly used for dynamic updates here
   const currentPercentage = watch('percentageAllocation');
 
   const maxAllowedPercentage = React.useMemo(() => {
@@ -121,7 +124,8 @@ export function AddSavingGoalDialog({
 
   const onSubmit = (values: GoalFormValues) => {
      const percentageToValidate = values.percentageAllocation ?? 0;
-     if (percentageToValidate > maxAllowedPercentage + 0.01) { // Add small tolerance for floating point
+     // Use a small tolerance (e.g., 0.05) for floating point comparisons
+     if (percentageToValidate > maxAllowedPercentage + 0.05) {
          setError("percentageAllocation", { message: `Allocation exceeds 100% of savings budget (${formatCurrency(savingsBudgetAmount)}). Max available: ${maxAllowedPercentage.toFixed(1)}%` });
          return;
      }
@@ -148,15 +152,15 @@ export function AddSavingGoalDialog({
         <DialogHeader>
           <DialogTitle>{existingGoal ? "Edit Saving Goal" : "Add Saving Goal"}</DialogTitle>
           <DialogDescription>
-            {existingGoal ? "Update the details for your saving goal." : "Define a saving goal and allocate a portion of your monthly savings budget."}
+            {existingGoal ? "Update the details for your saving goal." : "Define a goal and allocate a portion of your monthly savings budget."}
           </DialogDescription>
         </DialogHeader>
-        {isAllocationDisabled && (
+        {isAllocationDisabled && !existingGoal && ( // Show alert only when adding new goal and budget is 0
              <Alert variant="destructive" className="mt-2">
                  <Info className="h-4 w-4" />
                  <AlertTitle>Savings Budget is ₱0</AlertTitle>
                  <AlertDescription className="text-xs">
-                    You cannot allocate funds to goals until your monthly Savings Budget is positive. Adjust expense budgets on the Budgets tab to free up funds for savings.
+                    You cannot allocate funds to new goals until your monthly Savings Budget is positive. Adjust expense budgets on the Budgets tab to free up funds for savings.
                  </AlertDescription>
              </Alert>
         )}
@@ -231,7 +235,7 @@ export function AddSavingGoalDialog({
                         min="0"
                        />
                     </FormControl>
-                    <FormDescription className="text-xs">How much have you already saved towards this goal?</FormDescription>
+                    <FormDescription className="text-xs">Amount already saved towards this specific goal.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -246,7 +250,7 @@ export function AddSavingGoalDialog({
                       <FormControl>
                       <Input
                           type="number"
-                          placeholder={isAllocationDisabled ? "Savings budget is ₱0" : `Max ${maxAllowedPercentage.toFixed(1)}% available`}
+                          placeholder={isAllocationDisabled && !existingGoal ? "Savings budget is ₱0" : `Max ${maxAllowedPercentage.toFixed(1)}% available`}
                           {...field}
                           value={field.value === undefined ? '' : String(field.value)}
                           onChange={e => {
@@ -256,20 +260,20 @@ export function AddSavingGoalDialog({
                           step="0.1"
                           max={maxAllowedPercentage > 0 ? maxAllowedPercentage : 100}
                           min="0.1"
-                          disabled={isAllocationDisabled}
+                          disabled={isAllocationDisabled && !existingGoal}
                       />
                       </FormControl>
                       <FormDescription className="text-xs">
-                         Allocate a percentage of your monthly savings budget ({formatCurrency(savingsBudgetAmount)}) towards this goal.
+                         Allocate a percentage of your total monthly savings budget ({formatCurrency(savingsBudgetAmount)}) towards this goal.
                       </FormDescription>
-                      {!isAllocationDisabled && currentPercentage !== undefined && currentPercentage > 0 && (
+                      {(!isAllocationDisabled || existingGoal) && currentPercentage !== undefined && currentPercentage > 0 && (
                          <p className="text-sm text-muted-foreground mt-1">
                             Planned Monthly Contribution: {formatCurrency(calculatedMonthlyContribution)}
                          </p>
                       )}
                       <FormMessage />
                       <p className="text-xs text-muted-foreground pt-1">
-                          Total available percentage of savings to allocate to goals: {maxAllowedPercentage.toFixed(1)}%
+                          Total savings budget portion available to allocate to goals: {maxAllowedPercentage.toFixed(1)}%
                       </p>
                   </FormItem>
                   )}
@@ -283,7 +287,7 @@ export function AddSavingGoalDialog({
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
                         <Textarea
-                           placeholder="Add a note about this goal (e.g., For a down payment on a car)"
+                           placeholder="Add a note about this goal (e.g., For a down payment)"
                            {...field}
                            rows={2}
                         />
@@ -297,7 +301,7 @@ export function AddSavingGoalDialog({
          </ScrollArea>
         <DialogFooter className="mt-auto pt-4 border-t">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button type="submit" form="saving-goal-form" disabled={isAllocationDisabled && !existingGoal /* Allow saving if editing an existing goal, even if budget is 0 */}>
+          <Button type="submit" form="saving-goal-form" disabled={isAllocationDisabled && !existingGoal}>
              {existingGoal ? "Save Changes" : "Add Goal"}
           </Button>
         </DialogFooter>
@@ -305,4 +309,3 @@ export function AddSavingGoalDialog({
     </Dialog>
   );
 }
-

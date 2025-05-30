@@ -21,7 +21,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
@@ -31,7 +30,7 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription } from "@/components/ui/alert"; // Removed AlertTitle import as it's not used
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCategoryIconComponent } from '@/components/category-icon';
 
 export default function SavingGoalsPage() {
@@ -70,11 +69,15 @@ export default function SavingGoalsPage() {
     }, [totalSavingsBudgetLimit, totalAllocatedPercentageOfSavings]);
 
     const unallocatedSavingsPercentage = React.useMemo(() => {
-        return Math.max(0, parseFloat((100 - totalAllocatedPercentageOfSavings).toFixed(1)));
+        // Use a small tolerance for floating point arithmetic
+        const unallocated = 100 - totalAllocatedPercentageOfSavings;
+        return Math.max(0, parseFloat(unallocated.toFixed(1)));
     }, [totalAllocatedPercentageOfSavings]);
 
+
     const unallocatedSavingsAmount = React.useMemo(() => {
-        return parseFloat((totalSavingsBudgetLimit - totalMonetaryAllocatedToGoals).toFixed(2));
+        const unallocated = totalSavingsBudgetLimit - totalMonetaryAllocatedToGoals;
+        return parseFloat(unallocated.toFixed(2));
     }, [totalSavingsBudgetLimit, totalMonetaryAllocatedToGoals]);
 
 
@@ -89,14 +92,15 @@ export default function SavingGoalsPage() {
             requestAnimationFrame(() => toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" }));
             return;
         }
-
-        if (currentTotalAllocatedToOtherGoals + newPercentage > 100.05) { // 0.05 tolerance for floating point
+        
+        // Add a small tolerance (e.g., 0.05) for floating point comparisons
+        if (currentTotalAllocatedToOtherGoals + newPercentage > 100.05) { 
             const maxAllowedForThisGoal = Math.max(0, parseFloat((100 - currentTotalAllocatedToOtherGoals).toFixed(1)));
             requestAnimationFrame(() => toast({
                 title: "Allocation Limit Exceeded",
                 description: `Cannot allocate ${newPercentage}%. Total allocation would exceed 100% of savings budget. Max available for this goal: ${maxAllowedForThisGoal}%`,
                 variant: "destructive",
-                duration: 6000
+                duration: 7000
             }));
              return;
         }
@@ -106,22 +110,22 @@ export default function SavingGoalsPage() {
             let toastMessageTitle = "";
             let toastMessageDescription = "";
 
-            if (goalData.id) {
+            if (goalData.id) { // Editing existing goal
                 const index = goals.findIndex(g => g.id === goalData.id);
                 if (index > -1) {
                     goals[index] = {
-                        ...goals[index],
-                        ...goalData,
+                        ...goals[index], // Preserve existing ID and other potentially unedited fields
+                        ...goalData,     // Apply new/updated data
                     };
                     toastMessageTitle = "Goal Updated";
                     toastMessageDescription = `Saving goal "${goalData.name}" updated.`;
                 }
-            } else {
+            } else { // Adding new goal
                 const newGoal: SavingGoal = {
-                    id: `goal-${Date.now().toString()}`,
+                    id: `goal-${Date.now().toString()}`, // Generate new ID
                     name: goalData.name,
                     goalCategoryId: goalData.goalCategoryId,
-                    savedAmount: goalData.savedAmount ?? 0,
+                    savedAmount: goalData.savedAmount ?? 0, // Default if not provided
                     percentageAllocation: goalData.percentageAllocation,
                     description: goalData.description,
                 };
@@ -138,7 +142,7 @@ export default function SavingGoalsPage() {
             }
             return { ...prev, savingGoals: goals };
         });
-        setEditingGoal(null);
+        setEditingGoal(null); // Clear editing state
     };
 
     const handleDeleteGoal = (goalId: string) => {
@@ -179,7 +183,7 @@ export default function SavingGoalsPage() {
             </div>
 
              <div className="p-4">
-                <Card className="mb-4 bg-accent/10 border-accent">
+                <Card className="mb-4 bg-accent/10 border-accent shadow-md">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Info className="h-5 w-5 text-accent" /> Monthly Savings Budget Allocation
@@ -211,7 +215,7 @@ export default function SavingGoalsPage() {
                                 <span>Unallocated Savings (₱ this month):</span>
                                 <span className="font-semibold">{formatCurrency(unallocatedSavingsAmount)}</span>
                             </div>
-                            {totalAllocatedPercentageOfSavings > 100.05 &&
+                            {totalAllocatedPercentageOfSavings > 100.05 && // Allow for small floating point inaccuracies
                                 <p className="text-xs text-destructive font-semibold mt-1 col-span-1 sm:col-span-2 flex items-center gap-1">
                                     <AlertCircle className="h-3 w-3"/>Warning: Total goal allocation exceeds 100% of savings budget!
                                 </p>
@@ -220,7 +224,7 @@ export default function SavingGoalsPage() {
                                 <Alert variant="default" className="col-span-1 sm:col-span-2 mt-2 p-2 bg-accent/10 border-accent/30">
                                      <PiggyBank className="h-4 w-4 text-accent/80" />
                                      <AlertDescription className="text-xs text-accent/80">
-                                        Your current "Savings" budget (from the Budgets tab) is ₱0. To fund goals, increase your Savings allocation in the main Budgets section by reducing other expense budgets.
+                                        Your current "Savings" budget (from the Budgets tab) is ₱0. To fund goals, increase your Savings allocation in the main Budgets section by reducing other expense budgets, or add more income.
                                      </AlertDescription>
                                 </Alert>
                              )}
@@ -258,7 +262,7 @@ export default function SavingGoalsPage() {
                                  const monthlyContribution = parseFloat(((goal.percentageAllocation ?? 0) / 100 * totalSavingsBudgetLimit).toFixed(2));
                                  return (
                                     <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
-                                        <Card className="relative group/goal overflow-hidden transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]">
+                                        <Card className="relative group/goal overflow-hidden transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] rounded-lg shadow-md">
                                             <div className="relative z-10">
                                                 <CardHeader className="flex flex-row items-start justify-between p-4 pb-2 pr-3">
                                                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -317,8 +321,8 @@ export default function SavingGoalsPage() {
                                                     </div>
                                                     {goal.percentageAllocation !== undefined && goal.percentageAllocation > 0 && (
                                                         <p className="text-xs text-muted-foreground">
-                                                            Plan: {goal.percentageAllocation.toFixed(1)}% of monthly savings
-                                                            (approx. {formatCurrency(monthlyContribution)}/mo this month)
+                                                            Plan: {goal.percentageAllocation.toFixed(1)}% of monthly savings budget
+                                                            (Est. {formatCurrency(monthlyContribution)}/mo this month)
                                                         </p>
                                                     )}
                                                     {goal.description && <p className="text-xs text-muted-foreground italic mt-1">"{goal.description}"</p>}
@@ -329,7 +333,7 @@ export default function SavingGoalsPage() {
                                 );
                             })
                         ) : (
-                             <Card className="border-dashed border-muted-foreground bg-secondary/30">
+                             <Card className="border-dashed border-muted-foreground bg-secondary/30 rounded-lg shadow-md">
                                 <CardContent className="text-center text-muted-foreground py-10">
                                     <Target className="mx-auto h-10 w-10 mb-2 text-accent" />
                                     <p className="font-semibold">No Saving Goals Yet</p>
@@ -353,8 +357,8 @@ export default function SavingGoalsPage() {
                 }}
                 onSaveGoal={handleAddOrUpdateGoal}
                 existingGoal={editingGoal}
-                totalAllocatedPercentageToOtherGoals={editingGoal
-                    ? totalAllocatedPercentageOfSavings - (editingGoal.percentageAllocation ?? 0)
+                totalAllocatedPercentageToOtherGoals={editingGoal && typeof editingGoal.percentageAllocation === 'number' // Ensure percentageAllocation is a number
+                    ? totalAllocatedPercentageOfSavings - (editingGoal.percentageAllocation)
                     : totalAllocatedPercentageOfSavings
                 }
                 savingsBudgetAmount={totalSavingsBudgetLimit}

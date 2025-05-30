@@ -53,4 +53,3 @@ export interface AppData {
   savingGoalCategories: SavingGoalCategory[];
   savingGoals: SavingGoal[];
 }
-
