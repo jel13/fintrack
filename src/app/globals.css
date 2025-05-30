@@ -139,6 +139,10 @@ input[type='number'] {
   .animate-bounce-in {
     animation: bounceIn 0.6s ease-out forwards;
   }
+  .animate-pulse-logo { /* New animation for the logo */
+    animation: pulseLogo 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
 
   @keyframes fadeIn {
     from { opacity: 0; }
@@ -155,5 +159,14 @@ input[type='number'] {
     60% { transform: scale(1.1); opacity: 1; }
     80% { transform: scale(0.9); }
     100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes pulseLogo { /* Definition for the logo pulse */
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: .6;
+    }
   }
 }

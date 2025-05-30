@@ -10,12 +10,12 @@ import {
   createUserWithEmailAndPassword, 
   signOut,
   sendEmailVerification,
-  updateProfile, // Import updateProfile
-  sendPasswordResetEmail, // Import sendPasswordResetEmail
+  updateProfile,
+  sendPasswordResetEmail,
   UserCredential
 } from 'firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
-import { Skeleton } from '@/components/ui/skeleton'; 
+import Image from 'next/image'; // Import Next.js Image component
 import { useToast } from "@/hooks/use-toast"; 
 
 interface AuthContextType {
@@ -99,8 +99,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateUserDisplayName = async (newName: string) => {
     if (auth.currentUser) {
       await updateProfile(auth.currentUser, { displayName: newName });
-      // To ensure the UI updates, we re-set the user state with the potentially updated currentUser object.
-      // Firebase's onAuthStateChanged might also pick this up, but this is more immediate.
       setUser(auth.currentUser ? { ...auth.currentUser, displayName: newName } : null);
     } else {
       throw new Error("No user currently signed in to update display name.");
@@ -115,20 +113,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-
   if (loading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-            <svg className="animate-spin h-12 w-12 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p className="text-muted-foreground text-lg">Loading FinTrack Mobile...</p>
-            <div className="w-full max-w-xs mt-6 space-y-3">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-            </div>
+            <Image
+              src="/logo.png"
+              alt="FinTrack Loading"
+              width={128} 
+              height={128}
+              className="animate-pulse-logo" // Class for pulsing animation
+              priority 
+              data-ai-hint="logo"
+            />
+            <p className="text-muted-foreground text-lg mt-4">Loading FinTrack Mobile...</p>
         </div>
     );
   }
@@ -141,7 +138,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         </div>
      );
    }
-
 
   return (
     <AuthContext.Provider value={{ 
@@ -166,4 +162,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
