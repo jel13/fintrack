@@ -86,11 +86,11 @@ export default function LoginPage() {
           <Image
             src="/logo.png" 
             alt="FinTrack Logo"
-            width={96} 
-            height={96} 
+            width={128} 
+            height={128} 
             className="mx-auto mb-4"
             data-ai-hint="logo"
-            priority // Add priority to potentially improve LCP for the logo
+            priority
           />
           <CardTitle className="text-2xl">Welcome Back!</CardTitle>
           <CardDescription>Log in to manage your finances with FinTrack.</CardDescription>
