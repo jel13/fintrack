@@ -6,6 +6,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Home, List, BarChart3, UserCircle, Settings, TrendingDown, PiggyBank, FolderCog } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 interface NavItem {
   value: string;
@@ -24,6 +25,7 @@ const navItems: NavItem[] = [
 ];
 
 export function BottomNavigation() {
+  const { user, loading } = useAuth(); // Get user and loading state
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -39,14 +41,12 @@ export function BottomNavigation() {
     if (currentNavItem) {
       setActiveTab(currentNavItem.value);
     } else if (pathname === "/") {
-      setActiveTab("home"); // Default to home if no specific match on root
+      setActiveTab("home"); 
     } else {
-      // If on a page not in navItems (e.g. /categories), try to find a base match
       const baseHrefMatch = navItems.find(item => item.isPage && pathname.startsWith(item.href));
       if (baseHrefMatch) {
         setActiveTab(baseHrefMatch.value);
       }
-      // If no match, activeTab remains as is, which defaults to 'home'.
     }
   }, [pathname, currentTabQuery]);
 
@@ -75,12 +75,16 @@ export function BottomNavigation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Only render the navigation if not loading and user is logged in
+  if (loading || !user) {
+    return null;
+  }
 
   return (
     <Tabs
       value={activeTab}
       onValueChange={handleTabChange}
-      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card shadow-lg" // Changed shadow-top-md to shadow-lg
+      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card shadow-lg"
     >
       <TabsList className="grid h-16 w-full grid-cols-5 rounded-none p-0">
         {navItems.map((item) => (
