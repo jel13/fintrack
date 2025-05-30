@@ -94,15 +94,22 @@ export default function Home() {
   const monthlySummary = React.useMemo(() => {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0 };
     
-    const expenses = transactions.filter(t => t.type === 'expense' && t.date && format(t.date, 'yyyy-MM') === currentMonth).reduce((sum, t) => sum + t.amount, 0);
-    const calculatedBalance = (monthlyIncome ?? 0) - expenses; 
+    const actualExpenses = transactions
+        .filter(t => 
+            t.type === 'expense' && 
+            format(t.date, 'yyyy-MM') === currentMonth &&
+            !savingGoals.some(sg => sg.id === t.category) // Exclude contributions to saving goals
+        )
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    const calculatedBalance = (monthlyIncome ?? 0) - actualExpenses;
 
     return {
         income: monthlyIncome ?? 0, 
-        expenses,
+        expenses: actualExpenses,
         balance: calculatedBalance, 
     };
-  }, [transactions, monthlyIncome, currentMonth, isLoaded]);
+  }, [transactions, monthlyIncome, currentMonth, isLoaded, savingGoals]);
 
 
   const incomeCategories = React.useMemo(() => categories.filter(cat => cat.isIncomeSource), [categories]);
@@ -126,14 +133,14 @@ export default function Home() {
             if (budget.category === 'savings') {
                  spent = prevData.transactions
                     .filter(t => 
-                        t.type === 'expense' && t.date &&
-                        (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) &&
+                        t.type === 'expense' &&
+                        (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) && // Include goal contributions
                         format(t.date, 'yyyy-MM') === (budget.month || currentMonth)
                     )
                     .reduce((sum, t) => sum + t.amount, 0);
             } else {
                  spent = prevData.transactions
-                    .filter(t => t.type === 'expense' && t.date && t.category === budget.category && format(t.date, 'yyyy-MM') === (budget.month || currentMonth))
+                    .filter(t => t.type === 'expense' && t.category === budget.category && format(t.date, 'yyyy-MM') === (budget.month || currentMonth))
                     .reduce((sum, t) => sum + t.amount, 0);
             }
 
@@ -180,7 +187,7 @@ export default function Home() {
         } else if (currentSetMonthlyIncome > 0 || totalBudgetedExcludingSavings < currentSetMonthlyIncome) {
              const savingsSpent = prevData.transactions
                 .filter(t => 
-                    t.type === 'expense' && t.date &&
+                    t.type === 'expense' &&
                     (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) &&
                     format(t.date, 'yyyy-MM') === currentMonth
                 )
@@ -264,9 +271,20 @@ export default function Home() {
         }
 
         if (targetSavingGoal && transactionData.type === 'expense') {
+            let amountChange = transactionData.amount;
+            if (isUpdate && originalTransactionIfUpdate?.category === targetSavingGoal.id && originalTransactionIfUpdate.type === 'expense') {
+                amountChange -= (originalTransactionIfUpdate.amount ?? 0);
+            } else if (isUpdate && originalTransactionIfUpdate?.category !== targetSavingGoal.id && originalTransactionIfUpdate?.type === 'expense') {
+                // If category changed TO this goal, it's a new contribution to this goal.
+                // (If it changed FROM this goal, that's handled by handleDelete or another goal's update)
+            } else if (isUpdate && originalTransactionIfUpdate?.type === 'income') {
+                // If type changed from income to expense for this goal, it's a new contribution
+            }
+
+
             updatedSavingGoals = prev.savingGoals.map(sg => 
                 sg.id === targetSavingGoal.id 
-                ? { ...sg, savedAmount: sg.savedAmount + transactionData.amount - (isUpdate && originalTransactionIfUpdate?.category === sg.id ? (originalTransactionIfUpdate?.amount ?? 0) : 0) } 
+                ? { ...sg, savedAmount: sg.savedAmount + amountChange } 
                 : sg
             );
         }
@@ -289,7 +307,7 @@ export default function Home() {
         if (isUpdate) {
             toast({ title: "Transaction Updated", description: `Transaction for ${targetSavingGoal ? targetSavingGoal.name : (getCategoryById(transactionData.category, categories)?.label ?? transactionData.category)} updated.` });
         } else {
-            toast({ title: "Transaction Added", description: `${transactionData.type === 'income' ? 'Income' : (targetSavingGoal ? 'Contribution' : 'Expense')} of ${formatCurrency(transactionData.amount)} logged for ${targetSavingGoal ? targetSavingGoal.name : (getCategoryById(transactionData.category, categories)?.label ?? transactionData.category)}.` });
+            toast({ title: "Transaction Added", description: `${transactionData.type === 'income' ? 'Income' : (targetSavingGoal ? 'Allocation to' : 'Expense')} of ${formatCurrency(transactionData.amount)} logged for ${targetSavingGoal ? targetSavingGoal.name : (getCategoryById(transactionData.category, categories)?.label ?? transactionData.category)}.` });
         }
     });
     setEditingTransaction(null);
@@ -311,7 +329,6 @@ export default function Home() {
 
         if (transaction.type === 'income') {
             newMonthlyIncome -= transaction.amount;
-            // toastMessage += ` Budgeted income reduced by ${formatCurrency(transaction.amount)}.`; // Removed as it could be confusing
         }
 
         if (targetSavingGoal && transaction.type === 'expense') {
@@ -320,7 +337,6 @@ export default function Home() {
                 ? { ...sg, savedAmount: Math.max(0, sg.savedAmount - transaction.amount) } 
                 : sg
             );
-            // toastMessage += ` Goal "${targetSavingGoal.name}" balance reduced.`; // Removed for brevity
         }
         
         return {
@@ -366,7 +382,7 @@ export default function Home() {
         ...budgetData,
         limit: calculatedLimit,
         spent: appData.transactions
-            .filter(t => t.type === 'expense' && t.date && t.category === budgetData.category && format(t.date, 'yyyy-MM') === (budgetData.month || currentMonth))
+            .filter(t => t.type === 'expense' && t.category === budgetData.category && format(t.date, 'yyyy-MM') === (budgetData.month || currentMonth))
             .reduce((sum, t) => sum + t.amount, 0),
         month: budgetData.month || currentMonth,
     };
@@ -455,7 +471,7 @@ const handleDeleteBudget = (budgetId: string) => {
         return;
     }
 
-    const hasTransactions = transactions.some(t => t.category === budget.category && t.date && format(t.date, 'yyyy-MM') === budget.month && t.type === 'expense');
+    const hasTransactions = transactions.some(t => t.category === budget.category && format(t.date, 'yyyy-MM') === budget.month && t.type === 'expense');
     if (hasTransactions) {
          requestAnimationFrame(() => {
             toast({ title: "Cannot Delete", description: `Budget for '${getCategoryById(budget.category, categories)?.label}' has associated transactions this month.`, variant: "destructive" });
@@ -562,13 +578,12 @@ const openEditBudgetDialog = (budgetId: string) => {
                                 placeholder="e.g., 25000"
                                 value={tempIncome}
                                 onChange={(e) => setTempIncome(e.target.value)}
-                                className="rounded-lg"
                             />
                         </div>
                          <div className="space-y-1">
                              <Label htmlFor="income-category">Source Category</Label>
                              <Select value={selectedIncomeCategory} onValueChange={setSelectedIncomeCategory}>
-                                <SelectTrigger id="income-category" className="truncate rounded-lg">
+                                <SelectTrigger id="income-category" className="truncate">
                                     <SelectValue placeholder="Select source" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -593,7 +608,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                              </Select>
                          </div>
                    </div>
-                   <Button onClick={handleSetIncome} className="w-full rounded-lg">Set Monthly Income</Button>
+                   <Button onClick={handleSetIncome} className="w-full">Set Monthly Income</Button>
                    {incomeCategories.length === 0 && (
                         <p className="text-xs text-muted-foreground text-center">No income source categories found. Please add some in 'Profile' &gt; 'Manage Categories'.</p>
                    )}
@@ -645,7 +660,7 @@ const openEditBudgetDialog = (budgetId: string) => {
 
           {monthlyIncome !== null && monthlyIncome > 0 && hasExpenseBudgetsSet && (
              <div className="animate-slide-up" style={{"animationDelay": "0.2s"}}>
-                 <SpendingChart transactions={transactions} month={currentMonth} categories={categories} />
+                 <SpendingChart transactions={transactions} month={currentMonth} categories={categories} savingGoals={savingGoals} />
              </div>
            )}
 
@@ -662,6 +677,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                             key={t.id}
                             transaction={t}
                             categories={categories}
+                            savingGoals={savingGoals}
                             onEdit={() => openEditTransactionSheet(t.id)}
                             onDelete={() => setTransactionToDelete(t)}
                         />
@@ -687,7 +703,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                         <Target className="mx-auto h-8 w-8 mb-2 text-accent" />
                         <p className="font-semibold">Ready to Budget?</p>
                         <p className="text-sm">Head over to the 'Budgets' tab to allocate your income and start tracking your spending effectively.</p>
-                         <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>
+                         <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>
                              Go to Budgets
                         </Button>
                     </CardContent>
@@ -708,7 +724,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                      <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Link href="/learn/budgeting-guide" >
+                    <Link href="/learn/budgeting-guide">
                         <Button variant="link" className="p-0 h-auto text-base">
                            How to Budget Guide
                         </Button>
@@ -727,7 +743,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                             <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                             <p className="font-semibold text-destructive">Set Income First</p>
                             <p className="text-sm text-destructive/80">Please set your income on the Home screen to log transactions.</p>
-                            <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>Go to Home</Button>
+                            <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>Go to Home</Button>
                         </CardContent>
                      </Card>
                )}
@@ -737,7 +753,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                             <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
                              <p className="font-semibold">Set Budgets to Log Expenses</p>
                             <p className="text-sm">You can log income now. To log expenses, set budgets in the 'Budgets' tab.</p>
-                            <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>Go to Budgets</Button>
+                            <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>Go to Budgets</Button>
                          </CardContent>
                     </Card>
                )}
@@ -747,6 +763,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                         key={t.id}
                         transaction={t}
                         categories={categories}
+                        savingGoals={savingGoals}
                         onEdit={() => openEditTransactionSheet(t.id)}
                         onDelete={() => setTransactionToDelete(t)}
                     />
@@ -767,13 +784,13 @@ const openEditBudgetDialog = (budgetId: string) => {
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-lg font-semibold">Monthly Budgets</h2>
              <div className="flex gap-2">
-                 <Button asChild variant="outline" size="sm">
+                <Button asChild variant="outline" size="sm">
                   <Link href="/saving-goals" className="flex items-center gap-2">
                     <PiggyBank className="h-4 w-4" /> Manage Goals
                   </Link>
-                 </Button>
+                </Button>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
-                    <Button size="sm" className="rounded-lg" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
+                    <Button size="sm" className="shadow-sm" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
                     </Button>
                  )}
@@ -785,7 +802,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                     <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                     <p className="font-semibold text-destructive">Set Your Income First</p>
                     <p className="text-sm text-destructive/80">Please set your monthly income on the Home tab before creating budgets.</p>
-                    <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>
+                    <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>
                        Go to Home
                     </Button>
                 </CardContent>
@@ -833,7 +850,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                            <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                             <p className="font-semibold text-destructive">Set Your Income First</p>
                           <p className="text-sm text-destructive/80">Please set your monthly income on the Home tab to view insights.</p>
-                           <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>
+                           <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>
                               Go to Home
                            </Button>
                        </CardContent>
@@ -844,7 +861,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                           <BarChart3 className="mx-auto h-8 w-8 mb-2 text-primary" />
                            <p className="font-semibold">Set Budgets First</p>
                           <p className="text-sm">Set your budgets in the 'Budgets' tab to generate detailed spending insights.</p>
-                          <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>
+                          <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>
                               Go to Budgets
                          </Button>
                        </CardContent>
@@ -858,6 +875,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                         budgets={budgets}
                         categories={categories}
                         monthlyIncome={monthlyIncome}
+                        savingGoals={savingGoals}
                     />
                  </div>
              )}
@@ -922,7 +940,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setTransactionToDelete(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDeleteTransaction(transactionToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg">Delete</AlertDialogAction>
+                    <AlertDialogAction onClick={() => handleDeleteTransaction(transactionToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -940,7 +958,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setBudgetToDelete(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDeleteBudget(budgetToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg">Delete</AlertDialogAction>
+                    <AlertDialogAction onClick={() => handleDeleteBudget(budgetToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -948,4 +966,3 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
-
