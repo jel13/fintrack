@@ -12,8 +12,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import Image from 'next/image'; // Import next/image
-import { UserPlus } from "lucide-react"; // UserPlus might still be used elsewhere or intended
+import Image from 'next/image';
+import { UserPlus } from "lucide-react"; 
 import { useRouter } from "next/navigation"; 
 
 const registerSchema = z.object({
@@ -75,10 +75,11 @@ export default function RegisterPage() {
           <Image
             src="/logo.png"
             alt="FinTrack Logo"
-            width={64}
-            height={64}
+            width={96}
+            height={96}
             className="mx-auto mb-4"
             data-ai-hint="logo"
+            priority // Add priority to potentially improve LCP for the logo
           />
           <CardTitle className="text-2xl">Create Account</CardTitle>
           <CardDescription>Join FinTrack to start managing your finances.</CardDescription>

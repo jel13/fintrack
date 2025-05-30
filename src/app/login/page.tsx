@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import Image from 'next/image'; // Import next/image
+import Image from 'next/image';
 import { auth } from '@/lib/firebase'; 
 
 const loginSchema = z.object({
@@ -86,10 +86,11 @@ export default function LoginPage() {
           <Image
             src="/logo.png" 
             alt="FinTrack Logo"
-            width={64} 
-            height={64} 
+            width={96} 
+            height={96} 
             className="mx-auto mb-4"
             data-ai-hint="logo"
+            priority // Add priority to potentially improve LCP for the logo
           />
           <CardTitle className="text-2xl">Welcome Back!</CardTitle>
           <CardDescription>Log in to manage your finances with FinTrack.</CardDescription>
