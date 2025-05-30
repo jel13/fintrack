@@ -21,6 +21,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger, // Added missing import
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
@@ -114,18 +115,18 @@ export default function SavingGoalsPage() {
                 const index = goals.findIndex(g => g.id === goalData.id);
                 if (index > -1) {
                     goals[index] = {
-                        ...goals[index], // Preserve existing ID and other potentially unedited fields
-                        ...goalData,     // Apply new/updated data
+                        ...goals[index], 
+                        ...goalData,     
                     };
                     toastMessageTitle = "Goal Updated";
                     toastMessageDescription = `Saving goal "${goalData.name}" updated.`;
                 }
             } else { // Adding new goal
                 const newGoal: SavingGoal = {
-                    id: `goal-${Date.now().toString()}`, // Generate new ID
+                    id: `goal-${Date.now().toString()}`, 
                     name: goalData.name,
                     goalCategoryId: goalData.goalCategoryId,
-                    savedAmount: goalData.savedAmount ?? 0, // Default if not provided
+                    savedAmount: goalData.savedAmount ?? 0, 
                     percentageAllocation: goalData.percentageAllocation,
                     description: goalData.description,
                 };
@@ -142,7 +143,7 @@ export default function SavingGoalsPage() {
             }
             return { ...prev, savingGoals: goals };
         });
-        setEditingGoal(null); // Clear editing state
+        setEditingGoal(null); 
     };
 
     const handleDeleteGoal = (goalId: string) => {
@@ -215,7 +216,7 @@ export default function SavingGoalsPage() {
                                 <span>Unallocated Savings (₱ this month):</span>
                                 <span className="font-semibold">{formatCurrency(unallocatedSavingsAmount)}</span>
                             </div>
-                            {totalAllocatedPercentageOfSavings > 100.05 && // Allow for small floating point inaccuracies
+                            {totalAllocatedPercentageOfSavings > 100.05 && 
                                 <p className="text-xs text-destructive font-semibold mt-1 col-span-1 sm:col-span-2 flex items-center gap-1">
                                     <AlertCircle className="h-3 w-3"/>Warning: Total goal allocation exceeds 100% of savings budget!
                                 </p>
@@ -357,7 +358,7 @@ export default function SavingGoalsPage() {
                 }}
                 onSaveGoal={handleAddOrUpdateGoal}
                 existingGoal={editingGoal}
-                totalAllocatedPercentageToOtherGoals={editingGoal && typeof editingGoal.percentageAllocation === 'number' // Ensure percentageAllocation is a number
+                totalAllocatedPercentageToOtherGoals={editingGoal && typeof editingGoal.percentageAllocation === 'number' 
                     ? totalAllocatedPercentageOfSavings - (editingGoal.percentageAllocation)
                     : totalAllocatedPercentageOfSavings
                 }
@@ -367,3 +368,4 @@ export default function SavingGoalsPage() {
         </div>
     );
 }
+
