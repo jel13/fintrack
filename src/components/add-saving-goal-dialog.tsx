@@ -108,7 +108,7 @@ export function AddSavingGoalDialog({
         }
     }, [open, existingGoal, form]);
 
-  const { watch, setError } = form; // Removed setValue as it's not explicitly used for dynamic updates here
+  const { watch, setError } = form;
   const currentPercentage = watch('percentageAllocation');
 
   const maxAllowedPercentage = React.useMemo(() => {
@@ -116,7 +116,7 @@ export function AddSavingGoalDialog({
   }, [totalAllocatedPercentageToOtherGoals]);
 
   const calculatedMonthlyContribution = React.useMemo(() => {
-      if (savingsBudgetAmount > 0 && currentPercentage !== undefined && currentPercentage > 0) {
+      if (savingsBudgetAmount > 0 && typeof currentPercentage === 'number' && currentPercentage > 0) {
           return (currentPercentage / 100) * savingsBudgetAmount;
       }
       return 0;
@@ -150,12 +150,12 @@ export function AddSavingGoalDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] flex flex-col max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>{existingGoal ? "Edit Saving Goal" : "Add Saving Goal"}</DialogTitle>
+          <DialogTitle>{existingGoal ? "Edit Saving Goal" : "Create a New Saving Goal"}</DialogTitle>
           <DialogDescription>
-            {existingGoal ? "Update the details for your saving goal." : "Define a goal and allocate a portion of your monthly savings budget."}
+            {existingGoal ? "Update the details for your saving goal." : "Define a new goal and decide how much of your monthly savings to allocate to it."}
           </DialogDescription>
         </DialogHeader>
-        {isAllocationDisabled && !existingGoal && ( // Show alert only when adding new goal and budget is 0
+        {isAllocationDisabled && !existingGoal && (
              <Alert variant="destructive" className="mt-2">
                  <Info className="h-4 w-4" />
                  <AlertTitle>Savings Budget is ₱0</AlertTitle>
@@ -176,6 +176,7 @@ export function AddSavingGoalDialog({
                     <FormControl>
                       <Input placeholder="e.g., Vacation Fund, New Laptop" {...field} />
                     </FormControl>
+                    <FormDescription className="text-xs">Give your goal a descriptive name.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -210,6 +211,7 @@ export function AddSavingGoalDialog({
                         )}
                       </SelectContent>
                     </Select>
+                    <FormDescription className="text-xs">Choose the type of goal you're saving for.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -220,7 +222,7 @@ export function AddSavingGoalDialog({
                 name="savedAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Current Saved Amount (₱)</FormLabel>
+                    <FormLabel>Current Amount Saved (₱)</FormLabel>
                     <FormControl>
                        <Input
                         type="number"
@@ -235,7 +237,7 @@ export function AddSavingGoalDialog({
                         min="0"
                        />
                     </FormControl>
-                    <FormDescription className="text-xs">Amount already saved towards this specific goal.</FormDescription>
+                    <FormDescription className="text-xs">Enter the total amount you've already saved specifically for this goal.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -264,16 +266,16 @@ export function AddSavingGoalDialog({
                       />
                       </FormControl>
                       <FormDescription className="text-xs">
-                         Allocate a percentage of your total monthly savings budget ({formatCurrency(savingsBudgetAmount)}) towards this goal.
+                         Allocate a percentage of your total monthly savings budget ({formatCurrency(savingsBudgetAmount)}) to this goal.
                       </FormDescription>
-                      {(!isAllocationDisabled || existingGoal) && currentPercentage !== undefined && currentPercentage > 0 && (
-                         <p className="text-sm text-muted-foreground mt-1">
-                            Planned Monthly Contribution: {formatCurrency(calculatedMonthlyContribution)}
-                         </p>
+                      {(!isAllocationDisabled || existingGoal) && typeof currentPercentage === 'number' && currentPercentage > 0 && calculatedMonthlyContribution >= 0 && (
+                          <p className="text-sm font-medium text-primary mt-1.5">
+                              Planned monthly contribution: <span className="font-bold">{formatCurrency(calculatedMonthlyContribution)}</span>
+                          </p>
                       )}
                       <FormMessage />
                       <p className="text-xs text-muted-foreground pt-1">
-                          Total savings budget portion available to allocate to goals: {maxAllowedPercentage.toFixed(1)}%
+                          Total savings budget portion available to allocate: {maxAllowedPercentage.toFixed(1)}%
                       </p>
                   </FormItem>
                   )}
@@ -309,3 +311,4 @@ export function AddSavingGoalDialog({
     </Dialog>
   );
 }
+
