@@ -12,7 +12,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { UserPlus, PiggyBank } from "lucide-react"; // Added PiggyBank
+import Image from 'next/image'; // Import next/image
+import { UserPlus } from "lucide-react"; // UserPlus might still be used elsewhere or intended
 import { useRouter } from "next/navigation"; 
 
 const registerSchema = z.object({
@@ -71,7 +72,14 @@ export default function RegisterPage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <PiggyBank className="mx-auto h-16 w-16 text-primary mb-4" /> {/* Added Logo */}
+          <Image
+            src="/logo.png"
+            alt="FinTrack Logo"
+            width={64}
+            height={64}
+            className="mx-auto mb-4"
+            data-ai-hint="logo"
+          />
           <CardTitle className="text-2xl">Create Account</CardTitle>
           <CardDescription>Join FinTrack to start managing your finances.</CardDescription>
         </CardHeader>
