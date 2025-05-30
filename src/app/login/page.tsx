@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { PiggyBank } from "lucide-react"; 
-import { auth } from '@/lib/firebase'; // Import auth from firebase
+import { auth } from '@/lib/firebase'; 
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -83,7 +83,7 @@ export default function LoginPage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <PiggyBank className="mx-auto h-12 w-12 text-primary mb-2" />
+          <PiggyBank className="mx-auto h-16 w-16 text-primary mb-4" /> {/* Added Logo */}
           <CardTitle className="text-2xl">Welcome Back!</CardTitle>
           <CardDescription>Log in to manage your finances with FinTrack.</CardDescription>
         </CardHeader>
