@@ -9,7 +9,7 @@ import { format, parseISO } from "date-fns";
 import { Calendar as CalendarIcon, Paperclip, XCircle, PiggyBank as GoalIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -47,7 +47,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import type { Transaction, Category, SavingGoal } from "@/types";
+import type { Transaction, Category, SavingGoal, Budget } from "@/types";
 import { getCategoryIconComponent } from '@/components/category-icon';
 
 const formSchema = z.object({
@@ -69,9 +69,15 @@ interface AddTransactionSheetProps {
   onSaveTransaction: (transaction: Transaction) => void;
   categoriesForSelect: Category[];
   savingGoals: SavingGoal[];
+  budgets: Budget[]; // Added to get budget limits
   canAddExpense: boolean;
   currentMonthBudgetCategoryIds: string[];
   existingTransaction?: Transaction | null;
+}
+
+interface BudgetHint {
+    text: string;
+    color: string;
 }
 
 export function AddTransactionSheet({
@@ -80,6 +86,7 @@ export function AddTransactionSheet({
     onSaveTransaction,
     categoriesForSelect,
     savingGoals,
+    budgets,
     canAddExpense,
     currentMonthBudgetCategoryIds,
     existingTransaction,
@@ -90,6 +97,13 @@ export function AddTransactionSheet({
 
   const [receiptPreview, setReceiptPreview] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [budgetHint, setBudgetHint] = React.useState<BudgetHint | null>(null);
+
+  const watchedAmount = form.watch("amount");
+  const watchedCategory = form.watch("category");
+  const watchedDate = form.watch("date");
+  const watchedType = form.watch("type");
+
 
   React.useEffect(() => {
      if (open) {
@@ -116,15 +130,63 @@ export function AddTransactionSheet({
              });
              setReceiptPreview(null);
          }
+         setBudgetHint(null); // Reset hint when dialog opens/closes or type changes
          if (fileInputRef.current) {
             fileInputRef.current.value = "";
          }
      }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, existingTransaction, canAddExpense, form.reset]); // form.reset added to dep array
+  }, [open, existingTransaction, canAddExpense, form.reset]);
 
 
-  const transactionType = form.watch("type");
+  React.useEffect(() => {
+    if (
+      watchedType === 'expense' &&
+      watchedAmount > 0 &&
+      watchedCategory &&
+      !savingGoals.some(sg => sg.id === watchedCategory) && // Not a saving goal
+      !existingTransaction // Only for new transactions
+    ) {
+      const transactionMonth = format(watchedDate || new Date(), 'yyyy-MM');
+      const budgetForCategory = budgets.find(
+        (b) => b.category === watchedCategory && b.month === transactionMonth
+      );
+
+      if (budgetForCategory) {
+        const { limit, spent } = budgetForCategory;
+        const remainingBudget = limit - spent;
+
+        if (watchedAmount < remainingBudget) {
+          setBudgetHint({
+            text: `You'll have ${formatCurrency(remainingBudget - watchedAmount)} left in this budget.`,
+            color: 'text-amber-600',
+          });
+        } else if (watchedAmount === remainingBudget) {
+          setBudgetHint({
+            text: 'This will use up your remaining budget exactly.',
+            color: 'text-emerald-600',
+          });
+        } else { // watchedAmount > remainingBudget
+          if (remainingBudget >= 0) {
+            setBudgetHint({
+              text: `This exceeds your budget by ${formatCurrency(watchedAmount - remainingBudget)}.`,
+              color: 'text-destructive',
+            });
+          } else { // Already over budget
+             setBudgetHint({
+              text: `This category is already over budget. This adds ${formatCurrency(watchedAmount)} more.`,
+              color: 'text-destructive',
+            });
+          }
+        }
+      } else {
+        setBudgetHint(null); // No budget found for this category/month
+      }
+    } else {
+      setBudgetHint(null); // Conditions not met for hint
+    }
+  }, [watchedAmount, watchedCategory, watchedDate, watchedType, budgets, savingGoals, existingTransaction]);
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -171,7 +233,7 @@ export function AddTransactionSheet({
   const regularExpenseCategories = React.useMemo(() => {
     return categoriesForSelect.filter(cat =>
         cat.isIncomeSource !== true &&
-        cat.id !== 'savings' && // Explicitly exclude the main 'savings' category
+        cat.id !== 'savings' && 
         (existingTransaction?.category === cat.id || currentMonthBudgetCategoryIds.includes(cat.id))
       )
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -179,12 +241,10 @@ export function AddTransactionSheet({
 
   const userSavingGoals = React.useMemo(() => {
     return (savingGoals || []).map(goal => {
-      // Find the goal category to get its icon
       const goalCatInfo = categoriesForSelect.find(c => c.id === goal.goalCategoryId);
       return {
-        id: goal.id, // Use goal ID as value
+        id: goal.id, 
         label: goal.name,
-        // Use the icon from the saving goal's category, or PiggyBank as fallback
         icon: goalCatInfo?.icon || 'PiggyBank',
       };
     }).sort((a,b) => a.label.localeCompare(b.label));
@@ -192,25 +252,30 @@ export function AddTransactionSheet({
 
 
   React.useEffect(() => {
-     const currentCategory = form.getValues('category');
-     if (!currentCategory && !existingTransaction) return;
+     const currentCategoryValue = form.getValues('category');
+     if (!currentCategoryValue && !existingTransaction) { // if no category selected AND not editing, no need to reset
+        setBudgetHint(null);
+        return;
+     }
 
-     if (existingTransaction && existingTransaction.type !== transactionType) {
+     if (existingTransaction && existingTransaction.type !== watchedType) {
          form.setValue('category', '');
+         setBudgetHint(null);
      } else {
         let isValidForType = false;
-        if (transactionType === 'income') {
-            isValidForType = incomeCategories.some(cat => cat.id === currentCategory);
-        } else { // expense
-            isValidForType = regularExpenseCategories.some(cat => cat.id === currentCategory) ||
-                             userSavingGoals.some(goal => goal.id === currentCategory);
+        if (watchedType === 'income') {
+            isValidForType = incomeCategories.some(cat => cat.id === currentCategoryValue);
+        } else { 
+            isValidForType = regularExpenseCategories.some(cat => cat.id === currentCategoryValue) ||
+                             userSavingGoals.some(goal => goal.id === currentCategoryValue);
         }
-        if (!isValidForType && !existingTransaction) {
+        if (!isValidForType && !existingTransaction) { // Only reset if not valid AND not editing (editing might have an old category)
             form.setValue('category', '');
+            setBudgetHint(null);
         }
      }
  // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [transactionType, form.getValues, form.setValue, existingTransaction]); // Simplified deps for clarity
+ }, [watchedType, form.getValues, form.setValue, existingTransaction]);
 
 
   return (
@@ -238,6 +303,7 @@ export function AddTransactionSheet({
                                 return;
                             }
                             field.onChange(value);
+                            setBudgetHint(null); // Reset hint when type changes
                         }}
                         value={field.value}
                         className="flex space-x-4"
@@ -256,7 +322,7 @@ export function AddTransactionSheet({
                         </FormItem>
                       </RadioGroup>
                     </FormControl>
-                     {!canAddExpense && transactionType === 'expense' && !existingTransaction && <FormDescription className="text-xs text-destructive">Set expense budgets first to enable logging expenses for budgeted categories.</FormDescription>}
+                     {!canAddExpense && watchedType === 'expense' && !existingTransaction && <FormDescription className="text-xs text-destructive">Set expense budgets first to enable logging expenses for budgeted categories.</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -283,6 +349,11 @@ export function AddTransactionSheet({
                         />
                     </FormControl>
                     <FormMessage />
+                    {budgetHint && (
+                        <p className={cn("text-xs mt-1 font-medium", budgetHint.color)}>
+                            {budgetHint.text}
+                        </p>
+                    )}
                   </FormItem>
                 )}
               />
@@ -293,21 +364,26 @@ export function AddTransactionSheet({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                     <Select onValueChange={field.onChange} value={field.value} >
+                     <Select onValueChange={
+                        (value) => {
+                            field.onChange(value);
+                            setBudgetHint(null); // Reset hint when category changes
+                        }
+                     } value={field.value} >
                       <FormControl>
                         <SelectTrigger disabled={
-                            (transactionType === 'income' && incomeCategories.length === 0) ||
-                            (transactionType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0 && !existingTransaction)
+                            (watchedType === 'income' && incomeCategories.length === 0) ||
+                            (watchedType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0 && !existingTransaction)
                         }>
                           <SelectValue placeholder={
-                            transactionType === 'income' && incomeCategories.length === 0 ? 'No income categories' :
-                            (transactionType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0 && !existingTransaction) ? 'No budgeted categories or goals' :
-                            `Select ${transactionType} category`
+                            watchedType === 'income' && incomeCategories.length === 0 ? 'No income categories' :
+                            (watchedType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0 && !existingTransaction) ? 'No budgeted categories or goals' :
+                            `Select ${watchedType} category`
                           } />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {transactionType === 'income' && incomeCategories.length > 0 && (
+                        {watchedType === 'income' && incomeCategories.length > 0 && (
                             incomeCategories.map((category) => {
                                const Icon = getCategoryIconComponent(category.icon);
                                return (
@@ -320,7 +396,7 @@ export function AddTransactionSheet({
                                );
                              })
                          )}
-                         {transactionType === 'expense' && (
+                         {watchedType === 'expense' && (
                             <>
                               {regularExpenseCategories.length > 0 && (
                                 <SelectGroup>
@@ -356,11 +432,11 @@ export function AddTransactionSheet({
                               )}
                             </>
                          )}
-                         {((transactionType === 'income' && incomeCategories.length === 0) ||
-                           (transactionType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0)
+                         {((watchedType === 'income' && incomeCategories.length === 0) ||
+                           (watchedType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0)
                          ) && (
                               <SelectItem value="no-cat" disabled>
-                                {transactionType === 'expense' ? 'No categories with active budgets or saving goals' : `No ${transactionType} categories available`}
+                                {watchedType === 'expense' ? 'No categories with active budgets or saving goals' : `No ${watchedType} categories available`}
                               </SelectItem>
                          )}
                       </SelectContent>
@@ -399,7 +475,10 @@ export function AddTransactionSheet({
                         <Calendar
                           mode="single"
                           selected={field.value}
-                          onSelect={(date) => field.onChange(date ?? new Date())}
+                          onSelect={(date) => {
+                            field.onChange(date ?? new Date());
+                            setBudgetHint(null); // Reset hint when date changes
+                          }}
                           initialFocus
                           disabled={(date) => date > new Date()}
                         />
@@ -432,7 +511,7 @@ export function AddTransactionSheet({
                 <FormField
                     control={form.control}
                     name="receiptDataUrl"
-                    render={() => ( // field is not directly used here, so destructuring is fine
+                    render={() => ( 
                         <FormItem>
                             <FormLabel>Receipt (Optional)</FormLabel>
                             <FormControl>
@@ -489,6 +568,3 @@ export function AddTransactionSheet({
     </Sheet>
   );
 }
-
-
-    

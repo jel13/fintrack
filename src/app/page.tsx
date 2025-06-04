@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Fragment } from 'react'; // Import Fragment
+import { Fragment } from 'react'; 
 import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -98,7 +98,7 @@ export default function Home() {
         .filter(t => 
             t.type === 'expense' && 
             format(t.date, 'yyyy-MM') === currentMonth &&
-            !savingGoals.some(sg => sg.id === t.category) // Exclude contributions to saving goals
+            !savingGoals.some(sg => sg.id === t.category) 
         )
         .reduce((sum, t) => sum + t.amount, 0);
 
@@ -134,7 +134,7 @@ export default function Home() {
                  spent = prevData.transactions
                     .filter(t => 
                         t.type === 'expense' &&
-                        (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) && // Include goal contributions
+                        (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) && 
                         format(t.date, 'yyyy-MM') === (budget.month || currentMonth)
                     )
                     .reduce((sum, t) => sum + t.amount, 0);
@@ -275,10 +275,9 @@ export default function Home() {
             if (isUpdate && originalTransactionIfUpdate?.category === targetSavingGoal.id && originalTransactionIfUpdate.type === 'expense') {
                 amountChange -= (originalTransactionIfUpdate.amount ?? 0);
             } else if (isUpdate && originalTransactionIfUpdate?.category !== targetSavingGoal.id && originalTransactionIfUpdate?.type === 'expense') {
-                // If category changed TO this goal, it's a new contribution to this goal.
-                // (If it changed FROM this goal, that's handled by handleDelete or another goal's update)
+                
             } else if (isUpdate && originalTransactionIfUpdate?.type === 'income') {
-                // If type changed from income to expense for this goal, it's a new contribution
+                
             }
 
 
@@ -405,7 +404,7 @@ export default function Home() {
             updatedBudgets = [...prev.budgets, finalBudgetData];
             toastTitle = "Budget Set";
             toastMessageDescription = `Budget for ${getCategoryById(finalBudgetData.category, prev.categories)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).`;
-            isUpdate = false; // Explicitly set for clarity
+            isUpdate = false; 
         }
 
         updatedBudgets.sort((a, b) => {
@@ -439,7 +438,7 @@ export default function Home() {
         toast({ title: toastTitle, description: toastMessageDescription });
         
         if (needsCategoryWarning) {
-             const needsPercentage = appData.budgets // Use appData here to get the latest state after update
+             const needsPercentage = appData.budgets 
                 .filter(b => categories.find(c => c.id === b.category && (
                     c.label.toLowerCase().includes('housing') ||
                     c.label.toLowerCase().includes('groceries') ||
@@ -906,6 +905,7 @@ const openEditBudgetDialog = (budgetId: string) => {
         onSaveTransaction={handleSaveTransaction}
         categoriesForSelect={categories}
         savingGoals={appData.savingGoals}
+        budgets={appData.budgets}
         canAddExpense={hasExpenseBudgetsSet || (!!editingTransaction && editingTransaction.type ==='expense')}
         currentMonthBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)}
         existingTransaction={editingTransaction}
@@ -966,3 +966,4 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
+
