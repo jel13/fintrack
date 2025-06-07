@@ -47,7 +47,7 @@ const formSchema = z.object({
   savedAmount: z.coerce.number({invalid_type_error: "Saved amount must be a number"}).nonnegative("Saved amount cannot be negative").optional().default(0),
   percentageAllocation: z.coerce.number({ invalid_type_error: "Percentage must be a number", required_error: "Allocation percentage is required" })
     .gte(0.1, "Allocation must be at least 0.1%")
-    .lte(100, "Allocation cannot exceed 100%")
+    .lte(100, "Allocation cannot exceed 100%") // Ensures a single goal is not > 100%
     .multipleOf(0.1, { message: "Allocation can have max 1 decimal place" }),
   description: z.string().max(100, "Description max 100 characters").optional(),
 });
@@ -112,6 +112,8 @@ export function AddSavingGoalDialog({
   const currentPercentage = watch('percentageAllocation');
 
   const maxAllowedPercentage = React.useMemo(() => {
+      // This is the max percentage the *current goal being edited/added* can take,
+      // considering what's already allocated to *other* goals.
       return Math.max(0, parseFloat((100 - totalAllocatedPercentageToOtherGoals).toFixed(1)));
   }, [totalAllocatedPercentageToOtherGoals]);
 
@@ -123,18 +125,26 @@ export function AddSavingGoalDialog({
   }, [currentPercentage, savingsBudgetAmount]);
 
   const onSubmit = (values: GoalFormValues) => {
-     const percentageToValidate = values.percentageAllocation ?? 0;
-     // Use a small tolerance (e.g., 0.05) for floating point comparisons
-     if (percentageToValidate > maxAllowedPercentage + 0.05) {
-         setError("percentageAllocation", { message: `Allocation exceeds 100% of savings budget (${formatCurrency(savingsBudgetAmount)}). Max available: ${maxAllowedPercentage.toFixed(1)}%` });
-         return;
-     }
+    // Safeguard: Explicitly check if the individual percentage allocation exceeds 100%.
+    // Zod's .lte(100) in the schema should ideally prevent this onSubmit from being called
+    // if the value is > 100. This is an additional layer.
+    if (values.percentageAllocation && values.percentageAllocation > 100) {
+        form.setError("percentageAllocation", {
+            type: "manual",
+            message: "Percentage for a single goal cannot exceed 100%.",
+        });
+        return; 
+    }
+    
+    // The check for the SUM of allocations (this goal + others > 100%)
+    // is handled in `handleAddOrUpdateGoal` in `saving-goals/page.tsx`
+    // as it has the full context of all goals.
 
     const dataToSave: Omit<SavingGoal, 'id'> & { id?: string } = {
         name: values.name,
         goalCategoryId: values.goalCategoryId,
         savedAmount: values.savedAmount ?? 0,
-        percentageAllocation: percentageToValidate,
+        percentageAllocation: values.percentageAllocation ?? 0, // Default to 0 if undefined (though Zod should require it)
         description: values.description,
     };
      if (existingGoal) {
@@ -260,7 +270,9 @@ export function AddSavingGoalDialog({
                               field.onChange(val === '' ? undefined : parseFloat(val));
                           }}
                           step="0.1"
-                          max={maxAllowedPercentage > 0 ? maxAllowedPercentage : 100}
+                          // The 'max' attribute here is for browser UX; Zod handles actual validation.
+                          // It should cap at what's available for *this* goal, or 100 if that's less.
+                          max={Math.min(100, maxAllowedPercentage > 0 ? maxAllowedPercentage : 100)}
                           min="0.1"
                           disabled={isAllocationDisabled && !existingGoal}
                       />
