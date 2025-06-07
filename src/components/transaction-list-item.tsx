@@ -3,46 +3,66 @@
 
 import type { FC } from 'react';
 import { format } from 'date-fns';
-import type { Transaction, Category } from '@/types';
+import type { Transaction, Category, SavingGoal } from '@/types';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getCategoryIconComponent } from '@/components/category-icon';
-import { TrendingUp, TrendingDown, Paperclip, Edit, Trash2 } from 'lucide-react'; // Added Edit, Trash2
-import { Button } from "@/components/ui/button"; // For action buttons
+import { TrendingUp, Paperclip, Edit, Trash2, MoreVertical } from 'lucide-react'; 
+import { Button } from "@/components/ui/button"; 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"; // Optional: for more actions
-import { MoreVertical } from 'lucide-react'; // For dropdown trigger
+} from "@/components/ui/dropdown-menu"; 
 
 
 interface TransactionListItemProps {
   transaction: Transaction;
   categories: Category[];
+  savingGoals: SavingGoal[];
+  onViewReceipt: (transactionId: string) => void;
   onEdit: (transactionId: string) => void;
   onDelete: (transactionId: string) => void;
 }
 
-const TransactionListItem: FC<TransactionListItemProps> = ({ transaction, categories, onEdit, onDelete }) => {
+const TransactionListItem: FC<TransactionListItemProps> = ({ transaction, categories, savingGoals, onViewReceipt, onEdit, onDelete }) => {
   const isIncome = transaction.type === 'income';
-  const categoryInfo = categories.find(cat => cat.id === transaction.category);
+  
+  let itemLabel = transaction.category;
+  let itemIconName = 'HelpCircle';
+  let isSavingGoalContribution = false;
 
-  let IconComponent: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  if (isIncome) {
-    IconComponent = TrendingUp;
+  const savingGoal = savingGoals.find(sg => sg.id === transaction.category);
+  if (savingGoal) {
+    itemLabel = savingGoal.name;
+    const savingGoalCategoryDetails = categories.find(c => c.id === savingGoal.goalCategoryId); // Assuming saving goal categories are within main categories for icon
+    itemIconName = savingGoalCategoryDetails?.icon || 'PiggyBank';
+    isSavingGoalContribution = true;
   } else {
-    const iconName = categoryInfo?.icon;
-    IconComponent = getCategoryIconComponent(iconName ?? 'HelpCircle');
+    const categoryInfo = categories.find(cat => cat.id === transaction.category);
+    if (categoryInfo) {
+        itemLabel = categoryInfo.label;
+        itemIconName = categoryInfo.icon;
+    }
   }
+
+  const IconComponent = isIncome ? TrendingUp : getCategoryIconComponent(itemIconName);
+  const iconBgColor = isIncome || isSavingGoalContribution ? 'bg-accent/10 text-accent' : 'bg-primary/10 text-primary';
 
 
   return (
-    <div className="group flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-secondary/30 transition-colors">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+    <div className="group flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-secondary/50 transition-colors">
+      <div 
+        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+        onClick={() => onViewReceipt(transaction.id)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onViewReceipt(transaction.id); }}
+        aria-label={`View details for transaction: ${itemLabel}`}
+      >
          <div className={cn(
             "rounded-full p-1.5 flex-shrink-0 flex items-center justify-center h-8 w-8",
-             isIncome ? 'bg-accent/10 text-accent' : 'bg-primary/10 text-primary'
+            iconBgColor
             )}>
             <IconComponent className="h-4 w-4" />
          </div>
@@ -50,7 +70,7 @@ const TransactionListItem: FC<TransactionListItemProps> = ({ transaction, catego
         <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
                 <p className="text-sm font-medium capitalize truncate">
-                    {categoryInfo?.label || transaction.category}
+                    {itemLabel}
                 </p>
                 {transaction.receiptDataUrl && <Paperclip className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" titleAccess="Receipt attached" />}
             </div>
@@ -62,10 +82,15 @@ const TransactionListItem: FC<TransactionListItemProps> = ({ transaction, catego
         </div>
       </div>
       <div className="text-right pl-2 flex-shrink-0 flex items-center gap-1">
-        <div>
+        <div 
+          className="cursor-pointer"
+          onClick={() => onViewReceipt(transaction.id)}
+          role="button"
+          tabIndex={-1} // Avoid double tabbing
+        >
             <p className={cn(
                 "text-sm font-semibold",
-                isIncome ? "text-accent" : "text-foreground"
+                isIncome || isSavingGoalContribution ? "text-accent" : "text-foreground" // Use accent for savings goal contributions too
             )}>
             {isIncome ? '+' : '-'} {formatCurrency(transaction.amount)}
             </p>
@@ -73,12 +98,12 @@ const TransactionListItem: FC<TransactionListItemProps> = ({ transaction, catego
         </div>
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 group-hover:opacity-100 focus:opacity-100 transition-opacity rounded-full" onClick={(e) => e.stopPropagation()}>
                     <MoreVertical className="h-4 w-4" />
                     <span className="sr-only">Actions</span>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenuItem onClick={() => onEdit(transaction.id)}>
                     <Edit className="mr-2 h-4 w-4" /> Edit
                 </DropdownMenuItem>

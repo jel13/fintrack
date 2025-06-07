@@ -44,6 +44,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from 'next/navigation';
+import { TransactionReceiptDialog } from "@/components/transaction-receipt-dialog";
+
+interface CategoryOrGoalDisplayForReceipt {
+  label: string;
+  icon: string;
+  isSavingGoal?: boolean;
+}
+
+interface SelectedTransactionForReceipt {
+  transaction: Transaction;
+  displayInfo: CategoryOrGoalDisplayForReceipt;
+}
 
 
 export default function Home() {
@@ -64,6 +76,9 @@ export default function Home() {
   const [tempIncome, setTempIncome] = React.useState<string>('');
   const [selectedIncomeCategory, setSelectedIncomeCategory] = React.useState<string>('');
   const { toast } = useToast();
+
+  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = React.useState(false);
+  const [selectedTransactionForReceipt, setSelectedTransactionForReceipt] = React.useState<SelectedTransactionForReceipt | null>(null);
 
   const currentMonth = format(new Date(), 'yyyy-MM');
   const previousMonthDate = new Date();
@@ -89,7 +104,7 @@ export default function Home() {
     }
   }, [appData, isLoaded, user]);
 
-  const { monthlyIncome, transactions, budgets, categories, savingGoals } = appData;
+  const { monthlyIncome, transactions, budgets, categories, savingGoals, savingGoalCategories } = appData;
 
   const monthlySummary = React.useMemo(() => {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0 };
@@ -166,12 +181,10 @@ export default function Home() {
 
         const savingsBudgetIndex = updatedBudgets.findIndex(b => b.category === 'savings' && b.month === currentMonth);
 
-        // Calculate the total actual spending for all non-savings categories this month
         const totalSpentByOtherCategories = updatedBudgets
             .filter(b => b.category !== 'savings' && b.month === currentMonth)
             .reduce((sum, b) => sum + b.spent, 0);
 
-        // The leftover for savings is income minus what was actually spent in other categories
         const leftoverForSavings = Math.max(0, currentSetMonthlyIncome - totalSpentByOtherCategories);
 
         if (savingsBudgetIndex > -1) {
@@ -187,7 +200,7 @@ export default function Home() {
                 };
                 budgetsChanged = true;
             }
-        } else { // If no savings budget exists for the month, create one if there's potential savings
+        } else { 
              const savingsSpent = prevData.transactions
                 .filter(t =>
                     t.type === 'expense' &&
@@ -540,6 +553,32 @@ const openEditBudgetDialog = (budgetId: string) => {
     return currentMonthBudgets.some(b => b.category !== 'savings' && b.limit > 0 && b.percentage !== undefined && b.percentage > 0);
   }, [currentMonthBudgets]);
 
+  const handleOpenReceiptDialog = (transactionId: string) => {
+    const transaction = transactions.find(t => t.id === transactionId);
+    if (!transaction) return;
+
+    let displayInfo: CategoryOrGoalDisplayForReceipt;
+    const savingGoal = savingGoals.find(sg => sg.id === transaction.category);
+
+    if (savingGoal) {
+      const goalCategoryDetails = savingGoalCategories.find(sgc => sgc.id === savingGoal.goalCategoryId);
+      displayInfo = {
+        label: savingGoal.name,
+        icon: goalCategoryDetails?.icon || 'PiggyBank',
+        isSavingGoal: true,
+      };
+    } else {
+      const categoryDetails = categories.find(c => c.id === transaction.category);
+      displayInfo = {
+        label: categoryDetails?.label || transaction.category,
+        icon: categoryDetails?.icon || 'HelpCircle',
+        isSavingGoal: false,
+      };
+    }
+    setSelectedTransactionForReceipt({ transaction, displayInfo });
+    setIsReceiptDialogOpen(true);
+  };
+
 
     if (!user) {
         return null;
@@ -680,6 +719,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                             transaction={t}
                             categories={categories}
                             savingGoals={savingGoals}
+                            onViewReceipt={handleOpenReceiptDialog}
                             onEdit={() => openEditTransactionSheet(t.id)}
                             onDelete={() => setTransactionToDelete(t)}
                         />
@@ -766,6 +806,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                         transaction={t}
                         categories={categories}
                         savingGoals={savingGoals}
+                        onViewReceipt={handleOpenReceiptDialog}
                         onEdit={() => openEditTransactionSheet(t.id)}
                         onDelete={() => setTransactionToDelete(t)}
                     />
@@ -929,6 +970,13 @@ const openEditBudgetDialog = (budgetId: string) => {
         existingBudget={editingBudget}
       />
 
+      <TransactionReceiptDialog
+        open={isReceiptDialogOpen}
+        onOpenChange={setIsReceiptDialogOpen}
+        transaction={selectedTransactionForReceipt?.transaction ?? null}
+        categoryOrGoalDisplay={selectedTransactionForReceipt?.displayInfo ?? null}
+      />
+
       {transactionToDelete && (
         <AlertDialog open={!!transactionToDelete} onOpenChange={() => setTransactionToDelete(null)}>
             <AlertDialogContent>
@@ -969,6 +1017,3 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
-
-
-    
