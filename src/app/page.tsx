@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Fragment } from 'react'; 
+import { Fragment } from 'react';
 import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -67,7 +67,7 @@ export default function Home() {
 
   const currentMonth = format(new Date(), 'yyyy-MM');
   const previousMonthDate = new Date();
-  previousMonthDate.setDate(1); 
+  previousMonthDate.setDate(1);
   previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
   const previousMonth = format(previousMonthDate, 'yyyy-MM');
 
@@ -93,21 +93,21 @@ export default function Home() {
 
   const monthlySummary = React.useMemo(() => {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0 };
-    
+
     const actualExpenses = transactions
-        .filter(t => 
-            t.type === 'expense' && 
+        .filter(t =>
+            t.type === 'expense' &&
             format(t.date, 'yyyy-MM') === currentMonth &&
-            !savingGoals.some(sg => sg.id === t.category) 
+            !savingGoals.some(sg => sg.id === t.category)
         )
         .reduce((sum, t) => sum + t.amount, 0);
 
     const calculatedBalance = (monthlyIncome ?? 0) - actualExpenses;
 
     return {
-        income: monthlyIncome ?? 0, 
+        income: monthlyIncome ?? 0,
         expenses: actualExpenses,
-        balance: calculatedBalance, 
+        balance: calculatedBalance,
     };
   }, [transactions, monthlyIncome, currentMonth, isLoaded, savingGoals]);
 
@@ -120,7 +120,7 @@ export default function Home() {
   }, [budgets, currentMonth]);
 
  React.useEffect(() => {
-    if (!isLoaded || !user) return; 
+    if (!isLoaded || !user) return;
 
     setAppData(prevData => {
         let budgetsChanged = false;
@@ -132,9 +132,9 @@ export default function Home() {
 
             if (budget.category === 'savings') {
                  spent = prevData.transactions
-                    .filter(t => 
+                    .filter(t =>
                         t.type === 'expense' &&
-                        (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) && 
+                        (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) &&
                         format(t.date, 'yyyy-MM') === (budget.month || currentMonth)
                     )
                     .reduce((sum, t) => sum + t.amount, 0);
@@ -165,28 +165,31 @@ export default function Home() {
         });
 
         const savingsBudgetIndex = updatedBudgets.findIndex(b => b.category === 'savings' && b.month === currentMonth);
-        const totalBudgetedExcludingSavings = updatedBudgets
-            .filter(b => b.category !== 'savings' && b.month === currentMonth)
-            .reduce((sum, b) => sum + b.limit, 0);
 
-        const leftoverForSavings = Math.max(0, currentSetMonthlyIncome - totalBudgetedExcludingSavings);
+        // Calculate the total actual spending for all non-savings categories this month
+        const totalSpentByOtherCategories = updatedBudgets
+            .filter(b => b.category !== 'savings' && b.month === currentMonth)
+            .reduce((sum, b) => sum + b.spent, 0);
+
+        // The leftover for savings is income minus what was actually spent in other categories
+        const leftoverForSavings = Math.max(0, currentSetMonthlyIncome - totalSpentByOtherCategories);
 
         if (savingsBudgetIndex > -1) {
-            const savingsSpent = updatedBudgets[savingsBudgetIndex].spent; 
+            const savingsSpent = updatedBudgets[savingsBudgetIndex].spent;
 
             const currentSavingsBudget = updatedBudgets[savingsBudgetIndex];
             if (currentSavingsBudget.limit !== leftoverForSavings || currentSavingsBudget.spent !== savingsSpent) {
                 updatedBudgets[savingsBudgetIndex] = {
                     ...currentSavingsBudget,
                     limit: leftoverForSavings,
-                    spent: savingsSpent, 
-                    percentage: undefined 
+                    spent: savingsSpent,
+                    percentage: undefined
                 };
                 budgetsChanged = true;
             }
-        } else if (currentSetMonthlyIncome > 0 || totalBudgetedExcludingSavings < currentSetMonthlyIncome) {
+        } else { // If no savings budget exists for the month, create one if there's potential savings
              const savingsSpent = prevData.transactions
-                .filter(t => 
+                .filter(t =>
                     t.type === 'expense' &&
                     (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) &&
                     format(t.date, 'yyyy-MM') === currentMonth
@@ -237,15 +240,15 @@ export default function Home() {
 
         const targetSavingGoal = prev.savingGoals.find(sg => sg.id === transactionData.category);
 
-        if (transactionData.type === 'expense' && !targetSavingGoal) { 
+        if (transactionData.type === 'expense' && !targetSavingGoal) {
             const categoryBudget = prev.budgets.find(b => b.category === transactionData.category && b.month === (format(transactionData.date, 'yyyy-MM')));
-            if (!categoryBudget && transactionData.category !== 'savings') { 
+            if (!categoryBudget && transactionData.category !== 'savings') {
                 toastTitle = "Budget Required";
                 toastMessageDescription = `Please set a budget for '${getCategoryById(transactionData.category, prev.categories)?.label ?? transactionData.category}' for ${format(transactionData.date, 'MMMM yyyy')} before adding expenses.`;
                 validTransaction = false;
             }
         }
-        
+
         if (!validTransaction) return prev;
 
         let updatedTransactions;
@@ -256,14 +259,14 @@ export default function Home() {
             updatedTransactions = [transactionData, ...prev.transactions];
         }
         updatedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
-        
+
         let newMonthlyIncome = prev.monthlyIncome ?? 0;
         if (transactionData.type === 'income') {
             if (isUpdate && originalTransactionIfUpdate?.type === 'income') {
                  newMonthlyIncome = (prev.monthlyIncome ?? 0) - (originalTransactionIfUpdate?.amount ?? 0) + transactionData.amount;
-            } else if (isUpdate && originalTransactionIfUpdate?.type === 'expense') { 
+            } else if (isUpdate && originalTransactionIfUpdate?.type === 'expense') {
                  newMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
-            } else if (!isUpdate) { 
+            } else if (!isUpdate) {
                  newMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
             }
         } else if (isUpdate && originalTransactionIfUpdate?.type === 'income' && transactionData.type === 'expense') {
@@ -275,19 +278,19 @@ export default function Home() {
             if (isUpdate && originalTransactionIfUpdate?.category === targetSavingGoal.id && originalTransactionIfUpdate.type === 'expense') {
                 amountChange -= (originalTransactionIfUpdate.amount ?? 0);
             } else if (isUpdate && originalTransactionIfUpdate?.category !== targetSavingGoal.id && originalTransactionIfUpdate?.type === 'expense') {
-                
+
             } else if (isUpdate && originalTransactionIfUpdate?.type === 'income') {
-                
+
             }
 
 
-            updatedSavingGoals = prev.savingGoals.map(sg => 
-                sg.id === targetSavingGoal.id 
-                ? { ...sg, savedAmount: sg.savedAmount + amountChange } 
+            updatedSavingGoals = prev.savingGoals.map(sg =>
+                sg.id === targetSavingGoal.id
+                ? { ...sg, savedAmount: sg.savedAmount + amountChange }
                 : sg
             );
         }
-        
+
         return {
             ...prev,
             transactions: updatedTransactions,
@@ -295,7 +298,7 @@ export default function Home() {
             savingGoals: updatedSavingGoals || prev.savingGoals,
         };
     });
-    
+
     requestAnimationFrame(() => {
         if (!validTransaction) {
             toast({ title: toastTitle, description: toastMessageDescription, variant: "destructive" });
@@ -319,7 +322,7 @@ export default function Home() {
     let toastMessage = "";
     const targetSavingGoal = appData.savingGoals.find(sg => sg.id === transaction.category);
     toastMessage = `Transaction for ${targetSavingGoal ? targetSavingGoal.name : (getCategoryById(transaction.category, categories)?.label ?? transaction.category)} removed.`;
-    
+
 
     setAppData(prev => {
         const updatedTransactions = prev.transactions.filter(t => t.id !== transactionId);
@@ -331,13 +334,13 @@ export default function Home() {
         }
 
         if (targetSavingGoal && transaction.type === 'expense') {
-            updatedSavingGoalsData = prev.savingGoals.map(sg => 
-                sg.id === targetSavingGoal.id 
-                ? { ...sg, savedAmount: Math.max(0, sg.savedAmount - transaction.amount) } 
+            updatedSavingGoalsData = prev.savingGoals.map(sg =>
+                sg.id === targetSavingGoal.id
+                ? { ...sg, savedAmount: Math.max(0, sg.savedAmount - transaction.amount) }
                 : sg
             );
         }
-        
+
         return {
             ...prev,
             transactions: updatedTransactions,
@@ -367,11 +370,11 @@ export default function Home() {
     if (budgetData.percentage !== undefined && currentSetMonthlyIncome > 0 && budgetData.category !== 'savings') {
         calculatedLimit = parseFloat(((budgetData.percentage / 100) * currentSetMonthlyIncome).toFixed(2));
     } else if (budgetData.category !== 'savings' && budgetData.percentage !== undefined && currentSetMonthlyIncome === 0) {
-        calculatedLimit = 0; 
+        calculatedLimit = 0;
     }
 
      if (budgetData.category !== 'savings' && (budgetData.percentage === undefined || budgetData.percentage <=0)) {
-         requestAnimationFrame(() => { 
+         requestAnimationFrame(() => {
              toast({ title: "Invalid Budget", description: "Budget percentage must be a positive value for expense categories.", variant: "destructive" });
          });
          return;
@@ -404,7 +407,7 @@ export default function Home() {
             updatedBudgets = [...prev.budgets, finalBudgetData];
             toastTitle = "Budget Set";
             toastMessageDescription = `Budget for ${getCategoryById(finalBudgetData.category, prev.categories)?.label ?? finalBudgetData.category} set to ${finalBudgetData.percentage?.toFixed(1) ?? '-'}% (${formatCurrency(finalBudgetData.limit)}).`;
-            isUpdate = false; 
+            isUpdate = false;
         }
 
         updatedBudgets.sort((a, b) => {
@@ -414,7 +417,7 @@ export default function Home() {
              const labelB = getCategoryById(b.category, prev.categories)?.label ?? b.category;
              return labelA.localeCompare(labelB);
          });
-        
+
         const needsCategoryIds = prev.categories.filter(c =>
             !c.isIncomeSource && (
             c.label.toLowerCase().includes('housing') ||
@@ -426,19 +429,19 @@ export default function Home() {
         const currentTotalNeedsPercentage = updatedBudgets
             .filter(b => needsCategoryIds.includes(b.category) && b.month === currentMonth && b.percentage !== undefined)
             .reduce((sum, b) => sum + (b.percentage ?? 0), 0);
-        
+
         if (currentTotalNeedsPercentage > 50) {
             needsCategoryWarning = true;
         }
-        
+
         return { ...prev, budgets: updatedBudgets };
     });
-        
+
     requestAnimationFrame(() => {
         toast({ title: toastTitle, description: toastMessageDescription });
-        
+
         if (needsCategoryWarning) {
-             const needsPercentage = appData.budgets 
+             const needsPercentage = appData.budgets
                 .filter(b => categories.find(c => c.id === b.category && (
                     c.label.toLowerCase().includes('housing') ||
                     c.label.toLowerCase().includes('groceries') ||
@@ -509,7 +512,7 @@ const openEditBudgetDialog = (budgetId: string) => {
         });
         return;
     }
-    if (!selectedIncomeCategory) { 
+    if (!selectedIncomeCategory) {
          requestAnimationFrame(() => {
             toast({ title: "Select Income Source", description: "Please select an income source category.", variant: "destructive" });
         });
@@ -517,7 +520,7 @@ const openEditBudgetDialog = (budgetId: string) => {
     }
 
     setAppData(prev => ({ ...prev, monthlyIncome: incomeValue }));
-       
+
     requestAnimationFrame(() => {
         toast({ title: "Income Updated", description: `Monthly budgeted income set to ${formatCurrency(incomeValue)}. Percentage-based budgets will update their monetary limits.` });
     });
@@ -539,9 +542,9 @@ const openEditBudgetDialog = (budgetId: string) => {
 
 
     if (!user) {
-        return null; 
+        return null;
     }
-    if (!isLoaded && user) { 
+    if (!isLoaded && user) {
         return (
             <div className="flex flex-col h-screen p-4 bg-background items-center justify-center">
                  <svg className="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -967,3 +970,5 @@ const openEditBudgetDialog = (budgetId: string) => {
   );
 }
 
+
+    
