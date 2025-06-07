@@ -133,7 +133,7 @@ export function AddSavingGoalDialog({
             type: "manual",
             message: "Percentage for a single goal cannot exceed 100%.",
         });
-        return; 
+        return;
     }
     
     // The check for the SUM of allocations (this goal + others > 100%)
@@ -323,4 +323,3 @@ export function AddSavingGoalDialog({
     </Dialog>
   );
 }
-
