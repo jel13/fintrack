@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -45,6 +44,7 @@ export function TransactionReceiptDialog({
   }
 
   const IconComponent = getCategoryIconComponent(categoryOrGoalDisplay.icon);
+  const dateLabel = transaction.type === 'income' ? "Date & Time of Income" : "Date & Time of Expense";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,7 +58,7 @@ export function TransactionReceiptDialog({
         <ScrollArea className="flex-grow p-4 -m-4 overflow-y-auto">
          <div className="p-4 space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Date & Time</span>
+              <span className="text-sm text-muted-foreground">{dateLabel}</span>
               <span className="font-medium text-sm text-right">
                 {format(transaction.date, "MMM d, yyyy 'at' p")}
               </span>
