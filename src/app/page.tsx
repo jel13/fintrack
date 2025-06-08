@@ -45,7 +45,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from 'next/navigation';
 import { TransactionReceiptDialog } from "@/components/transaction-receipt-dialog";
-import { OnboardingCard } from "@/components/onboarding-card"; // Import the new card
+import { OnboardingDialog } from "@/components/onboarding-dialog"; // Changed from OnboardingCard
 
 interface CategoryOrGoalDisplayForReceipt {
   label: string;
@@ -81,6 +81,8 @@ export default function Home() {
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = React.useState(false);
   const [selectedTransactionForReceipt, setSelectedTransactionForReceipt] = React.useState<SelectedTransactionForReceipt | null>(null);
 
+  const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = React.useState(false); // New state for onboarding dialog
+
   const currentMonth = format(new Date(), 'yyyy-MM');
   const previousMonthDate = new Date();
   previousMonthDate.setDate(1);
@@ -93,6 +95,9 @@ export default function Home() {
         setAppData(loadedData);
         setTempIncome(loadedData.monthlyIncome?.toString() ?? '');
         setIsLoaded(true);
+        if (!loadedData.hasSeenOnboarding) {
+            setIsOnboardingDialogOpen(true);
+        }
     } else {
         setAppData(defaultAppData);
         setIsLoaded(false);
@@ -184,7 +189,7 @@ export default function Home() {
 
         const totalSpentByOtherCategories = updatedBudgets
             .filter(b => b.category !== 'savings' && b.month === currentMonth)
-            .reduce((sum, b) => sum + b.spent, 0);
+            .reduce((sum, b) => sum + b.spent, 0); // Changed from b.limit to b.spent
 
         const leftoverForSavings = Math.max(0, currentSetMonthlyIncome - totalSpentByOtherCategories);
 
@@ -582,6 +587,7 @@ const openEditBudgetDialog = (budgetId: string) => {
 
   const handleDismissOnboarding = () => {
     setAppData(prev => ({ ...prev, hasSeenOnboarding: true }));
+    setIsOnboardingDialogOpen(false); // Close the dialog
   };
 
 
@@ -602,11 +608,15 @@ const openEditBudgetDialog = (budgetId: string) => {
 
   return (
     <div className="flex flex-col flex-1 bg-background">
+      {isLoaded && (
+        <OnboardingDialog
+            open={isOnboardingDialogOpen}
+            onDismiss={handleDismissOnboarding}
+            isIncomeSet={!!monthlyIncome && monthlyIncome > 0}
+        />
+      )}
       <Tabs defaultValue={initialTab} value={initialTab} className="flex-grow flex flex-col">
         <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
-            {isLoaded && !hasSeenOnboarding && (
-                 <OnboardingCard onDismiss={handleDismissOnboarding} isIncomeSet={!!monthlyIncome && monthlyIncome > 0} />
-            )}
             <div className="flex justify-between items-center mb-2">
                 <h1 className="text-2xl font-bold text-primary">Home</h1>
             </div>
