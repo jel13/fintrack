@@ -9,7 +9,7 @@ const APP_DATA_KEY = 'finTrackMobileData';
 const defaultCategories: AppData['categories'] = [
   // Income Sources (Marked with isIncomeSource: true)
   { id: 'salary', label: 'Salary', icon: 'Briefcase', isDefault: true, isDeletable: true, isIncomeSource: true },
-  { id: 'freelance', label: 'Freelance', icon: 'Laptop', isDefault: true, isDeletable: true, isIncomeSource: true },
+  { id: 'freelance', label: 'Side hustle / sideline', icon: 'Laptop', isDefault: true, isDeletable: true, isIncomeSource: true },
   { id: 'allowance', label: 'Allowance', icon: 'Wallet', isDefault: true, isDeletable: true, isIncomeSource: true },
   { id: 'investment_income', label: 'Investment Income', icon: 'Landmark', isDefault: true, isDeletable: true, isIncomeSource: true }, // Renamed to avoid clash with saving goal category
   { id: 'other_income', label: 'Other Income', icon: 'TrendingUp', isDefault: true, isDeletable: true, isIncomeSource: true },
@@ -191,3 +191,4 @@ export const clearAppData = () => {
   localStorage.removeItem(APP_DATA_KEY);
   window.location.reload();
 };
+
