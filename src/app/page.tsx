@@ -654,7 +654,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                             <Input
                                 id="monthly-income"
                                 type="number"
-                                placeholder="e.g., 25000"
+                                placeholder="e.g., 30000"
                                 value={tempIncome}
                                 onChange={(e) => setTempIncome(e.target.value)}
                             />
