@@ -113,9 +113,14 @@ export const loadAppData = (): AppData => {
       const finalCategories: Category[] = defaultCategories.map(defaultCat => {
         const storedCat = mergedData.categories.find(mc => mc.id === defaultCat.id);
         if (storedCat) {
+            let labelToUse = storedCat.label;
+            // Specifically update the label for the 'freelance' ID if its stored label is the old default "Freelance"
+            if (defaultCat.id === 'freelance' && storedCat.label === 'Freelance') {
+                labelToUse = defaultCat.label; // Use the new default label ("Side hustle / sideline")
+            }
             return {
                 ...defaultCat, // Start with default to ensure flags like isDeletable, isIncomeSource are from default
-                label: storedCat.label, // User's label
+                label: labelToUse, // User's label (or updated default)
                 icon: storedCat.icon,   // User's icon
                 parentId: storedCat.parentId, // User's parent
             };
