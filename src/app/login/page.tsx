@@ -92,7 +92,7 @@ export default function LoginPage() {
             data-ai-hint="logo"
             priority
           />
-          <CardTitle className="text-2xl">Welcome Back!</CardTitle>
+          <CardTitle className="text-2xl">WELCOME!</CardTitle>
           <CardDescription>Log in to manage your finances with FinTrack.</CardDescription>
         </CardHeader>
         <CardContent>
