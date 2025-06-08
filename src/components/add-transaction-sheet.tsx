@@ -146,8 +146,8 @@ export function AddTransactionSheet({
       watchedType === 'expense' &&
       watchedAmount > 0 &&
       watchedCategory &&
-      !savingGoals.some(sg => sg.id === watchedCategory) && 
-      !existingTransaction 
+      !savingGoals.some(sg => sg.id === watchedCategory) &&
+      !existingTransaction
     ) {
       const transactionMonth = format(watchedDate || new Date(), 'yyyy-MM');
       const budgetForCategory = budgets.find(
@@ -168,13 +168,13 @@ export function AddTransactionSheet({
             text: 'This will use up your remaining budget exactly.',
             color: 'text-emerald-600',
           });
-        } else { 
+        } else {
           if (remainingBudget >= 0) {
             setBudgetHint({
               text: `This exceeds your budget by ${formatCurrency(watchedAmount - remainingBudget)}.`,
               color: 'text-destructive',
             });
-          } else { 
+          } else {
              setBudgetHint({
               text: `This category is already over budget. This adds ${formatCurrency(watchedAmount)} more.`,
               color: 'text-destructive',
@@ -182,10 +182,10 @@ export function AddTransactionSheet({
           }
         }
       } else {
-        setBudgetHint(null); 
+        setBudgetHint(null);
       }
     } else {
-      setBudgetHint(null); 
+      setBudgetHint(null);
     }
   }, [watchedAmount, watchedCategory, watchedDate, watchedType, budgets, savingGoals, existingTransaction]);
 
@@ -235,7 +235,7 @@ export function AddTransactionSheet({
   const regularExpenseCategories = React.useMemo(() => {
     return categoriesForSelect.filter(cat =>
         cat.isIncomeSource !== true &&
-        cat.id !== 'savings' && 
+        cat.id !== 'savings' &&
         (existingTransaction?.category === cat.id || currentMonthBudgetCategoryIds.includes(cat.id))
       )
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -245,7 +245,7 @@ export function AddTransactionSheet({
     return (savingGoals || []).map(goal => {
       const goalCatInfo = categoriesForSelect.find(c => c.id === goal.goalCategoryId);
       return {
-        id: goal.id, 
+        id: goal.id,
         label: goal.name,
         icon: goalCatInfo?.icon || 'PiggyBank',
       };
@@ -255,7 +255,7 @@ export function AddTransactionSheet({
 
   React.useEffect(() => {
      const currentCategoryValue = form.getValues('category');
-     if (!currentCategoryValue && !existingTransaction) { 
+     if (!currentCategoryValue && !existingTransaction) {
         setBudgetHint(null);
         return;
      }
@@ -269,7 +269,7 @@ export function AddTransactionSheet({
         let isValidForType = false;
         if (watchedType === 'income') {
             isValidForType = incomeCategories.some(cat => cat.id === currentCategoryValue);
-        } else { 
+        } else {
             isValidForType = regularExpenseCategories.some(cat => cat.id === currentCategoryValue) ||
                              userSavingGoals.some(goal => goal.id === currentCategoryValue);
         }
@@ -291,7 +291,7 @@ export function AddTransactionSheet({
       <SheetContent side="bottom" className="rounded-t-lg p-0 h-[90vh] flex flex-col">
         <SheetHeader className="p-4 pb-2 border-b">
           <SheetTitle>
-            {existingTransaction ? "Edit Transaction" : 
+            {existingTransaction ? "Edit Transaction" :
              initialType ? `Add ${initialType.charAt(0).toUpperCase() + initialType.slice(1)}` : "Add Transaction"}
           </SheetTitle>
           <SheetDescription>
@@ -315,7 +315,7 @@ export function AddTransactionSheet({
                                   return;
                               }
                               field.onChange(value);
-                              setBudgetHint(null); 
+                              setBudgetHint(null);
                           }}
                           value={field.value}
                           className="flex space-x-4"
@@ -380,7 +380,7 @@ export function AddTransactionSheet({
                      <Select onValueChange={
                         (value) => {
                             field.onChange(value);
-                            setBudgetHint(null); 
+                            setBudgetHint(null);
                         }
                      } value={field.value} >
                       <FormControl>
@@ -464,7 +464,7 @@ export function AddTransactionSheet({
                 name="date"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel>{watchedType === 'income' ? 'Date of Income' : 'Date of Expense'}</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -490,7 +490,7 @@ export function AddTransactionSheet({
                           selected={field.value}
                           onSelect={(date) => {
                             field.onChange(date ?? new Date());
-                            setBudgetHint(null); 
+                            setBudgetHint(null);
                           }}
                           initialFocus
                           disabled={(date) => date > new Date()}
@@ -524,7 +524,7 @@ export function AddTransactionSheet({
                 <FormField
                     control={form.control}
                     name="receiptDataUrl"
-                    render={() => ( 
+                    render={() => (
                         <FormItem>
                             <FormLabel>Receipt (Optional)</FormLabel>
                             <FormControl>
