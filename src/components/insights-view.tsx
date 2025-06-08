@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -15,7 +16,7 @@ interface InsightsViewProps {
     transactions: Transaction[];
     budgets: Budget[];
     categories: Category[];
-    monthlyIncome: number | null;
+    monthlyIncome: number | null; // This is the *current* month's budgeted income
 }
 
 // Consistent colors for charts from globals.css
@@ -55,7 +56,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
     transactions,
     budgets,
     categories,
-    monthlyIncome
+    monthlyIncome // Current month's budgeted income
 }) => {
 
     // --- Data Processing ---
@@ -64,31 +65,30 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
     const currentMonthTransactions = React.useMemo(() => transactions.filter(t => format(t.date, 'yyyy-MM') === currentMonth), [transactions, currentMonth]);
     const previousMonthTransactions = React.useMemo(() => transactions.filter(t => format(t.date, 'yyyy-MM') === previousMonth), [transactions, previousMonth]);
     const currentMonthBudgets = React.useMemo(() => budgets.filter(b => b.month === currentMonth), [budgets, currentMonth]);
-    const previousMonthBudgets = React.useMemo(() => budgets.filter(b => b.month === previousMonth), [budgets, previousMonth]);
+    // const previousMonthBudgets = React.useMemo(() => budgets.filter(b => b.month === previousMonth), [budgets, previousMonth]); // Not directly used in this revised logic but kept for potential future use
 
-     // Find previous month's income. Needs a reliable source.
-     // Option 1: Assume income transactions accurately reflect total income (might not be true)
-     // const previousMonthIncome = previousMonthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-     // Option 2: Find a specific 'income' budget if stored that way (less likely with current setup)
-     // Option 3: Assume income is stable or use current as fallback (simplest for now)
-     const previousMonthIncome = monthlyIncome; // Using current as fallback - Needs review based on how income changes are handled
+    // Calculate actual income specifically for the previous month from transactions
+    const previousMonthActualIncome = React.useMemo(() => {
+        return previousMonthTransactions
+            .filter(t => t.type === 'income')
+            .reduce((sum, t) => sum + t.amount, 0);
+    }, [previousMonthTransactions]);
 
 
     // Calculate totals for each month
     const currentMonthTotals = React.useMemo(() => {
-        const income = monthlyIncome ?? 0; // Use set income
+        const income = monthlyIncome ?? 0; // Use set income for current month
         const expenses = currentMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-        // Net Savings = Income - Expenses
         const actualSavings = income - expenses; 
         return { income, expenses, actualSavings };
     }, [monthlyIncome, currentMonthTransactions]);
 
     const previousMonthTotals = React.useMemo(() => {
-        const income = previousMonthIncome ?? 0;
+        const income = previousMonthActualIncome; // Use actual income from previous month's transactions
         const expenses = previousMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
         const actualSavings = income - expenses;
         return { income, expenses, actualSavings };
-    }, [previousMonthIncome, previousMonthTransactions]);
+    }, [previousMonthActualIncome, previousMonthTransactions]);
 
 
     // --- Chart Data Preparation ---
@@ -97,7 +97,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
     const comparisonData = React.useMemo(() => [
         { name: format(new Date(previousMonth + '-01T00:00:00'), 'MMM yyyy'), Income: previousMonthTotals.income, Expenses: previousMonthTotals.expenses, Savings: previousMonthTotals.actualSavings },
         { name: format(new Date(currentMonth + '-01T00:00:00'), 'MMM yyyy'), Income: currentMonthTotals.income, Expenses: currentMonthTotals.expenses, Savings: currentMonthTotals.actualSavings },
-    ].filter(d => d.Income > 0 || d.Expenses > 0 || d.Savings !== 0) // Filter out months with no data or zero savings for clarity
+    ].filter(d => d.Income > 0 || d.Expenses > 0 || d.Savings !== 0) 
     , [currentMonth, previousMonth, currentMonthTotals, previousMonthTotals]);
 
     // Spending by Category (Current Month) - Use top-level categories
@@ -107,7 +107,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
             .filter(t => t.type === 'expense')
             .forEach((t) => {
                 const categoryInfo = categories.find(c => c.id === t.category);
-                const parentId = categoryInfo?.parentId || t.category; // Use parent or self if top-level
+                const parentId = categoryInfo?.parentId || t.category; 
                 const parentLabel = categories.find(c => c.id === parentId)?.label ?? parentId;
 
                 if (!categoryMap[parentId]) {
@@ -116,17 +116,15 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                 categoryMap[parentId].total += t.amount;
             });
 
-        // Sort, assign colors, prepare for Recharts and ShadCN config
          const sortedData = Object.values(categoryMap)
             .map(({ total, parentLabel, parentId }, index) => ({
-                name: parentLabel, // Use label for display
+                name: parentLabel, 
                 value: total,
-                fill: CHART_COLORS_SHADCN[index % CHART_COLORS_SHADCN.length], // Use predefined ShadCN colors
-                category: parentId, // Keep track of original ID for config lookup if needed
+                fill: CHART_COLORS_SHADCN[index % CHART_COLORS_SHADCN.length], 
+                category: parentId, 
             }))
-            .sort((a, b) => b.value - a.value); // Sort descending by amount
+            .sort((a, b) => b.value - a.value); 
 
-        // Generate config dynamically
         const pieChartConfig: ChartConfig = sortedData.reduce((config, item) => {
             config[item.name] = { label: item.name, color: item.fill };
             return config;
@@ -136,10 +134,9 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
 
     }, [currentMonthTransactions, categories]);
 
-     // Budget vs Actual Spending Data
     const budgetVsActualData = React.useMemo(() => {
         return currentMonthBudgets
-            .filter(b => b.category !== 'savings' && (b.limit > 0 || b.spent > 0)) // Exclude savings & zero budgets/spending
+            .filter(b => b.category !== 'savings' && (b.limit > 0 || b.spent > 0)) 
             .map(budget => {
                  const categoryInfo = categories.find(c => c.id === budget.category);
                  return {
@@ -148,7 +145,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                     Spent: budget.spent,
                  };
             })
-            .sort((a, b) => b.Budgeted - a.Budgeted); // Sort by budgeted amount
+            .sort((a, b) => b.Budgeted - a.Budgeted); 
     }, [currentMonthBudgets, categories]);
 
 
@@ -156,12 +153,11 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
     const expenseChange = currentMonthTotals.expenses - previousMonthTotals.expenses;
     const expenseChangePercent = previousMonthTotals.expenses > 0 ? (expenseChange / previousMonthTotals.expenses) * 100 : (currentMonthTotals.expenses > 0 ? Infinity : 0);
     const savingsChange = currentMonthTotals.actualSavings - previousMonthTotals.actualSavings;
-     // Avoid division by zero or misleading percentages if previous savings were zero or negative
     const savingsChangePercent = previousMonthTotals.actualSavings !== 0 ? (savingsChange / previousMonthTotals.actualSavings) * 100 : (currentMonthTotals.actualSavings !== 0 ? Infinity : 0);
 
 
     const formatPercentage = (value: number): string => {
-        if (!isFinite(value)) return "(vs ₱0)"; // Handle Infinity
+        if (!isFinite(value)) return "(vs ₱0)"; 
         if (isNaN(value)) return "(N/A)";
         return `(${value >= 0 ? '+' : ''}${value.toFixed(1)}%)`;
     };
@@ -178,13 +174,13 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(currentMonthTotals.expenses)}</div>
-                        <p className={`text-xs ${expenseChange >= 0 ? 'text-destructive' : 'text-accent'}`}>
-                            {isFinite(expenseChangePercent) || currentMonthTotals.expenses > 0 ? (
+                        <p className={`text-xs ${expenseChange >= 0 && previousMonthTotals.expenses > 0 ? 'text-destructive' : (expenseChange < 0 ? 'text-accent' : 'text-muted-foreground')}`}>
+                            {previousMonthTotals.expenses > 0 || currentMonthTotals.expenses > 0 ? (
                                 <>
                                     {expenseChange >= 0 ? '+' : ''}{formatCurrency(expenseChange)} {formatPercentage(expenseChangePercent)} vs last month
                                 </>
                              ) : (
-                                 "No change or data unavailable"
+                                 "No expense data for comparison"
                              )}
                         </p>
                     </CardContent>
@@ -196,13 +192,13 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(currentMonthTotals.actualSavings)}</div>
-                         <p className={`text-xs ${savingsChange >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                            {isFinite(savingsChangePercent) || currentMonthTotals.actualSavings !== 0 ? (
+                         <p className={`text-xs ${savingsChange >= 0 && previousMonthTotals.actualSavings !== 0 ? 'text-accent' : (savingsChange < 0 ? 'text-destructive' : 'text-muted-foreground')}`}>
+                            {previousMonthTotals.actualSavings !== 0 || currentMonthTotals.actualSavings !== 0 ? (
                                 <>
                                     {savingsChange >= 0 ? '+' : ''}{formatCurrency(savingsChange)} {formatPercentage(savingsChangePercent)} vs last month
                                 </>
                              ) : (
-                                 "No change or data unavailable"
+                                 "No savings data for comparison"
                              )}
                          </p>
                     </CardContent>
@@ -302,10 +298,10 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                                      cx="50%"
                                      cy="50%"
                                      outerRadius={80}
-                                     innerRadius={50} // Make it a donut chart
+                                     innerRadius={50} 
                                      strokeWidth={2}
                                      labelLine={false}
-                                     label={({ percent }) => `${(percent * 100).toFixed(0)}%`} // Simple percentage label
+                                     label={({ percent }) => `${(percent * 100).toFixed(0)}%`} 
                                  >
                                       {spendingByCategory.data.map((entry) => (
                                          <Cell key={`cell-${entry.name}`} fill={entry.fill} />
@@ -319,10 +315,6 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                      )}
                 </CardContent>
             </Card>
-
-             {/* Add more insight components as needed */}
-             {/* e.g., Savings Rate Trend, Debt Progress (if applicable) */}
-
         </div>
     );
 };
