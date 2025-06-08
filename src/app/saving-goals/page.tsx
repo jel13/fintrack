@@ -21,7 +21,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Added missing import
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
@@ -33,6 +33,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCategoryIconComponent } from '@/components/category-icon';
+import { Progress } from "@/components/ui/progress"; // Import Progress component
 
 export default function SavingGoalsPage() {
     const [appData, setAppData] = React.useState<AppData>(defaultAppData);
@@ -70,7 +71,6 @@ export default function SavingGoalsPage() {
     }, [totalSavingsBudgetLimit, totalAllocatedPercentageOfSavings]);
 
     const unallocatedSavingsPercentage = React.useMemo(() => {
-        // Use a small tolerance for floating point arithmetic
         const unallocated = 100 - totalAllocatedPercentageOfSavings;
         return Math.max(0, parseFloat(unallocated.toFixed(1)));
     }, [totalAllocatedPercentageOfSavings]);
@@ -82,7 +82,7 @@ export default function SavingGoalsPage() {
     }, [totalSavingsBudgetLimit, totalMonetaryAllocatedToGoals]);
 
 
-    const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id'> & { id?: string }) => {
+    const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id' | 'targetAmount'> & { id?: string; targetAmount: number }) => {
         const newPercentage = goalData.percentageAllocation ?? 0;
 
         const currentTotalAllocatedToOtherGoals = appData.savingGoals
@@ -94,7 +94,6 @@ export default function SavingGoalsPage() {
             return;
         }
         
-        // Add a small tolerance (e.g., 0.05) for floating point comparisons
         if (currentTotalAllocatedToOtherGoals + newPercentage > 100.05) { 
             const maxAllowedForThisGoal = Math.max(0, parseFloat((100 - currentTotalAllocatedToOtherGoals).toFixed(1)));
             requestAnimationFrame(() => toast({
@@ -126,6 +125,7 @@ export default function SavingGoalsPage() {
                     id: `goal-${Date.now().toString()}`, 
                     name: goalData.name,
                     goalCategoryId: goalData.goalCategoryId,
+                    targetAmount: goalData.targetAmount,
                     savedAmount: goalData.savedAmount ?? 0, 
                     percentageAllocation: goalData.percentageAllocation,
                     description: goalData.description,
@@ -261,6 +261,8 @@ export default function SavingGoalsPage() {
                                  const goalCategory = getGoalCategoryById(goal.goalCategoryId);
                                  const CategoryIcon = getCategoryIconComponent(goalCategory?.icon ?? 'Landmark');
                                  const monthlyContribution = parseFloat(((goal.percentageAllocation ?? 0) / 100 * totalSavingsBudgetLimit).toFixed(2));
+                                 const progress = goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) * 100 : 0;
+
                                  return (
                                     <div key={goal.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
                                         <Card className="relative group/goal overflow-hidden transition-all duration-150 ease-in-out hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] rounded-lg shadow-md">
@@ -317,16 +319,24 @@ export default function SavingGoalsPage() {
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="px-4 pb-3 pt-2">
-                                                    <div className="text-sm font-semibold mb-1">
-                                                        Total Saved: {formatCurrency(goal.savedAmount)}
-                                                    </div>
+                                                    {goal.targetAmount > 0 ? (
+                                                        <>
+                                                            <Progress value={progress} className="h-2 mb-1 [&>div]:bg-accent" />
+                                                            <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                                                <span>{formatCurrency(goal.savedAmount)} of {formatCurrency(goal.targetAmount)}</span>
+                                                                <span>{progress.toFixed(1)}%</span>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-xs text-muted-foreground italic">Target amount not set.</p>
+                                                    )}
                                                     {goal.percentageAllocation !== undefined && goal.percentageAllocation > 0 && (
-                                                        <p className="text-xs text-muted-foreground">
+                                                        <p className="text-xs text-muted-foreground mt-1">
                                                             Plan: {goal.percentageAllocation.toFixed(1)}% of monthly savings budget
                                                             (Est. {formatCurrency(monthlyContribution)}/mo this month)
                                                         </p>
                                                     )}
-                                                    {goal.description && <p className="text-xs text-muted-foreground italic mt-1">"{goal.description}"</p>}
+                                                    {goal.description && <p className="text-xs text-muted-foreground italic mt-1.5">"{goal.description}"</p>}
                                                 </CardContent>
                                             </div>
                                         </Card>
@@ -368,4 +378,3 @@ export default function SavingGoalsPage() {
         </div>
     );
 }
-

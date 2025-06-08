@@ -102,8 +102,9 @@ export const loadAppData = (): AppData => {
         savingGoalCategories: parsedData.savingGoalCategories && parsedData.savingGoalCategories.length > 0
             ? parsedData.savingGoalCategories
             : defaultSavingGoalCategories.map(sgc => ({...sgc})),
-        savingGoals: parsedData.savingGoals ? parsedData.savingGoals.map(sg => ({ // Ensure old goals without percentageAllocation get a default
+        savingGoals: parsedData.savingGoals ? parsedData.savingGoals.map(sg => ({
             ...sg,
+            targetAmount: sg.targetAmount ?? 0, // Default targetAmount if missing
             percentageAllocation: sg.percentageAllocation ?? 0,
         })) : [],
         hasSeenOnboarding: parsedData.hasSeenOnboarding === undefined ? false : parsedData.hasSeenOnboarding,
@@ -179,6 +180,7 @@ export const saveAppData = (data: AppData) => {
         id: g.id,
         name: g.name,
         goalCategoryId: g.goalCategoryId,
+        targetAmount: g.targetAmount, // Save new field
         savedAmount: g.savedAmount,
         percentageAllocation: g.percentageAllocation,
         description: g.description,

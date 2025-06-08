@@ -40,6 +40,7 @@ export interface SavingGoal {
     id: string;
     name: string; // User-defined name for their specific goal, e.g., "Trip to Japan"
     goalCategoryId: string; // Links to a SavingGoalCategory like "travel" or "emergency-fund"
+    targetAmount: number; // New field: The total amount to save for this goal
     savedAmount: number; // Total amount accumulated for this specific goal
     percentageAllocation?: number; // Percentage of *total monthly savings budget limit* allocated to this goal
     description?: string;

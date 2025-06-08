@@ -44,12 +44,17 @@ import { getCategoryIconComponent } from '@/components/category-icon';
 const formSchema = z.object({
   name: z.string().min(1, "Goal name is required").max(50, "Name max 50 characters"),
   goalCategoryId: z.string().min(1, "Goal category is required"),
+  targetAmount: z.coerce.number({ invalid_type_error: "Target amount must be a number", required_error: "Target amount is required" })
+    .positive("Target amount must be a positive number."),
   savedAmount: z.coerce.number({invalid_type_error: "Saved amount must be a number"}).nonnegative("Saved amount cannot be negative").optional().default(0),
   percentageAllocation: z.coerce.number({ invalid_type_error: "Percentage must be a number", required_error: "Allocation percentage is required" })
     .gte(0.1, "Allocation must be at least 0.1%")
-    .lte(100, "Allocation cannot exceed 100%") // Ensures a single goal is not > 100%
+    .lte(100, "Allocation cannot exceed 100%")
     .multipleOf(0.1, { message: "Allocation can have max 1 decimal place" }),
   description: z.string().max(100, "Description max 100 characters").optional(),
+}).refine(data => !data.targetAmount || data.savedAmount === undefined || data.savedAmount <= data.targetAmount, {
+    message: "Initial saved amount cannot exceed the target amount.",
+    path: ["savedAmount"],
 });
 
 type GoalFormValues = z.infer<typeof formSchema>;
@@ -78,12 +83,14 @@ export function AddSavingGoalDialog({
     defaultValues: existingGoal ? {
         name: existingGoal.name,
         goalCategoryId: existingGoal.goalCategoryId,
+        targetAmount: existingGoal.targetAmount,
         savedAmount: existingGoal.savedAmount,
         percentageAllocation: existingGoal.percentageAllocation,
         description: existingGoal.description,
     } : {
       name: "",
       goalCategoryId: "",
+      targetAmount: undefined,
       savedAmount: 0,
       percentageAllocation: undefined,
       description: "",
@@ -95,12 +102,14 @@ export function AddSavingGoalDialog({
             form.reset(existingGoal ? {
                 name: existingGoal.name,
                 goalCategoryId: existingGoal.goalCategoryId,
+                targetAmount: existingGoal.targetAmount,
                 savedAmount: existingGoal.savedAmount,
                 percentageAllocation: existingGoal.percentageAllocation,
                 description: existingGoal.description || "",
             } : {
                 name: "",
                 goalCategoryId: "",
+                targetAmount: undefined,
                 savedAmount: 0,
                 percentageAllocation: undefined,
                 description: "",
@@ -125,9 +134,6 @@ export function AddSavingGoalDialog({
   }, [currentPercentage, savingsBudgetAmount]);
 
   const onSubmit = (values: GoalFormValues) => {
-    // Safeguard: Explicitly check if the individual percentage allocation exceeds 100%.
-    // Zod's .lte(100) in the schema should ideally prevent this onSubmit from being called
-    // if the value is > 100. This is an additional layer.
     if (values.percentageAllocation && values.percentageAllocation > 100) {
         form.setError("percentageAllocation", {
             type: "manual",
@@ -143,6 +149,7 @@ export function AddSavingGoalDialog({
     const dataToSave: Omit<SavingGoal, 'id'> & { id?: string } = {
         name: values.name,
         goalCategoryId: values.goalCategoryId,
+        targetAmount: values.targetAmount,
         savedAmount: values.savedAmount ?? 0,
         percentageAllocation: values.percentageAllocation ?? 0, // Default to 0 if undefined (though Zod should require it)
         description: values.description,
@@ -227,6 +234,32 @@ export function AddSavingGoalDialog({
                 )}
               />
 
+               <FormField
+                control={form.control}
+                name="targetAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target Amount (₱)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="e.g., 50000"
+                        {...field}
+                        value={field.value === undefined ? '' : String(field.value)}
+                        onChange={e => {
+                            const val = e.target.value;
+                            field.onChange(val === '' ? undefined : parseFloat(val));
+                        }}
+                        step="0.01"
+                        min="0.01"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">How much do you want to save in total for this goal?</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="savedAmount"
@@ -270,8 +303,6 @@ export function AddSavingGoalDialog({
                               field.onChange(val === '' ? undefined : parseFloat(val));
                           }}
                           step="0.1"
-                          // The 'max' attribute here is for browser UX; Zod handles actual validation.
-                          // It should cap at what's available for *this* goal, or 100 if that's less.
                           max={Math.min(100, maxAllowedPercentage > 0 ? maxAllowedPercentage : 100)}
                           min="0.1"
                           disabled={isAllocationDisabled && !existingGoal}
