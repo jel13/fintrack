@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Fragment } from 'react';
-import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb } from "lucide-react";
+import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { AddBudgetDialog } from "@/components/add-budget-dialog";
 import BudgetCard from "@/components/budget-card";
 import TransactionListItem from "@/components/transaction-list-item";
 import { SpendingChart } from "@/components/spending-chart";
-import type { Transaction, Budget, Category, AppData, SavingGoal } from "@/types";
+import type { Transaction, Budget, Category, AppData, SavingGoal, TransactionType } from "@/types";
 import { format } from 'date-fns';
 import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage";
 import { Input } from "@/components/ui/input";
@@ -45,7 +45,9 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from 'next/navigation';
 import { TransactionReceiptDialog } from "@/components/transaction-receipt-dialog";
-import { OnboardingDialog } from "@/components/onboarding-dialog"; // Changed from OnboardingCard
+import { OnboardingDialog } from "@/components/onboarding-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 
 interface CategoryOrGoalDisplayForReceipt {
   label: string;
@@ -69,6 +71,9 @@ export default function Home() {
   const [isAddTransactionSheetOpen, setIsAddTransactionSheetOpen] = React.useState(false);
   const [editingTransaction, setEditingTransaction] = React.useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = React.useState<Transaction | null>(null);
+  const [sheetInitialType, setSheetInitialType] = React.useState<TransactionType | null>(null);
+  const [isAddMenuOpen, setIsAddMenuOpen] = React.useState(false);
+
 
   const [isAddBudgetDialogOpen, setIsAddBudgetDialogOpen] = React.useState(false);
   const [editingBudget, setEditingBudget] = React.useState<Budget | null>(null);
@@ -81,7 +86,7 @@ export default function Home() {
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = React.useState(false);
   const [selectedTransactionForReceipt, setSelectedTransactionForReceipt] = React.useState<SelectedTransactionForReceipt | null>(null);
 
-  const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = React.useState(false); // New state for onboarding dialog
+  const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = React.useState(false); 
 
   const currentMonth = format(new Date(), 'yyyy-MM');
   const previousMonthDate = new Date();
@@ -189,7 +194,7 @@ export default function Home() {
 
         const totalSpentByOtherCategories = updatedBudgets
             .filter(b => b.category !== 'savings' && b.month === currentMonth)
-            .reduce((sum, b) => sum + b.spent, 0); // Changed from b.limit to b.spent
+            .reduce((sum, b) => sum + b.spent, 0); 
 
         const leftoverForSavings = Math.max(0, currentSetMonthlyIncome - totalSpentByOtherCategories);
 
@@ -377,6 +382,7 @@ export default function Home() {
       const transactionToEdit = transactions.find(t => t.id === transactionId);
       if (transactionToEdit) {
           setEditingTransaction(transactionToEdit);
+          setSheetInitialType(null); // Clear initial type when editing
           setIsAddTransactionSheetOpen(true);
       }
   };
@@ -587,7 +593,21 @@ const openEditBudgetDialog = (budgetId: string) => {
 
   const handleDismissOnboarding = () => {
     setAppData(prev => ({ ...prev, hasSeenOnboarding: true }));
-    setIsOnboardingDialogOpen(false); // Close the dialog
+    setIsOnboardingDialogOpen(false); 
+  };
+
+  const openAddTransactionSheetForIncome = () => {
+    setEditingTransaction(null);
+    setSheetInitialType('income');
+    setIsAddTransactionSheetOpen(true);
+    setIsAddMenuOpen(false);
+  };
+
+  const openAddTransactionSheetForExpense = () => {
+    setEditingTransaction(null);
+    setSheetInitialType('expense');
+    setIsAddTransactionSheetOpen(true);
+    setIsAddMenuOpen(false);
   };
 
 
@@ -944,14 +964,41 @@ const openEditBudgetDialog = (budgetId: string) => {
 
         {(monthlyIncome !== null && monthlyIncome > 0 && (incomeCategories.length > 0 || hasExpenseBudgetsSet)) && (
              <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
-                <Button
-                    size="icon"
-                    className="rounded-full h-14 w-14 shadow-lg bg-primary hover:bg-primary/90 active:scale-95 transition-transform"
-                    onClick={() => {setEditingTransaction(null); setIsAddTransactionSheetOpen(true);}}
-                    aria-label="Add Transaction"
-                >
-                    <PlusCircle className="h-6 w-6" />
-                </Button>
+                <Popover open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            size="icon"
+                            className="rounded-full h-14 w-14 shadow-lg bg-primary hover:bg-primary/90 active:scale-95 transition-transform"
+                            aria-label="Add Transaction Menu"
+                        >
+                            <PlusCircle className="h-6 w-6" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2 rounded-xl shadow-xl" side="top" align="end" sideOffset={10}>
+                        <div className="grid gap-1">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start h-10 rounded-md text-sm"
+                                onClick={openAddTransactionSheetForIncome}
+                            >
+                                <DollarSign className="mr-2 h-4 w-4 text-accent" />
+                                Add Income
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start h-10 rounded-md text-sm"
+                                onClick={openAddTransactionSheetForExpense}
+                                disabled={!hasExpenseBudgetsSet}
+                            >
+                                <CreditCard className="mr-2 h-4 w-4 text-primary" />
+                                Add Expense
+                            </Button>
+                             {!hasExpenseBudgetsSet && (
+                                <p className="text-xs text-muted-foreground p-2 text-center">Set expense budgets first to log expenses.</p>
+                            )}
+                        </div>
+                    </PopoverContent>
+                </Popover>
              </div>
         )}
 
@@ -961,7 +1008,10 @@ const openEditBudgetDialog = (budgetId: string) => {
         open={isAddTransactionSheetOpen}
         onOpenChange={(isOpen) => {
             setIsAddTransactionSheetOpen(isOpen);
-            if (!isOpen) setEditingTransaction(null);
+            if (!isOpen) {
+                setEditingTransaction(null);
+                setSheetInitialType(null); // Reset initial type when sheet closes
+            }
         }}
         onSaveTransaction={handleSaveTransaction}
         categoriesForSelect={categories}
@@ -970,6 +1020,7 @@ const openEditBudgetDialog = (budgetId: string) => {
         canAddExpense={hasExpenseBudgetsSet || (!!editingTransaction && editingTransaction.type ==='expense')}
         currentMonthBudgetCategoryIds={currentMonthBudgets.filter(b => b.category !== 'savings').map(b => b.category)}
         existingTransaction={editingTransaction}
+        initialType={sheetInitialType}
       />
        <AddBudgetDialog
         open={isAddBudgetDialogOpen}
@@ -1034,3 +1085,4 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
+

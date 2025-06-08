@@ -47,7 +47,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import type { Transaction, Category, SavingGoal, Budget } from "@/types";
+import type { Transaction, Category, SavingGoal, Budget, TransactionType } from "@/types";
 import { getCategoryIconComponent } from '@/components/category-icon';
 
 const formSchema = z.object({
@@ -69,10 +69,11 @@ interface AddTransactionSheetProps {
   onSaveTransaction: (transaction: Transaction) => void;
   categoriesForSelect: Category[];
   savingGoals: SavingGoal[];
-  budgets: Budget[]; // Added to get budget limits
+  budgets: Budget[];
   canAddExpense: boolean;
   currentMonthBudgetCategoryIds: string[];
   existingTransaction?: Transaction | null;
+  initialType?: TransactionType | null; // New prop
 }
 
 interface BudgetHint {
@@ -90,6 +91,7 @@ export function AddTransactionSheet({
     canAddExpense,
     currentMonthBudgetCategoryIds,
     existingTransaction,
+    initialType, // Destructure new prop
 }: AddTransactionSheetProps) {
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(formSchema),
@@ -121,7 +123,7 @@ export function AddTransactionSheet({
          } else {
              form.reset({
                  id: undefined,
-                 type: canAddExpense ? "expense" : "income",
+                 type: initialType || (canAddExpense ? "expense" : "income"), // Use initialType here
                  amount: undefined,
                  category: "",
                  date: new Date(),
@@ -130,13 +132,13 @@ export function AddTransactionSheet({
              });
              setReceiptPreview(null);
          }
-         setBudgetHint(null); // Reset hint when dialog opens/closes or type changes
+         setBudgetHint(null);
          if (fileInputRef.current) {
             fileInputRef.current.value = "";
          }
      }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, existingTransaction, canAddExpense, form.reset]);
+  }, [open, existingTransaction, canAddExpense, form.reset, initialType]);
 
 
   React.useEffect(() => {
@@ -144,8 +146,8 @@ export function AddTransactionSheet({
       watchedType === 'expense' &&
       watchedAmount > 0 &&
       watchedCategory &&
-      !savingGoals.some(sg => sg.id === watchedCategory) && // Not a saving goal
-      !existingTransaction // Only for new transactions
+      !savingGoals.some(sg => sg.id === watchedCategory) && 
+      !existingTransaction 
     ) {
       const transactionMonth = format(watchedDate || new Date(), 'yyyy-MM');
       const budgetForCategory = budgets.find(
@@ -166,13 +168,13 @@ export function AddTransactionSheet({
             text: 'This will use up your remaining budget exactly.',
             color: 'text-emerald-600',
           });
-        } else { // watchedAmount > remainingBudget
+        } else { 
           if (remainingBudget >= 0) {
             setBudgetHint({
               text: `This exceeds your budget by ${formatCurrency(watchedAmount - remainingBudget)}.`,
               color: 'text-destructive',
             });
-          } else { // Already over budget
+          } else { 
              setBudgetHint({
               text: `This category is already over budget. This adds ${formatCurrency(watchedAmount)} more.`,
               color: 'text-destructive',
@@ -180,10 +182,10 @@ export function AddTransactionSheet({
           }
         }
       } else {
-        setBudgetHint(null); // No budget found for this category/month
+        setBudgetHint(null); 
       }
     } else {
-      setBudgetHint(null); // Conditions not met for hint
+      setBudgetHint(null); 
     }
   }, [watchedAmount, watchedCategory, watchedDate, watchedType, budgets, savingGoals, existingTransaction]);
 
@@ -253,12 +255,14 @@ export function AddTransactionSheet({
 
   React.useEffect(() => {
      const currentCategoryValue = form.getValues('category');
-     if (!currentCategoryValue && !existingTransaction) { // if no category selected AND not editing, no need to reset
+     if (!currentCategoryValue && !existingTransaction) { 
         setBudgetHint(null);
         return;
      }
 
-     if (existingTransaction && existingTransaction.type !== watchedType) {
+     // If type changes during an edit, or if initialType forces a type different from existing, reset category
+     if ( (existingTransaction && existingTransaction.type !== watchedType) ||
+          (initialType && !existingTransaction && initialType !== form.getValues('type')) ) {
          form.setValue('category', '');
          setBudgetHint(null);
      } else {
@@ -269,20 +273,27 @@ export function AddTransactionSheet({
             isValidForType = regularExpenseCategories.some(cat => cat.id === currentCategoryValue) ||
                              userSavingGoals.some(goal => goal.id === currentCategoryValue);
         }
-        if (!isValidForType && !existingTransaction) { // Only reset if not valid AND not editing (editing might have an old category)
+        // Only reset if category is not valid for the current type AND we are not editing
+        // OR if an initialType is set and the current category doesn't fit that initial type.
+        if ((!isValidForType && !existingTransaction) || (initialType && !existingTransaction && !isValidForType) ){
             form.setValue('category', '');
             setBudgetHint(null);
         }
      }
  // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [watchedType, form.getValues, form.setValue, existingTransaction]);
+ }, [watchedType, initialType]);
 
+
+  const showTypeSelector = !existingTransaction && !initialType;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-lg p-0 h-[90vh] flex flex-col">
         <SheetHeader className="p-4 pb-2 border-b">
-          <SheetTitle>{existingTransaction ? "Edit Transaction" : "Add Transaction"}</SheetTitle>
+          <SheetTitle>
+            {existingTransaction ? "Edit Transaction" : 
+             initialType ? `Add ${initialType.charAt(0).toUpperCase() + initialType.slice(1)}` : "Add Transaction"}
+          </SheetTitle>
           <SheetDescription>
             {existingTransaction ? "Update the details of this transaction." : "Log a new income or expense. Description and receipt are optional."}
           </SheetDescription>
@@ -290,43 +301,45 @@ export function AddTransactionSheet({
          <ScrollArea className="flex-grow overflow-y-auto">
           <Form {...form}>
             <form id="add-transaction-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4">
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem className="space-y-2">
-                    <FormLabel>Type</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={(value) => {
-                            if (value === 'expense' && !canAddExpense && !existingTransaction) {
-                                return;
-                            }
-                            field.onChange(value);
-                            setBudgetHint(null); // Reset hint when type changes
-                        }}
-                        value={field.value}
-                        className="flex space-x-4"
-                      >
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="expense" id="expense" disabled={!canAddExpense && !existingTransaction && !(existingTransaction?.type === 'expense')} />
-                          </FormControl>
-                          <FormLabel htmlFor="expense" className={cn("font-normal cursor-pointer", !canAddExpense && !existingTransaction && !(existingTransaction?.type === 'expense') && "text-muted-foreground/50 cursor-not-allowed")}>Expense</FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="income" id="income" />
-                          </FormControl>
-                          <FormLabel htmlFor="income" className="font-normal cursor-pointer">Income</FormLabel>
-                        </FormItem>
-                      </RadioGroup>
-                    </FormControl>
-                     {!canAddExpense && watchedType === 'expense' && !existingTransaction && <FormDescription className="text-xs text-destructive">Set expense budgets first to enable logging expenses for budgeted categories.</FormDescription>}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {showTypeSelector && (
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Type</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={(value) => {
+                              if (value === 'expense' && !canAddExpense && !existingTransaction) {
+                                  return;
+                              }
+                              field.onChange(value);
+                              setBudgetHint(null); 
+                          }}
+                          value={field.value}
+                          className="flex space-x-4"
+                        >
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="expense" id="expense" disabled={!canAddExpense && !existingTransaction && !(existingTransaction?.type === 'expense')} />
+                            </FormControl>
+                            <FormLabel htmlFor="expense" className={cn("font-normal cursor-pointer", !canAddExpense && !existingTransaction && !(existingTransaction?.type === 'expense') && "text-muted-foreground/50 cursor-not-allowed")}>Expense</FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="income" id="income" />
+                            </FormControl>
+                            <FormLabel htmlFor="income" className="font-normal cursor-pointer">Income</FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      {!canAddExpense && watchedType === 'expense' && !existingTransaction && <FormDescription className="text-xs text-destructive">Set expense budgets first to enable logging expenses for budgeted categories.</FormDescription>}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
@@ -367,7 +380,7 @@ export function AddTransactionSheet({
                      <Select onValueChange={
                         (value) => {
                             field.onChange(value);
-                            setBudgetHint(null); // Reset hint when category changes
+                            setBudgetHint(null); 
                         }
                      } value={field.value} >
                       <FormControl>
@@ -477,7 +490,7 @@ export function AddTransactionSheet({
                           selected={field.value}
                           onSelect={(date) => {
                             field.onChange(date ?? new Date());
-                            setBudgetHint(null); // Reset hint when date changes
+                            setBudgetHint(null); 
                           }}
                           initialFocus
                           disabled={(date) => date > new Date()}
@@ -527,7 +540,7 @@ export function AddTransactionSheet({
                             {receiptPreview && (
                                 <div className="mt-2 relative w-24 h-24 border rounded-md overflow-hidden shadow-sm">
                                     {receiptPreview.startsWith('data:image') ? (
-                                      <img src={receiptPreview} alt="Receipt preview" className="object-cover w-full h-full" />
+                                      <img src={receiptPreview} alt="Receipt preview" className="object-cover w-full h-full" data-ai-hint="receipt image" />
                                     ) : receiptPreview.startsWith('data:application/pdf') ? (
                                       <div className="flex flex-col items-center justify-center w-full h-full bg-muted text-muted-foreground text-xs p-1">
                                         <Paperclip className="h-6 w-6 mb-1"/> PDF Attached
