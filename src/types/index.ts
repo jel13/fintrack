@@ -52,4 +52,5 @@ export interface AppData {
   categories: Category[];
   savingGoalCategories: SavingGoalCategory[];
   savingGoals: SavingGoal[];
+  hasSeenOnboarding?: boolean;
 }

@@ -3,9 +3,9 @@
 
 import * as React from "react";
 import { Fragment } from 'react';
-import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog } from "lucide-react";
+import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AddTransactionSheet } from "@/components/add-transaction-sheet";
@@ -45,6 +45,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from 'next/navigation';
 import { TransactionReceiptDialog } from "@/components/transaction-receipt-dialog";
+import { OnboardingCard } from "@/components/onboarding-card"; // Import the new card
 
 interface CategoryOrGoalDisplayForReceipt {
   label: string;
@@ -104,7 +105,7 @@ export default function Home() {
     }
   }, [appData, isLoaded, user]);
 
-  const { monthlyIncome, transactions, budgets, categories, savingGoals, savingGoalCategories } = appData;
+  const { monthlyIncome, transactions, budgets, categories, savingGoals, savingGoalCategories, hasSeenOnboarding } = appData;
 
   const monthlySummary = React.useMemo(() => {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0 };
@@ -579,6 +580,10 @@ const openEditBudgetDialog = (budgetId: string) => {
     setIsReceiptDialogOpen(true);
   };
 
+  const handleDismissOnboarding = () => {
+    setAppData(prev => ({ ...prev, hasSeenOnboarding: true }));
+  };
+
 
     if (!user) {
         return null;
@@ -599,6 +604,9 @@ const openEditBudgetDialog = (budgetId: string) => {
     <div className="flex flex-col flex-1 bg-background">
       <Tabs defaultValue={initialTab} value={initialTab} className="flex-grow flex flex-col">
         <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
+            {isLoaded && !hasSeenOnboarding && (
+                 <OnboardingCard onDismiss={handleDismissOnboarding} isIncomeSet={!!monthlyIncome && monthlyIncome > 0} />
+            )}
             <div className="flex justify-between items-center mb-2">
                 <h1 className="text-2xl font-bold text-primary">Home</h1>
             </div>
@@ -701,7 +709,7 @@ const openEditBudgetDialog = (budgetId: string) => {
 
           {monthlyIncome !== null && monthlyIncome > 0 && hasExpenseBudgetsSet && (
              <div className="animate-slide-up" style={{"animationDelay": "0.2s"}}>
-                 <SpendingChart transactions={transactions} month={currentMonth} categories={categories} savingGoals={savingGoals} />
+                 <SpendingChart transactions={transactions} month={currentMonth} categories={categories} />
              </div>
            )}
 
@@ -751,7 +759,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                     </CardContent>
                 </Card>
            )}
-           {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && (
+           {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && (!hasSeenOnboarding || hasSeenOnboarding === undefined) && (
                  <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
                     <CardContent className="p-6 text-center">
                         <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
@@ -918,7 +926,6 @@ const openEditBudgetDialog = (budgetId: string) => {
                         budgets={budgets}
                         categories={categories}
                         monthlyIncome={monthlyIncome}
-                        savingGoals={savingGoals}
                     />
                  </div>
              )}

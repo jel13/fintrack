@@ -69,6 +69,7 @@ export const defaultAppData: AppData = {
   categories: defaultCategories.map(c => ({...c})), // Ensure defaults are new objects
   savingGoalCategories: defaultSavingGoalCategories.map(sgc => ({...sgc})), // Ensure defaults are new objects
   savingGoals: [],
+  hasSeenOnboarding: false,
 };
 
 export const loadAppData = (): AppData => {
@@ -105,6 +106,7 @@ export const loadAppData = (): AppData => {
             ...sg,
             percentageAllocation: sg.percentageAllocation ?? 0,
         })) : [],
+        hasSeenOnboarding: parsedData.hasSeenOnboarding === undefined ? false : parsedData.hasSeenOnboarding,
       };
 
       // Further ensure categories are well-formed and defaults are respected for non-deletable/non-income flags
@@ -176,6 +178,7 @@ export const saveAppData = (data: AppData) => {
         percentageAllocation: g.percentageAllocation,
         description: g.description,
       })),
+      hasSeenOnboarding: data.hasSeenOnboarding,
     };
     localStorage.setItem(APP_DATA_KEY, JSON.stringify(dataToStore));
   } catch (error) {
