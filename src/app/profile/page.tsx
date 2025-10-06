@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell, Edit, KeyRound, Save, X, Sun, Moon, Laptop } from "lucide-react";
+import { LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell, Edit, KeyRound, Save, X, Sun, Moon, Laptop } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -183,12 +183,7 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col flex-1 bg-secondary/30">
       <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10 shadow-sm">
-        <Link href="/" passHref>
-          <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
-              <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <h1 className="text-xl font-semibold ml-2">Profile & Settings</h1>
+        <h1 className="text-xl font-semibold">Profile & Settings</h1>
       </div>
 
       <ScrollArea className="flex-grow">
