@@ -834,8 +834,8 @@ const openEditBudgetDialog = (budgetId: string) => {
         <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Welcome,</h1>
-                <p className="text-muted-foreground">{user?.displayName || "User"}</p>
+                <p className="text-muted-foreground">Welcome,</p>
+                <h1 className="text-2xl font-bold text-foreground">{user?.displayName || "User"}</h1>
               </div>
             </div>
             <Card className="w-full animate-slide-up bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
@@ -1263,7 +1263,7 @@ const openEditBudgetDialog = (budgetId: string) => {
 
         {/* Budgets Page FAB (Visible on Budgets tab only) */}
         {currentTab === 'budgets' && monthlyIncome !== null && monthlyIncome > 0 && (
-            <div className="fixed bottom-20 right-4 z-10">
+            <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
                 <Button
                     size="icon"
                     className="rounded-full h-14 w-14 shadow-lg"
