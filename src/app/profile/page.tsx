@@ -281,14 +281,14 @@ export default function ProfilePage() {
                                       </div>
                                   </SelectValue>
                               </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="light" className="pl-2">
+                              <SelectContent className="min-w-0 w-auto">
+                                  <SelectItem value="light" className="px-2.5">
                                       <Sun className="h-4 w-4" />
                                   </SelectItem>
-                                  <SelectItem value="dark" className="pl-2">
+                                  <SelectItem value="dark" className="px-2.5">
                                       <Moon className="h-4 w-4" />
                                   </SelectItem>
-                                  <SelectItem value="system" className="pl-2">
+                                  <SelectItem value="system" className="px-2.5">
                                       <Laptop className="h-4 w-4" />
                                   </SelectItem>
                               </SelectContent>
@@ -365,7 +365,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
-
-  
