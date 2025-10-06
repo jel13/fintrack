@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Fragment } from 'react';
-import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard, ChevronDown, Check, Filter } from "lucide-react";
+import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard, ChevronDown, Check, Filter, MoreVertical } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -826,11 +826,6 @@ const openEditBudgetDialog = (budgetId: string) => {
       />
       <Tabs defaultValue={initialTab} value={initialTab} className="flex-grow flex flex-col">
         <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-2xl font-bold text-primary">Home</h1>
-            </div>
-
-            {/* Unified Main Dashboard Card */}
             <Card className="w-full animate-slide-up bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
                 <CardHeader>
                     <CardTitle className="text-sm font-medium text-primary-foreground/80">
@@ -936,16 +931,11 @@ const openEditBudgetDialog = (budgetId: string) => {
                     )}
                 </ScrollArea>
                 </CardContent>
-                <CardFooter className="p-2 text-center border-t flex-col gap-2">
-                     {transactions.length > 5 && (
-                         <Button variant="link" size="sm" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'transactions' }))}>View All History</Button>
-                     )}
-                     <Link href="/learn/budgeting-guide" className="w-full">
-                        <Button variant="outline" className="w-full text-primary rounded-lg">
-                           <BookOpen className="mr-2 h-4 w-4"/> How to Budget Guide
-                        </Button>
-                    </Link>
-                </CardFooter>
+                {transactions.length > 0 && (
+                    <CardFooter className="p-2 text-center border-t">
+                        <Button variant="link" size="sm" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'transactions' }))}>View All History</Button>
+                    </CardFooter>
+                )}
             </Card>
           )}
 
@@ -961,7 +951,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                     </AlertDescription>
                 </Alert>
            )}
-           {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && (!hasSeenOnboarding || hasSeenOnboarding === undefined) && (
+           {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && (
                  <Alert variant="destructive" className="animate-fade-in">
                     <AlertCircle className="h-5 w-5"/>
                     <AlertTitle>Set Your Income</AlertTitle>
@@ -1048,10 +1038,7 @@ const openEditBudgetDialog = (budgetId: string) => {
 
 
         <TabsContent value="budgets" className="flex-grow flex flex-col p-4 space-y-4">
-            <div className="flex justify-between items-center">
-                <h1 className="text-xl font-semibold">Budgets</h1>
-            </div>
-
+            <h1 className="text-xl font-semibold">Budgets</h1>
            {(monthlyIncome === null || monthlyIncome === 0) ? (
                <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
                    <CardContent className="p-6 text-center">
@@ -1240,7 +1227,6 @@ const openEditBudgetDialog = (budgetId: string) => {
              )}
          </TabsContent>
 
-
         {(monthlyIncome !== null && monthlyIncome > 0 && (incomeCategories.length > 0 || hasExpenseBudgetsSet)) && (
              <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
                 <Popover open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
@@ -1280,7 +1266,6 @@ const openEditBudgetDialog = (budgetId: string) => {
                 </Popover>
              </div>
         )}
-
       </Tabs>
 
       <AddTransactionSheet
@@ -1397,5 +1382,3 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
-
-    
