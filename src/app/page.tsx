@@ -946,11 +946,8 @@ const openEditBudgetDialog = (budgetId: string) => {
 
         <TabsContent value="budgets" className="flex-grow overflow-y-auto p-4 space-y-4">
            <div className="flex justify-between items-center mb-2">
-               <h2 className="text-xl font-semibold">Monthly Budgets</h2>
+               <h2 className="text-xl font-semibold">Budgets</h2>
                 <div className="flex items-center gap-2">
-                     <Button variant="ghost" size="sm" className="rounded-lg" asChild>
-                         <Link href="/saving-goals">Manage Goals</Link>
-                     </Button>
                     {monthlyIncome !== null && monthlyIncome > 0 && (
                        <Button size="sm" className="rounded-lg shadow-sm" id="add-budget-button" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
                            <PlusCircle className="mr-2 h-4 w-4" /> Add
