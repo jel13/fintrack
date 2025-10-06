@@ -83,25 +83,20 @@ const SelectContent = React.forwardRef<
         className
       )}
       position={position}
-      // Add collision detection
       sideOffset={5}
-      avoidCollisions={true}
-      collisionPadding={8}
       {...props}
     >
-      <SelectScrollUpButton />
-      <ScrollArea
-        className={cn(
-            "p-1",
-            position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
-        )}
+        <SelectPrimitive.Viewport
+            className={cn(
+                "p-1",
+                position === "popper" &&
+                "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+            )}
         >
-            <SelectPrimitive.Viewport>
+            <ScrollArea className="h-auto max-h-72">
                 {children}
-            </SelectPrimitive.Viewport>
-       </ScrollArea>
-      <SelectScrollDownButton />
+            </ScrollArea>
+        </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 ))
