@@ -880,10 +880,10 @@ const openEditBudgetDialog = (budgetId: string) => {
         <TabsContent value="transactions" className="flex-grow flex flex-col p-0">
           <div className="sticky top-0 bg-background z-10 p-4 border-b">
             <h1 className="text-xl font-semibold">History</h1>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex flex-col gap-2 mt-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex-1 justify-between">
+                        <Button variant="outline" className="w-full justify-between">
                             <span>
                                 {historyDateFilter === 'thisMonth' && 'This Month'}
                                 {historyDateFilter === 'lastMonth' && 'Last Month'}
@@ -893,7 +893,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                             <ChevronDown className="h-4 w-4 opacity-50" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">
                         <DropdownMenuItem onSelect={() => setHistoryDateFilter('thisMonth')}>This Month</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setHistoryDateFilter('lastMonth')}>Last Month</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setHistoryDateFilter('last3Months')}>Last 3 Months</DropdownMenuItem>
@@ -901,9 +901,11 @@ const openEditBudgetDialog = (budgetId: string) => {
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Button variant={historyTypeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('all')}>All</Button>
-                <Button variant={historyTypeFilter === 'income' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('income')}>Income</Button>
-                <Button variant={historyTypeFilter === 'expense' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('expense')}>Expense</Button>
+                 <div className="flex items-center gap-2">
+                    <Button variant={historyTypeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('all')} className="flex-1">All</Button>
+                    <Button variant={historyTypeFilter === 'income' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('income')} className="flex-1">Income</Button>
+                    <Button variant={historyTypeFilter === 'expense' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('expense')} className="flex-1">Expense</Button>
+                 </div>
             </div>
             <div className="text-xs text-muted-foreground mt-2">
                 Viewing {filteredTransactions.length} transaction(s) with a net total of <span className={cn("font-semibold", totalFilteredAmount >= 0 ? "text-accent" : "text-destructive")}>{formatCurrency(totalFilteredAmount)}</span>.
