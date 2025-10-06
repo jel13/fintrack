@@ -175,7 +175,7 @@ export default function ProfilePage() {
         description: "If an account exists for this email, a password reset link has been sent. Please check your inbox (and spam folder).",
         duration: 7000,
       });
-    } catch (error: any) {
+    } catch (error: any) => {
       toast({ title: "Error Sending Email", description: error.message || "Could not send password reset email.", variant: "destructive" });
     }
   };
@@ -316,9 +316,9 @@ export default function ProfilePage() {
             <div className="space-y-1 px-4">
                  <ProfileListItem
                    icon={History}
-                   title="View Transaction History"
-                   description="See all your past income and expenses"
-                   href="/?tab=transactions"
+                   title="View Monthly History"
+                   description="See all your past monthly reports"
+                   href="/history"
                 />
                  <ProfileListItem
                   icon={Trash2}
@@ -375,5 +375,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    

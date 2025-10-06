@@ -3,38 +3,39 @@
 
 import * as React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Home, List, BarChart3, UserCircle, Settings, TrendingDown, PiggyBank, FolderCog } from "lucide-react";
+import { Home, List, BarChart3, UserCircle, History } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useAuth } from "@/context/AuthContext";
 
 interface NavItem {
   value: string;
   label: string;
   icon: React.ElementType;
   href: string;
-  isPage: boolean; // True if it's a distinct page, false if it's a tab on /
+  isPage: boolean;
 }
 
 const navItems: NavItem[] = [
   { value: "home", label: "Home", icon: Home, href: "/?tab=home", isPage: false },
   { value: "transactions", label: "Transactions", icon: List, href: "/?tab=transactions", isPage: false },
-  { value: "budgets", label: "Budgets", icon: TrendingDown, href: "/?tab=budgets", isPage: false },
+  { value: "budgets", label: "Budgets", icon: BarChart3, href: "/?tab=budgets", isPage: false },
   { value: "insights", label: "Insights", icon: BarChart3, href: "/?tab=insights", isPage: false },
   { value: "profile", label: "Profile", icon: UserCircle, href: "/profile", isPage: true },
 ];
 
 export function BottomNavigation() {
-  const { user, loading } = useAuth(); // Get user and loading state
+  const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const currentTabQuery = searchParams.get("tab");
-
+  
   const [activeTab, setActiveTab] = React.useState("home");
 
   React.useEffect(() => {
+    // Find the current active item based on page route or tab query param
     const currentNavItem = navItems.find(item =>
       item.isPage ? pathname === item.href : (pathname === "/" && (currentTabQuery || "home") === item.value)
     );
@@ -43,12 +44,12 @@ export function BottomNavigation() {
     } else if (pathname === "/") {
       setActiveTab("home"); 
     } else {
-      // Handle cases like /categories, /saving-goals etc. which are related to profile or budgets
+      // Handle cases like /categories, /history etc. which are related to profile
       const baseHrefMatch = navItems.find(item => item.isPage && pathname.startsWith(item.href));
       if (baseHrefMatch) {
         setActiveTab(baseHrefMatch.value);
-      } else if (pathname.startsWith("/saving-goals")) {
-         setActiveTab("budgets");
+      } else if (pathname.startsWith('/history') || pathname.startsWith('/categories')) {
+         setActiveTab("profile");
       }
     }
   }, [pathname, currentTabQuery]);
@@ -78,9 +79,14 @@ export function BottomNavigation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Only render the navigation if not loading and user is logged in
   if (loading || !user) {
     return null;
+  }
+
+  // Hide nav on certain pages if desired
+  if (pathname === '/history') {
+    // Or you can choose to show it and have 'Profile' selected
+    return null; 
   }
 
   return (
@@ -108,5 +114,3 @@ export function BottomNavigation() {
     </Tabs>
   );
 }
-
-    

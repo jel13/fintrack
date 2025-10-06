@@ -1,6 +1,6 @@
 
 // Basic localStorage wrapper - consider a more robust solution for production
-import type { AppData, SavingGoalCategory, Category } from '@/types';
+import type { AppData, SavingGoalCategory, Category, MonthlyReport } from '@/types';
 import { format, parseISO } from 'date-fns';
 
 const APP_DATA_KEY = 'finTrackMobileData';
@@ -71,6 +71,7 @@ export const defaultAppData: AppData = {
   savingGoals: [],
   hasSeenOnboarding: false,
   seenTours: [],
+  monthlyReports: [],
 };
 
 export const loadAppData = (): AppData => {
@@ -110,6 +111,7 @@ export const loadAppData = (): AppData => {
         })) : [],
         hasSeenOnboarding: parsedData.hasSeenOnboarding === undefined ? false : parsedData.hasSeenOnboarding,
         seenTours: parsedData.seenTours || [],
+        monthlyReports: parsedData.monthlyReports || [],
       };
 
       // Further ensure categories are well-formed and defaults are respected for non-deletable/non-income flags
@@ -189,6 +191,7 @@ export const saveAppData = (data: AppData) => {
       })),
       hasSeenOnboarding: data.hasSeenOnboarding,
       seenTours: data.seenTours,
+      monthlyReports: data.monthlyReports,
     };
     localStorage.setItem(APP_DATA_KEY, JSON.stringify(dataToStore));
   } catch (error) {

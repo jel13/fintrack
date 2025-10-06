@@ -46,6 +46,19 @@ export interface SavingGoal {
     description?: string;
 }
 
+export interface MonthlyReport {
+  month: string; // "YYYY-MM"
+  totalIncome: number;
+  totalExpenses: number;
+  netSavings: number;
+  expenseBreakdown: Array<{
+    categoryId: string;
+    categoryLabel: string;
+    amount: number;
+  }>;
+  // Future fields can be added here, like budget adherence, etc.
+}
+
 export interface AppData {
   monthlyIncome: number | null;
   transactions: Transaction[];
@@ -55,4 +68,5 @@ export interface AppData {
   savingGoals: SavingGoal[];
   hasSeenOnboarding?: boolean;
   seenTours?: string[]; // To track completed guided tours
+  monthlyReports: MonthlyReport[];
 }

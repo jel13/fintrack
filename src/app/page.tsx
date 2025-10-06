@@ -12,8 +12,8 @@ import { AddBudgetDialog } from "@/components/add-budget-dialog";
 import BudgetCard from "@/components/budget-card";
 import TransactionListItem from "@/components/transaction-list-item";
 import { SpendingChart } from "@/components/spending-chart";
-import type { Transaction, Budget, Category, AppData, SavingGoal, TransactionType } from "@/types";
-import { format, isToday, isYesterday, startOfMonth, subMonths } from 'date-fns';
+import type { Transaction, Budget, Category, AppData, SavingGoal, TransactionType, MonthlyReport } from "@/types";
+import { format, isToday, isYesterday, startOfMonth, subMonths, endOfMonth } from 'date-fns';
 import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -138,9 +138,60 @@ export default function Home() {
 
   React.useEffect(() => {
     if (isLoaded && user) {
-      saveAppData(appData);
+        setAppData(prevData => {
+            const today = new Date();
+            const currentMonth = format(today, 'yyyy-MM');
+            const lastMonth = format(subMonths(today, 1), 'yyyy-MM');
+
+            const hasReportForLastMonth = prevData.monthlyReports.some(report => report.month === lastMonth);
+
+            // Don't run this logic if we just entered a new month and haven't had any transactions yet.
+            const hasTransactionsInLastMonth = prevData.transactions.some(t => format(t.date, 'yyyy-MM') === lastMonth);
+
+            if (!hasReportForLastMonth && hasTransactionsInLastMonth) {
+                const lastMonthTransactions = prevData.transactions.filter(t => format(t.date, 'yyyy-MM') === lastMonth);
+                const totalIncome = lastMonthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+                const totalExpenses = lastMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
+                const expenseBreakdownMap: Record<string, { categoryLabel: string, amount: number }> = {};
+                lastMonthTransactions.filter(t => t.type === 'expense').forEach(t => {
+                    const category = prevData.categories.find(c => c.id === t.category);
+                    const label = category?.label || 'Uncategorized';
+                    if (!expenseBreakdownMap[t.category]) {
+                        expenseBreakdownMap[t.category] = { categoryLabel: label, amount: 0 };
+                    }
+                    expenseBreakdownMap[t.category].amount += t.amount;
+                });
+
+                const newReport: MonthlyReport = {
+                    month: lastMonth,
+                    totalIncome: totalIncome,
+                    totalExpenses: totalExpenses,
+                    netSavings: totalIncome - totalExpenses,
+                    expenseBreakdown: Object.entries(expenseBreakdownMap).map(([categoryId, data]) => ({
+                        categoryId,
+                        ...data
+                    })),
+                };
+
+                const updatedReports = [...prevData.monthlyReports, newReport].sort((a, b) => b.month.localeCompare(a.month));
+                
+                toast({
+                    title: "Monthly Report Saved",
+                    description: `Your financial summary for ${format(new Date(lastMonth + '-02'), 'MMMM yyyy')} has been saved to History.`,
+                });
+                
+                const newData = { ...prevData, monthlyReports: updatedReports };
+                saveAppData(newData);
+                return newData;
+            }
+            
+            saveAppData(prevData);
+            return prevData;
+        });
     }
-  }, [appData, isLoaded, user]);
+}, [isLoaded, user, toast]);
+
 
     React.useEffect(() => {
         // This effect keeps the local state `currentTab` in sync with the URL query param.
