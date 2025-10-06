@@ -778,13 +778,13 @@ const openEditBudgetDialog = (budgetId: string) => {
 
 
           {monthlyIncome !== null && monthlyIncome > 0 && hasExpenseBudgetsSet && (
-             <div className="animate-slide-up" style={{"animationDelay": "0.2s"}}>
+             <div className="animate-slide-up" style={{animationDelay: "0.2s"}}>
                  <SpendingChart transactions={transactions} month={currentMonth} categories={categories} />
              </div>
            )}
 
           {monthlyIncome !== null && monthlyIncome > 0 && (
-            <Card className="animate-slide-up" style={{"animationDelay": "0.3s"}}>
+            <Card className="animate-slide-up" style={{animationDelay: "0.3s"}}>
                 <CardHeader>
                 <CardTitle className="flex items-center gap-2"><List className="h-5 w-5 text-accent"/>Recent Transactions</CardTitle>
                  <CardDescription>Your latest financial activity.</CardDescription>
@@ -940,7 +940,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                     return labelA.localeCompare(labelB);
                 })
                 .map((budget, index) => (
-                    <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{"animationDelay": `${index * 0.05}s`}}>
+                    <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{animationDelay: `${index * 0.05}s`}}>
                          <BudgetCard
                             budget={budget}
                             categories={categories}
@@ -1125,3 +1125,5 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
+
+    
