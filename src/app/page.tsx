@@ -1047,7 +1047,7 @@ const openEditBudgetDialog = (budgetId: string) => {
         </TabsContent>
 
 
-        <TabsContent value="budgets" className="flex-grow overflow-y-auto p-4 space-y-4">
+        <TabsContent value="budgets" className="flex-grow flex flex-col p-4 space-y-4">
             <div className="flex justify-between items-center">
                 <h1 className="text-xl font-semibold">Budgets</h1>
             </div>
@@ -1091,90 +1091,90 @@ const openEditBudgetDialog = (budgetId: string) => {
                         </TabsContent>
                     </Card>
 
-                    {activeBudgetTab === 'expenses' && (
-                        <div className="space-y-3">
-                            <h3 className="text-lg font-semibold text-muted-foreground px-1">Expense Budgets</h3>
-                            {currentMonthBudgets.filter(b => b.category !== 'savings').length > 0 ? (
-                                currentMonthBudgets
-                                    .filter(b => b.category !== 'savings')
-                                    .map((budget, index) => (
-                                        <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{animationDelay: `${index * 0.05}s`}}>
-                                            <BudgetCard
-                                                budget={budget}
-                                                categories={categories}
-                                                onEdit={() => openEditBudgetDialog(budget.id)}
-                                                onDelete={() => setBudgetToDelete(budget)}
-                                            />
-                                        </div>
-                                    ))
-                            ) : (
-                                <div className="text-center text-muted-foreground py-6">
-                                    <Target className="mx-auto h-8 w-8 mb-2" />
-                                    <p className="font-semibold">No Expense Budgets Yet</p>
-                                    <p className="text-sm">Tap the '+' button to start budgeting.</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    
-                    {activeBudgetTab === 'savings' && (
-                        <div className="space-y-3">
-                             <h3 className="text-lg font-semibold text-muted-foreground px-1">Saving Goals Allocation</h3>
-                            {savingGoals.length > 0 ? (
-                                savingGoals.map((goal, index) => {
-                                    const monthlyContribution = parseFloat(((goal.percentageAllocation ?? 0) / 100 * savingsBudget.limit).toFixed(2));
-                                    const progress = goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) * 100 : 0;
-                                    const goalCategory = savingGoalCategories.find(sgc => sgc.id === goal.goalCategoryId);
-                                    const Icon = getCategoryIconComponent(goalCategory?.icon || 'PiggyBank');
+                     <div className="space-y-3">
+                        {activeBudgetTab === 'expenses' ? (
+                            <>
+                                <h3 className="text-lg font-semibold text-muted-foreground px-1">Expense Budgets</h3>
+                                {currentMonthBudgets.filter(b => b.category !== 'savings').length > 0 ? (
+                                    currentMonthBudgets
+                                        .filter(b => b.category !== 'savings')
+                                        .map((budget, index) => (
+                                            <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{animationDelay: `${index * 0.05}s`}}>
+                                                <BudgetCard
+                                                    budget={budget}
+                                                    categories={categories}
+                                                    onEdit={() => openEditBudgetDialog(budget.id)}
+                                                    onDelete={() => setBudgetToDelete(budget)}
+                                                />
+                                            </div>
+                                        ))
+                                ) : (
+                                    <div className="text-center text-muted-foreground py-6">
+                                        <Target className="mx-auto h-8 w-8 mb-2" />
+                                        <p className="font-semibold">No Expense Budgets Yet</p>
+                                        <p className="text-sm">Tap the '+' button to start budgeting.</p>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                             <>
+                                <h3 className="text-lg font-semibold text-muted-foreground px-1">Saving Goals Allocation</h3>
+                                {savingGoals.length > 0 ? (
+                                    savingGoals.map((goal, index) => {
+                                        const monthlyContribution = parseFloat(((goal.percentageAllocation ?? 0) / 100 * savingsBudget.limit).toFixed(2));
+                                        const progress = goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) * 100 : 0;
+                                        const goalCategory = savingGoalCategories.find(sgc => sgc.id === goal.goalCategoryId);
+                                        const Icon = getCategoryIconComponent(goalCategory?.icon || 'PiggyBank');
 
-                                    return (
-                                        <Card key={goal.id} className="animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
-                                            <CardHeader className="flex flex-row items-start justify-between p-4 pb-2">
-                                                <div className="flex items-center gap-3">
-                                                    <Icon className="h-6 w-6 text-accent" />
-                                                    <div>
-                                                        <CardTitle className="text-base">{goal.name}</CardTitle>
-                                                        <CardDescription className="text-xs">{goalCategory?.label}</CardDescription>
+                                        return (
+                                            <Card key={goal.id} className="animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
+                                                <CardHeader className="flex flex-row items-start justify-between p-4 pb-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <Icon className="h-6 w-6 text-accent" />
+                                                        <div>
+                                                            <CardTitle className="text-base">{goal.name}</CardTitle>
+                                                            <CardDescription className="text-xs">{goalCategory?.label}</CardDescription>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => openEditGoalDialog(goal)}>
-                                                        <Edit className="mr-2 h-4 w-4" /> Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => setGoalToDelete(goal)} className="text-destructive">
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </CardHeader>
-                                            <CardContent className="p-4 pt-0">
-                                                <Progress value={progress} className="h-2 mb-1 [&>div]:bg-accent" />
-                                                <div className="flex justify-between items-center text-xs text-muted-foreground">
-                                                    <span>{formatCurrency(goal.savedAmount)} of {formatCurrency(goal.targetAmount)}</span>
-                                                    <span>{progress.toFixed(1)}%</span>
-                                                </div>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    Plan: {goal.percentageAllocation?.toFixed(1)}% of savings (Est. {formatCurrency(monthlyContribution)}/mo)
-                                                </p>
-                                            </CardContent>
-                                        </Card>
-                                    )
-                                })
-                            ) : (
-                                <div className="text-center text-muted-foreground py-6">
-                                    <Target className="mx-auto h-8 w-8 mb-2 text-accent" />
-                                    <p className="font-semibold">No Saving Goals Yet</p>
-                                    <p className="text-sm">Tap the '+' button to add a goal.</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                                    <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => openEditGoalDialog(goal)}>
+                                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => setGoalToDelete(goal)} className="text-destructive">
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </CardHeader>
+                                                <CardContent className="p-4 pt-0">
+                                                    <Progress value={progress} className="h-2 mb-1 [&>div]:bg-accent" />
+                                                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                                        <span>{formatCurrency(goal.savedAmount)} of {formatCurrency(goal.targetAmount)}</span>
+                                                        <span>{progress.toFixed(1)}%</span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        Plan: {goal.percentageAllocation?.toFixed(1)}% of savings (Est. {formatCurrency(monthlyContribution)}/mo)
+                                                    </p>
+                                                </CardContent>
+                                            </Card>
+                                        )
+                                    })
+                                ) : (
+                                    <div className="text-center text-muted-foreground py-6">
+                                        <Target className="mx-auto h-8 w-8 mb-2 text-accent" />
+                                        <p className="font-semibold">No Saving Goals Yet</p>
+                                        <p className="text-sm">Tap the '+' button to add a goal.</p>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </Tabs>
 
                 <div className="fixed bottom-20 right-4 z-10">
