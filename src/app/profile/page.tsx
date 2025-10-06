@@ -32,6 +32,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input"; // For editing username
 import { Label } from "@/components/ui/label"; // For username input
+import { Badge } from "@/components/ui/badge";
 
 interface ProfileListItemProps {
   icon: React.ElementType;
@@ -363,4 +364,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
