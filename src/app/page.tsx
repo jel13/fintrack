@@ -50,6 +50,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useTour, TourStep } from "@/hooks/use-tour";
 import { GuidedTour } from "@/components/guided-tour";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Progress } from "@/components/ui/progress";
 
 
 interface CategoryOrGoalDisplayForReceipt {
@@ -225,41 +226,24 @@ export default function Home() {
             return { ...budget, spent, limit, month: budget.month || currentMonth };
         });
 
-        const savingsBudgetIndex = updatedBudgets.findIndex(b => b.category === 'savings' && b.month === currentMonth);
-
-        const totalSpentByOtherCategories = updatedBudgets
+        const totalAllocatedPercentage = updatedBudgets
             .filter(b => b.category !== 'savings' && b.month === currentMonth)
-            .reduce((sum, b) => sum + b.spent, 0); 
+            .reduce((sum, b) => sum + (b.percentage || 0), 0);
+        
+        const leftoverForSavings = currentSetMonthlyIncome * (1 - totalAllocatedPercentage / 100);
 
-        const leftoverForSavings = Math.max(0, currentSetMonthlyIncome - totalSpentByOtherCategories);
-
+        const savingsBudgetIndex = updatedBudgets.findIndex(b => b.category === 'savings' && b.month === currentMonth);
         if (savingsBudgetIndex > -1) {
-            const savingsSpent = updatedBudgets[savingsBudgetIndex].spent;
-
-            const currentSavingsBudget = updatedBudgets[savingsBudgetIndex];
-            if (currentSavingsBudget.limit !== leftoverForSavings || currentSavingsBudget.spent !== savingsSpent) {
-                updatedBudgets[savingsBudgetIndex] = {
-                    ...currentSavingsBudget,
-                    limit: leftoverForSavings,
-                    spent: savingsSpent,
-                    percentage: undefined
-                };
+            if (updatedBudgets[savingsBudgetIndex].limit !== leftoverForSavings) {
+                updatedBudgets[savingsBudgetIndex].limit = leftoverForSavings;
                 budgetsChanged = true;
             }
-        } else { 
-             const savingsSpent = prevData.transactions
-                .filter(t =>
-                    t.type === 'expense' &&
-                    (t.category === 'savings' || prevData.savingGoals.some(sg => sg.id === t.category)) &&
-                    format(t.date, 'yyyy-MM') === currentMonth
-                )
-                .reduce((sum, t) => sum + t.amount, 0);
+        } else {
             updatedBudgets.push({
-                id: `b-savings-${Date.now().toString()}`,
+                id: `b-savings-${currentMonth}`,
                 category: 'savings',
                 limit: leftoverForSavings,
-                percentage: undefined,
-                spent: savingsSpent,
+                spent: 0,
                 month: currentMonth,
             });
             budgetsChanged = true;
@@ -695,6 +679,14 @@ const openEditBudgetDialog = (budgetId: string) => {
         return sum;
     }, 0);
   }, [filteredTransactions]);
+  
+  const savingsBudget = React.useMemo(() => {
+      const sb = currentMonthBudgets.find(b => b.category === 'savings');
+      return sb || { id: 'temp-savings', category: 'savings', limit: (monthlyIncome || 0) * (1 - totalAllocatedPercentage / 100), spent: 0, month: currentMonth };
+  }, [currentMonthBudgets, monthlyIncome, totalAllocatedPercentage, currentMonth]);
+
+  const totalAllocatedMonetary = (monthlyIncome || 0) * (totalAllocatedPercentage / 100);
+  const unallocatedPercentage = 100 - totalAllocatedPercentage;
 
 
     if (!user) {
@@ -768,13 +760,13 @@ const openEditBudgetDialog = (budgetId: string) => {
                                     placeholder="e.g., 30000"
                                     value={tempIncome}
                                     onChange={(e) => setTempIncome(e.target.value)}
-                                    className="bg-white/20 text-white placeholder:text-primary-foreground/60 border-primary-foreground/30 focus-visible:ring-offset-primary"
+                                    className="bg-white/20 text-white placeholder:text-primary-foreground/60 border-primary-foreground/30 focus-visible:ring-offset-primary rounded-lg"
                                 />
                             </div>
                              <div className="space-y-1">
                                  <Label htmlFor="income-category" className="text-xs opacity-80">Source Category</Label>
                                  <Select value={selectedIncomeCategory} onValueChange={setSelectedIncomeCategory}>
-                                    <SelectTrigger id="income-category" className="truncate bg-white/20 text-white placeholder:text-primary-foreground/60 border-primary-foreground/30 focus-visible:ring-offset-primary">
+                                    <SelectTrigger id="income-category" className="truncate bg-white/20 text-white placeholder:text-primary-foreground/60 border-primary-foreground/30 focus-visible:ring-offset-primary rounded-lg">
                                         <SelectValue placeholder="Select source" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -798,7 +790,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                                     </SelectContent>
                                  </Select>
                              </div>
-                           <Button onClick={handleSetIncome} className="w-full bg-primary-foreground text-primary hover:bg-primary-foreground/90 mt-2">Set Monthly Income</Button>
+                           <Button onClick={handleSetIncome} className="w-full bg-primary-foreground text-primary hover:bg-primary-foreground/90 mt-2 rounded-lg">Set Monthly Income</Button>
                            {incomeCategories.length === 0 && (
                                 <p className="text-xs opacity-80 text-center pt-1">Add an income source in 'Profile' &gt; 'Manage Categories'.</p>
                            )}
@@ -846,7 +838,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                          <Button variant="link" size="sm" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'transactions' }))}>View All History</Button>
                      )}
                      <Link href="/learn/budgeting-guide" className="w-full">
-                        <Button variant="outline" className="w-full text-primary">
+                        <Button variant="outline" className="w-full text-primary rounded-lg">
                            <BookOpen className="mr-2 h-4 w-4"/> How to Budget Guide
                         </Button>
                     </Link>
@@ -860,7 +852,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                     <AlertTitle>Ready to Budget?</AlertTitle>
                     <AlertDescription>
                         Head to the 'Budgets' tab to allocate your income and start tracking spending.
-                        <Button size="sm" className="w-full mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>
+                        <Button size="sm" className="w-full mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>
                              Go to Budgets
                         </Button>
                     </AlertDescription>
@@ -908,15 +900,15 @@ const openEditBudgetDialog = (budgetId: string) => {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+                Viewing {filteredTransactions.length} transaction(s) with a net total of <span className={cn("font-semibold", totalFilteredAmount >= 0 ? "text-accent" : "text-destructive")}>{formatCurrency(totalFilteredAmount)}</span>.
+            </div>
             <div className="flex flex-col gap-2 mt-2">
                  <div className="flex items-center gap-2">
-                    <Button variant={historyTypeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('all')} className="flex-1">All</Button>
-                    <Button variant={historyTypeFilter === 'income' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('income')} className="flex-1">Income</Button>
-                    <Button variant={historyTypeFilter === 'expense' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('expense')} className="flex-1">Expense</Button>
+                    <Button variant={historyTypeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('all')} className="flex-1 rounded-lg">All</Button>
+                    <Button variant={historyTypeFilter === 'income' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('income')} className="flex-1 rounded-lg">Income</Button>
+                    <Button variant={historyTypeFilter === 'expense' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('expense')} className="flex-1 rounded-lg">Expense</Button>
                  </div>
-            </div>
-            <div className="text-xs text-muted-foreground mt-2">
-                Viewing {filteredTransactions.length} transaction(s) with a net total of <span className={cn("font-semibold", totalFilteredAmount >= 0 ? "text-accent" : "text-destructive")}>{formatCurrency(totalFilteredAmount)}</span>.
             </div>
           </div>
           <ScrollArea className="flex-grow">
@@ -953,64 +945,99 @@ const openEditBudgetDialog = (budgetId: string) => {
 
 
         <TabsContent value="budgets" className="flex-grow overflow-y-auto p-4 space-y-4">
-          <div className="flex justify-between items-center mb-4">
-             <h2 className="text-lg font-semibold">Monthly Budgets</h2>
-             <div className="flex gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/saving-goals" className="flex items-center gap-2">
-                    <PiggyBank className="h-4 w-4" /> Manage Goals
-                  </Link>
-                </Button>
-                 {monthlyIncome !== null && monthlyIncome > 0 && (
-                    <Button size="sm" className="shadow-sm" id="add-budget-button" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
-                    </Button>
-                 )}
-             </div>
-          </div>
-          {(monthlyIncome === null || monthlyIncome === 0) ? (
-            <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
-                <CardContent className="p-6 text-center">
-                    <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
-                    <p className="font-semibold text-destructive">Set Your Income First</p>
-                    <p className="text-sm text-destructive/80">Please set your monthly income on the Home tab before creating budgets.</p>
-                    <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>
-                       Go to Home
-                    </Button>
-                </CardContent>
-            </Card>
-           ) : currentMonthBudgets.length > 0 ? (
-             [...currentMonthBudgets]
-                .sort((a, b) => {
-                    if (a.category === 'savings') return 1;
-                    if (b.category === 'savings') return -1;
-                    const catAInfo = getCategoryById(a.category, categories);
-                    const catBInfo = getCategoryById(b.category, categories);
-                    const labelA = catAInfo?.label ?? a.category;
-                    const labelB = catBInfo?.label ?? b.category;
-                    return labelA.localeCompare(labelB);
-                })
-                .map((budget, index) => (
-                    <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{animationDelay: `${index * 0.05}s`}}>
-                         <BudgetCard
-                            budget={budget}
-                            categories={categories}
-                            monthlyIncome={monthlyIncome}
-                            onEdit={() => openEditBudgetDialog(budget.id)}
-                            onDelete={() => setBudgetToDelete(budget)}
-                          />
-                    </div>
-                 ))
+           <div className="flex justify-between items-center mb-2">
+               <h2 className="text-xl font-semibold">Monthly Budgets</h2>
+               {monthlyIncome !== null && monthlyIncome > 0 && (
+                   <Button size="sm" className="rounded-lg shadow-sm" id="add-budget-button" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
+                       <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
+                   </Button>
+               )}
+           </div>
+
+           {(monthlyIncome === null || monthlyIncome === 0) ? (
+               <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
+                   <CardContent className="p-6 text-center">
+                       <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
+                       <p className="font-semibold text-destructive">Set Your Income First</p>
+                       <p className="text-sm text-destructive/80">Please set your monthly income on the Home tab to create and manage budgets.</p>
+                       <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>
+                           Go to Home
+                       </Button>
+                   </CardContent>
+               </Card>
            ) : (
-                <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in">
-                     <CardContent className="p-6 text-center text-muted-foreground">
-                        <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
-                        <p className="font-semibold">No Budgets Yet</p>
-                        <p className="text-sm">Click 'Add Budget' above to allocate percentages of your income to different spending categories.</p>
-                     </CardContent>
-                 </Card>
+             <>
+                {/* Budget Allocation Summary Card */}
+                <Card className="bg-secondary/50">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Budget Allocation</CardTitle>
+                        <CardDescription className="text-xs">
+                             Of your {formatCurrency(monthlyIncome)} monthly income...
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-sm space-y-2">
+                        <div>
+                            <div className="flex justify-between mb-1">
+                                <span className="font-medium">Allocated to Expenses:</span>
+                                <span className="font-semibold">{formatCurrency(totalAllocatedMonetary)} ({totalAllocatedPercentage.toFixed(1)}%)</span>
+                            </div>
+                            <Progress value={totalAllocatedPercentage} className="h-2" />
+                        </div>
+                         <div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>Unallocated (for Savings):</span>
+                                <span className="font-medium">{formatCurrency(savingsBudget.limit)} ({unallocatedPercentage.toFixed(1)}%)</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Savings Section */}
+                <div className="space-y-2 pt-4">
+                    <h3 className="font-semibold flex items-center gap-2"><PiggyBank className="h-5 w-5 text-accent"/> Savings Overview</h3>
+                    <BudgetCard
+                        budget={savingsBudget}
+                        categories={categories}
+                        monthlyIncome={monthlyIncome}
+                        onEdit={() => openEditBudgetDialog(savingsBudget.id)}
+                        onDelete={() => setBudgetToDelete(savingsBudget)}
+                      />
+                     <Button variant="outline" size="sm" className="w-full rounded-lg" asChild>
+                         <Link href="/saving-goals">Manage & Allocate Savings Goals</Link>
+                     </Button>
+                </div>
+
+
+                {/* Expense Budgets Section */}
+                <div className="space-y-2 pt-4">
+                   <h3 className="font-semibold flex items-center gap-2"><TrendingDown className="h-5 w-5 text-primary"/> Expense Budgets</h3>
+                   {currentMonthBudgets.filter(b => b.category !== 'savings').length > 0 ? (
+                       currentMonthBudgets
+                           .filter(b => b.category !== 'savings')
+                           .map((budget, index) => (
+                               <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{animationDelay: `${index * 0.05}s`}}>
+                                   <BudgetCard
+                                       budget={budget}
+                                       categories={categories}
+                                       monthlyIncome={monthlyIncome}
+                                       onEdit={() => openEditBudgetDialog(budget.id)}
+                                       onDelete={() => setBudgetToDelete(budget)}
+                                   />
+                               </div>
+                           ))
+                   ) : (
+                       <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in">
+                           <CardContent className="p-6 text-center text-muted-foreground">
+                               <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
+                               <p className="font-semibold">No Expense Budgets Yet</p>
+                               <p className="text-sm">Click 'Add Budget' above to start allocating funds to your spending categories.</p>
+                           </CardContent>
+                       </Card>
+                   )}
+                </div>
+             </>
            )}
-        </TabsContent>
+       </TabsContent>
 
          <TabsContent value="insights" className="flex-grow overflow-y-auto p-4 space-y-4">
              <div className="flex justify-between items-center mb-4">
@@ -1022,7 +1049,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                            <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
                             <p className="font-semibold text-destructive">Set Your Income First</p>
                           <p className="text-sm text-destructive/80">Please set your monthly income on the Home tab to view insights.</p>
-                           <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>
+                           <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>
                               Go to Home
                            </Button>
                        </CardContent>
@@ -1033,7 +1060,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                           <BarChart3 className="mx-auto h-8 w-8 mb-2 text-primary" />
                            <p className="font-semibold">Set Budgets First</p>
                           <p className="text-sm">Set your budgets in the 'Budgets' tab to generate detailed spending insights.</p>
-                          <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>
+                          <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>
                               Go to Budgets
                          </Button>
                        </CardContent>
@@ -1150,7 +1177,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setTransactionToDelete(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDeleteTransaction(transactionToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                    <AlertDialogAction onClick={() => handleDeleteTransaction(transactionToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg">Delete</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -1168,7 +1195,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setBudgetToDelete(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDeleteBudget(budgetToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                    <AlertDialogAction onClick={() => handleDeleteBudget(budgetToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg">Delete</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -1176,5 +1203,3 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
-
-    

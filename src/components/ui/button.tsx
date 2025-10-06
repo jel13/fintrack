@@ -22,9 +22,9 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-lg px-3", // Changed to rounded-lg
-        lg: "h-11 rounded-lg px-8", // Changed to rounded-lg
-        icon: "h-10 w-10 rounded-lg", // Ensure icon buttons can also be rounded-lg, or rounded-full where specified
+        sm: "h-9 px-3",
+        lg: "h-11 px-8",
+        icon: "h-10 w-10",
       },
     },
     defaultVariants: {
