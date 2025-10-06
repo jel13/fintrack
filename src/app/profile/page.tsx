@@ -283,19 +283,13 @@ export default function ProfilePage() {
                               </SelectTrigger>
                               <SelectContent>
                                   <SelectItem value="light">
-                                      <div className="flex items-center gap-2">
-                                          <Sun className="h-4 w-4" /> Light
-                                      </div>
+                                      <Sun className="h-4 w-4" />
                                   </SelectItem>
                                   <SelectItem value="dark">
-                                      <div className="flex items-center gap-2">
-                                          <Moon className="h-4 w-4" /> Dark
-                                      </div>
+                                      <Moon className="h-4 w-4" />
                                   </SelectItem>
                                   <SelectItem value="system">
-                                      <div className="flex items-center gap-2">
-                                          <Laptop className="h-4 w-4" /> System
-                                      </div>
+                                      <Laptop className="h-4 w-4" />
                                   </SelectItem>
                               </SelectContent>
                           </Select>
@@ -373,3 +367,5 @@ export default function ProfilePage() {
 }
 
     
+
+  
