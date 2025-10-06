@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard, ChevronDown, Check, Filter, MoreVertical } from "lucide-react";
+import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard, ChevronDown, Check, Filter, MoreVertical, History } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -167,6 +167,10 @@ export default function Home() {
 
   const monthlySummary = React.useMemo(() => {
     if (!isLoaded) return { income: 0, expenses: 0, balance: 0 };
+    
+    const currentMonthIncome = transactions
+        .filter(t => t.type === 'income' && format(t.date, 'yyyy-MM') === currentMonth)
+        .reduce((sum, t) => sum + t.amount, 0);
 
     const actualExpenses = transactions
         .filter(t =>
@@ -176,14 +180,14 @@ export default function Home() {
         )
         .reduce((sum, t) => sum + t.amount, 0);
 
-    const calculatedBalance = (monthlyIncome ?? 0) - actualExpenses;
+    const calculatedBalance = currentMonthIncome - actualExpenses;
 
     return {
-        income: monthlyIncome ?? 0,
+        income: currentMonthIncome,
         expenses: actualExpenses,
         balance: calculatedBalance,
     };
-  }, [transactions, monthlyIncome, currentMonth, isLoaded, savingGoals]);
+  }, [transactions, currentMonth, isLoaded, savingGoals]);
 
 
   const incomeCategories = React.useMemo(() => categories.filter(cat => cat.isIncomeSource), [categories]);
@@ -314,30 +318,21 @@ export default function Home() {
             updatedTransactions = [transactionData, ...prev.transactions];
         }
         updatedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
-
+        
         let newMonthlyIncome = prev.monthlyIncome ?? 0;
         if (transactionData.type === 'income') {
-            if (isUpdate && originalTransactionIfUpdate?.type === 'income') {
-                 newMonthlyIncome = (prev.monthlyIncome ?? 0) - (originalTransactionIfUpdate?.amount ?? 0) + transactionData.amount;
-            } else if (isUpdate && originalTransactionIfUpdate?.type === 'expense') {
-                 newMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
-            } else if (!isUpdate) {
-                 newMonthlyIncome = (prev.monthlyIncome ?? 0) + transactionData.amount;
-            }
-        } else if (isUpdate && originalTransactionIfUpdate?.type === 'income' && transactionData.type === 'expense') {
-            newMonthlyIncome = (prev.monthlyIncome ?? 0) - (originalTransactionIfUpdate?.amount ?? 0);
+            // No longer automatically add to monthly income here, as it's a separate concept now.
+            // But if we edit an old income transaction, we need to adjust.
+             if (isUpdate && originalTransactionIfUpdate?.type === 'income') {
+                 // This logic might need review if monthlyIncome is purely for budgeting percentages
+             }
         }
 
         if (targetSavingGoal && transactionData.type === 'expense') {
             let amountChange = transactionData.amount;
             if (isUpdate && originalTransactionIfUpdate?.category === targetSavingGoal.id && originalTransactionIfUpdate.type === 'expense') {
                 amountChange -= (originalTransactionIfUpdate.amount ?? 0);
-            } else if (isUpdate && originalTransactionIfUpdate?.category !== targetSavingGoal.id && originalTransactionIfUpdate?.type === 'expense') {
-
-            } else if (isUpdate && originalTransactionIfUpdate?.type === 'income') {
-
             }
-
 
             updatedSavingGoals = prev.savingGoals.map(sg =>
                 sg.id === targetSavingGoal.id
@@ -349,7 +344,7 @@ export default function Home() {
         return {
             ...prev,
             transactions: updatedTransactions,
-            monthlyIncome: Math.max(0, newMonthlyIncome),
+            monthlyIncome: newMonthlyIncome, // monthlyIncome is now primarily for budget calculation
             savingGoals: updatedSavingGoals || prev.savingGoals,
         };
     });
@@ -381,12 +376,7 @@ export default function Home() {
 
     setAppData(prev => {
         const updatedTransactions = prev.transactions.filter(t => t.id !== transactionId);
-        let newMonthlyIncome = prev.monthlyIncome ?? 0;
         let updatedSavingGoalsData = prev.savingGoals;
-
-        if (transaction.type === 'income') {
-            newMonthlyIncome -= transaction.amount;
-        }
 
         if (targetSavingGoal && transaction.type === 'expense') {
             updatedSavingGoalsData = prev.savingGoals.map(sg =>
@@ -399,7 +389,6 @@ export default function Home() {
         return {
             ...prev,
             transactions: updatedTransactions,
-            monthlyIncome: Math.max(0, newMonthlyIncome),
             savingGoals: updatedSavingGoalsData,
         };
     });
@@ -575,10 +564,22 @@ const openEditBudgetDialog = (budgetId: string) => {
          return;
     }
 
+    // Set the monthly income for budget percentage calculations
     setAppData(prev => ({ ...prev, monthlyIncome: incomeValue }));
 
+    // Create a new transaction for the income
+    const newTransaction: Transaction = {
+        id: `tx-income-${Date.now()}`,
+        type: 'income',
+        amount: incomeValue,
+        category: selectedIncomeCategory,
+        date: new Date(),
+        description: 'Monthly Budgeted Income'
+    };
+    handleSaveTransaction(newTransaction);
+
     requestAnimationFrame(() => {
-        toast({ title: "Income Updated", description: `Monthly budgeted income set to ${formatCurrency(incomeValue)}. Percentage-based budgets will update their monetary limits.` });
+        toast({ title: "Income Set & Logged", description: `Monthly budgeted income of ${formatCurrency(incomeValue)} set and logged as a transaction.` });
     });
   };
 
@@ -1401,3 +1402,5 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
+
+    
