@@ -175,7 +175,7 @@ export default function ProfilePage() {
         description: "If an account exists for this email, a password reset link has been sent. Please check your inbox (and spam folder).",
         duration: 7000,
       });
-    } catch (error: any) => {
+    } catch (error: any) {
       toast({ title: "Error Sending Email", description: error.message || "Could not send password reset email.", variant: "destructive" });
     }
   };
@@ -375,3 +375,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
