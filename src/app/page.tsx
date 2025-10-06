@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Fragment } from 'react';
-import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard } from "lucide-react";
+import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard, ChevronDown, Check } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import BudgetCard from "@/components/budget-card";
 import TransactionListItem from "@/components/transaction-list-item";
 import { SpendingChart } from "@/components/spending-chart";
 import type { Transaction, Budget, Category, AppData, SavingGoal, TransactionType } from "@/types";
-import { format } from 'date-fns';
+import { format, isToday, isYesterday, startOfMonth, subMonths } from 'date-fns';
 import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +49,7 @@ import { OnboardingDialog } from "@/components/onboarding-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTour, TourStep } from "@/hooks/use-tour";
 import { GuidedTour } from "@/components/guided-tour";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
 interface CategoryOrGoalDisplayForReceipt {
@@ -104,6 +105,8 @@ export default function Home() {
   const [selectedTransactionForReceipt, setSelectedTransactionForReceipt] = React.useState<SelectedTransactionForReceipt | null>(null);
 
   const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = React.useState(false); 
+  const [historyDateFilter, setHistoryDateFilter] = React.useState('thisMonth');
+  const [historyTypeFilter, setHistoryTypeFilter] = React.useState<'all' | 'income' | 'expense'>('all');
 
   const currentMonth = format(new Date(), 'yyyy-MM');
   const previousMonthDate = new Date();
@@ -642,6 +645,57 @@ const openEditBudgetDialog = (budgetId: string) => {
     setIsAddMenuOpen(false);
   };
 
+  const filteredTransactions = React.useMemo(() => {
+    let filtered = [...transactions];
+
+    // Filter by type
+    if (historyTypeFilter !== 'all') {
+      filtered = filtered.filter(t => t.type === historyTypeFilter);
+    }
+
+    // Filter by date
+    const now = new Date();
+    if (historyDateFilter === 'thisMonth') {
+      const startOfThisMonth = startOfMonth(now);
+      filtered = filtered.filter(t => t.date >= startOfThisMonth);
+    } else if (historyDateFilter === 'lastMonth') {
+      const startOfLastMonth = startOfMonth(subMonths(now, 1));
+      const endOfLastMonth = startOfMonth(now);
+      filtered = filtered.filter(t => t.date >= startOfLastMonth && t.date < endOfLastMonth);
+    } else if (historyDateFilter === 'last3Months') {
+      const startOf3MonthsAgo = startOfMonth(subMonths(now, 3));
+      filtered = filtered.filter(t => t.date >= startOf3MonthsAgo);
+    }
+
+    return filtered;
+  }, [transactions, historyDateFilter, historyTypeFilter]);
+
+  const groupedTransactions = React.useMemo(() => {
+    return filteredTransactions.reduce((acc, t) => {
+      const dateStr = format(t.date, 'yyyy-MM-dd');
+      if (!acc[dateStr]) {
+        acc[dateStr] = [];
+      }
+      acc[dateStr].push(t);
+      return acc;
+    }, {} as Record<string, Transaction[]>);
+  }, [filteredTransactions]);
+
+  const getGroupTitle = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isToday(date)) return 'Today';
+    if (isYesterday(date)) return 'Yesterday';
+    return format(date, 'MMMM d, yyyy');
+  };
+
+  const totalFilteredAmount = React.useMemo(() => {
+    return filteredTransactions.reduce((sum, t) => {
+        if (t.type === 'income') return sum + t.amount;
+        if (t.type === 'expense') return sum - t.amount;
+        return sum;
+    }, 0);
+  }, [filteredTransactions]);
+
 
     if (!user) {
         return null;
@@ -823,53 +877,70 @@ const openEditBudgetDialog = (budgetId: string) => {
            )}
         </TabsContent>
 
-        <TabsContent value="transactions" className="flex-grow overflow-y-auto p-0">
-           <ScrollArea className="h-full">
-             <div className="p-4 space-y-2">
-              <h2 className="text-lg font-semibold mb-2">All Transactions</h2>
-               {transactions.length === 0 && monthlyIncome === null && (
-                      <Card className="border-dashed border-destructive/30 bg-destructive/10">
-                        <CardContent className="p-6 text-center">
-                            <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
-                            <p className="font-semibold text-destructive">Set Income First</p>
-                            <p className="text-sm text-destructive/80">Please set your income on the Home screen to log transactions.</p>
-                            <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'home' }))}>Go to Home</Button>
+        <TabsContent value="transactions" className="flex-grow flex flex-col p-0">
+          <div className="sticky top-0 bg-background z-10 p-4 border-b">
+            <h1 className="text-xl font-semibold">History</h1>
+            <div className="flex items-center gap-2 mt-2">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="flex-1 justify-between">
+                            <span>
+                                {historyDateFilter === 'thisMonth' && 'This Month'}
+                                {historyDateFilter === 'lastMonth' && 'Last Month'}
+                                {historyDateFilter === 'last3Months' && 'Last 3 Months'}
+                                {historyDateFilter === 'allTime' && 'All Time'}
+                            </span>
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('thisMonth')}>This Month</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('lastMonth')}>Last Month</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('last3Months')}>Last 3 Months</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('allTime')}>All Time</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button variant={historyTypeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('all')}>All</Button>
+                <Button variant={historyTypeFilter === 'income' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('income')}>Income</Button>
+                <Button variant={historyTypeFilter === 'expense' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('expense')}>Expense</Button>
+            </div>
+            <div className="text-xs text-muted-foreground mt-2">
+                Viewing {filteredTransactions.length} transaction(s) with a net total of <span className={cn("font-semibold", totalFilteredAmount >= 0 ? "text-accent" : "text-destructive")}>{formatCurrency(totalFilteredAmount)}</span>.
+            </div>
+          </div>
+          <ScrollArea className="flex-grow">
+             <div className="p-4 pt-2 space-y-2">
+               {Object.keys(groupedTransactions).length > 0 ? (
+                    Object.keys(groupedTransactions).map(dateStr => (
+                        <div key={dateStr}>
+                            <h3 className="text-sm font-semibold text-muted-foreground py-2 sticky top-0 bg-background/80 backdrop-blur-sm -mx-4 px-4">{getGroupTitle(dateStr)}</h3>
+                            {groupedTransactions[dateStr].map(t => (
+                                 <TransactionListItem
+                                    key={t.id}
+                                    transaction={t}
+                                    categories={categories}
+                                    savingGoals={savingGoals}
+                                    onViewReceipt={handleOpenReceiptDialog}
+                                    onEdit={() => openEditTransactionSheet(t.id)}
+                                    onDelete={() => setTransactionToDelete(t)}
+                                />
+                            ))}
+                        </div>
+                    ))
+               ) : (
+                    <Card className="border-dashed mt-4">
+                        <CardContent className="p-6 text-center text-muted-foreground">
+                            <List className="mx-auto h-8 w-8 mb-2" />
+                            <p className="font-semibold">No transactions found</p>
+                            <p className="text-sm">No transactions match your current filters.</p>
                         </CardContent>
-                     </Card>
-               )}
-               {transactions.length === 0 && monthlyIncome !== null && !hasExpenseBudgetsSet && (
-                    <Card className="border-dashed border-secondary/50 bg-secondary/30">
-                         <CardContent className="p-6 text-center text-muted-foreground">
-                            <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
-                             <p className="font-semibold">Set Budgets to Log Expenses</p>
-                            <p className="text-sm">You can log income now. To log expenses, set budgets in the 'Budgets' tab.</p>
-                            <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>Go to Budgets</Button>
-                         </CardContent>
                     </Card>
                )}
-               {transactions.length > 0 ? (
-                   transactions.map((t) => (
-                    <TransactionListItem
-                        key={t.id}
-                        transaction={t}
-                        categories={categories}
-                        savingGoals={savingGoals}
-                        onViewReceipt={handleOpenReceiptDialog}
-                        onEdit={() => openEditTransactionSheet(t.id)}
-                        onDelete={() => setTransactionToDelete(t)}
-                    />
-                   ))
-                ) : (
-                    monthlyIncome !== null && hasExpenseBudgetsSet && (
-                        <div className="p-4 text-center text-muted-foreground pt-10">
-                            <List className="mx-auto h-8 w-8 mb-2" />
-                           No transactions recorded yet.
-                        </div>
-                    )
-                )}
              </div>
            </ScrollArea>
         </TabsContent>
+
 
         <TabsContent value="budgets" className="flex-grow overflow-y-auto p-4 space-y-4">
           <div className="flex justify-between items-center mb-4">
@@ -1095,7 +1166,3 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
-
-    
-
-    
