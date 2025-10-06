@@ -93,6 +93,7 @@ export default function Home() {
   const [transactionToDelete, setTransactionToDelete] = React.useState<Transaction | null>(null);
   const [sheetInitialType, setSheetInitialType] = React.useState<TransactionType | null>(null);
   const [isAddMenuOpen, setIsAddMenuOpen] = React.useState(false);
+  const [currentTab, setCurrentTab] = React.useState(initialTab);
 
 
   const [isAddBudgetDialogOpen, setIsAddBudgetDialogOpen] = React.useState(false);
@@ -142,6 +143,11 @@ export default function Home() {
       saveAppData(appData);
     }
   }, [appData, isLoaded, user]);
+
+    React.useEffect(() => {
+        // This effect keeps the local state `currentTab` in sync with the URL query param.
+        setCurrentTab(initialTab);
+    }, [initialTab]);
 
   const handleTourEnd = (tourId: string) => {
     setAppData(prev => ({
@@ -824,7 +830,7 @@ const openEditBudgetDialog = (budgetId: string) => {
         onPrev={budgetTour.prevStep}
         onFinish={budgetTour.endTour}
       />
-      <Tabs defaultValue={initialTab} value={initialTab} className="flex-grow flex flex-col">
+      <Tabs defaultValue={initialTab} value={currentTab} onValueChange={setCurrentTab} className="flex-grow flex flex-col">
         <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
             <Card className="w-full animate-slide-up bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
                 <CardHeader>
@@ -1163,25 +1169,6 @@ const openEditBudgetDialog = (budgetId: string) => {
                         )}
                     </div>
                 </Tabs>
-
-                <div className="fixed bottom-20 right-4 z-10">
-                    <Button
-                        size="icon"
-                        className="rounded-full h-14 w-14 shadow-lg"
-                        id="add-budget-button"
-                        onClick={() => {
-                            if (activeBudgetTab === 'expenses') {
-                                setEditingBudget(null);
-                                setIsAddBudgetDialogOpen(true);
-                            } else {
-                                setEditingGoal(null);
-                                setIsAddGoalDialogOpen(true);
-                            }
-                        }}
-                    >
-                        <PlusCircle className="h-6 w-6" />
-                    </Button>
-                </div>
             </>
            )}
        </TabsContent>
@@ -1227,8 +1214,9 @@ const openEditBudgetDialog = (budgetId: string) => {
              )}
          </TabsContent>
 
-        {(monthlyIncome !== null && monthlyIncome > 0 && (incomeCategories.length > 0 || hasExpenseBudgetsSet)) && (
-             <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
+        {/* Global Transaction FAB (Visible on Home and Transactions tabs) */}
+        {(currentTab === 'home' || currentTab === 'transactions') && monthlyIncome !== null && monthlyIncome > 0 && (incomeCategories.length > 0 || hasExpenseBudgetsSet) && (
+            <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
                 <Popover open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
                     <PopoverTrigger asChild>
                         <Button
@@ -1258,13 +1246,35 @@ const openEditBudgetDialog = (budgetId: string) => {
                                 <CreditCard className="mr-2 h-4 w-4 text-primary" />
                                 Add Expense
                             </Button>
-                             {!hasExpenseBudgetsSet && (
+                            {!hasExpenseBudgetsSet && (
                                 <p className="text-xs text-muted-foreground p-2 text-center">Set expense budgets first to log expenses.</p>
                             )}
                         </div>
                     </PopoverContent>
                 </Popover>
-             </div>
+            </div>
+        )}
+
+        {/* Budgets Page FAB (Visible on Budgets tab only) */}
+        {currentTab === 'budgets' && monthlyIncome !== null && monthlyIncome > 0 && (
+            <div className="fixed bottom-20 right-4 z-10">
+                <Button
+                    size="icon"
+                    className="rounded-full h-14 w-14 shadow-lg"
+                    id="add-budget-button"
+                    onClick={() => {
+                        if (activeBudgetTab === 'expenses') {
+                            setEditingBudget(null);
+                            setIsAddBudgetDialogOpen(true);
+                        } else {
+                            setEditingGoal(null);
+                            setIsAddGoalDialogOpen(true);
+                        }
+                    }}
+                >
+                    <PlusCircle className="h-6 w-6" />
+                </Button>
+            </div>
         )}
       </Tabs>
 
