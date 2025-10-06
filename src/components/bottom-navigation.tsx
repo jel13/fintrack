@@ -43,9 +43,12 @@ export function BottomNavigation() {
     } else if (pathname === "/") {
       setActiveTab("home"); 
     } else {
+      // Handle cases like /categories, /saving-goals etc. which are related to profile or budgets
       const baseHrefMatch = navItems.find(item => item.isPage && pathname.startsWith(item.href));
       if (baseHrefMatch) {
         setActiveTab(baseHrefMatch.value);
+      } else if (pathname.startsWith("/saving-goals")) {
+         setActiveTab("budgets");
       }
     }
   }, [pathname, currentTabQuery]);
@@ -105,3 +108,5 @@ export function BottomNavigation() {
     </Tabs>
   );
 }
+
+    

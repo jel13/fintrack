@@ -51,6 +51,7 @@ import { useTour, TourStep } from "@/hooks/use-tour";
 import { GuidedTour } from "@/components/guided-tour";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
+import { AddSavingGoalDialog } from "@/components/add-saving-goal-dialog";
 
 
 interface CategoryOrGoalDisplayForReceipt {
@@ -108,6 +109,12 @@ export default function Home() {
   const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = React.useState(false); 
   const [historyDateFilter, setHistoryDateFilter] = React.useState('thisMonth');
   const [historyTypeFilter, setHistoryTypeFilter] = React.useState<'all' | 'income' | 'expense'>('all');
+
+  const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = React.useState(false);
+  const [editingGoal, setEditingGoal] = React.useState<SavingGoal | null>(null);
+  const [goalToDelete, setGoalToDelete] = React.useState<SavingGoal | null>(null);
+
+  const [activeBudgetTab, setActiveBudgetTab] = React.useState('expenses');
 
   const currentMonth = format(new Date(), 'yyyy-MM');
   const previousMonthDate = new Date();
@@ -574,6 +581,10 @@ const openEditBudgetDialog = (budgetId: string) => {
     return cats.find(cat => cat.id === id);
   }, []);
 
+    const getGoalById = React.useCallback((id: string, goals: SavingGoal[]): SavingGoal | undefined => {
+        return goals.find(goal => goal.id === id);
+    }, []);
+
   const totalAllocatedPercentage = React.useMemo(() => {
      return currentMonthBudgets
          .filter(b => b.category !== 'savings' && b.percentage !== undefined)
@@ -697,6 +708,89 @@ const openEditBudgetDialog = (budgetId: string) => {
       return (savingsBudget.limit * (totalAllocatedPercentageOfSavings / 100));
   }, [savingsBudget.limit, totalAllocatedPercentageOfSavings]);
 
+
+    const handleAddOrUpdateGoal = (goalData: Omit<SavingGoal, 'id' | 'targetAmount'> & { id?: string; targetAmount: number }) => {
+        const newPercentage = goalData.percentageAllocation ?? 0;
+
+        const currentTotalAllocatedToOtherGoals = appData.savingGoals
+            .filter(g => g.id !== goalData.id)
+            .reduce((sum, g) => sum + (g.percentageAllocation ?? 0), 0);
+
+        if (newPercentage < 0) {
+            requestAnimationFrame(() => toast({ title: "Invalid Percentage", description: `Percentage cannot be negative.`, variant: "destructive" }));
+            return;
+        }
+        
+        if (currentTotalAllocatedToOtherGoals + newPercentage > 100.05) { 
+            const maxAllowedForThisGoal = Math.max(0, parseFloat((100 - currentTotalAllocatedToOtherGoals).toFixed(1)));
+            requestAnimationFrame(() => toast({
+                title: "Allocation Limit Exceeded",
+                description: `Cannot allocate ${newPercentage}%. Total allocation would exceed 100% of savings budget. Max available for this goal: ${maxAllowedForThisGoal}%`,
+                variant: "destructive",
+                duration: 7000
+            }));
+             return;
+        }
+
+        setAppData(prev => {
+            let goals = [...prev.savingGoals];
+            let toastMessageTitle = "";
+            let toastMessageDescription = "";
+
+            if (goalData.id) { // Editing existing goal
+                const index = goals.findIndex(g => g.id === goalData.id);
+                if (index > -1) {
+                    goals[index] = {
+                        ...goals[index], 
+                        ...goalData,     
+                    };
+                    toastMessageTitle = "Goal Updated";
+                    toastMessageDescription = `Saving goal "${goalData.name}" updated.`;
+                }
+            } else { // Adding new goal
+                const newGoal: SavingGoal = {
+                    id: `goal-${Date.now().toString()}`, 
+                    name: goalData.name,
+                    goalCategoryId: goalData.goalCategoryId,
+                    targetAmount: goalData.targetAmount,
+                    savedAmount: goalData.savedAmount ?? 0, 
+                    percentageAllocation: goalData.percentageAllocation,
+                    description: goalData.description,
+                };
+                goals.push(newGoal);
+                toastMessageTitle = "Goal Added";
+                toastMessageDescription = `New saving goal "${newGoal.name}" added.`;
+            }
+            goals.sort((a, b) => a.name.localeCompare(b.name));
+
+            if (toastMessageTitle) {
+                requestAnimationFrame(() => {
+                    toast({ title: toastMessageTitle, description: toastMessageDescription });
+                });
+            }
+            return { ...prev, savingGoals: goals };
+        });
+        setEditingGoal(null); 
+    };
+
+    const handleDeleteGoal = (goalId: string) => {
+        const goalToDelete = appData.savingGoals.find(g => g.id === goalId);
+         if (!goalToDelete) return;
+
+        setAppData(prev => ({
+            ...prev,
+            savingGoals: prev.savingGoals.filter(g => g.id !== goalId)
+        }));
+         requestAnimationFrame(() => {
+            toast({ title: "Goal Deleted", description: `Saving goal "${goalToDelete.name}" removed.` });
+        });
+        setGoalToDelete(null);
+    };
+
+    const openEditGoalDialog = (goal: SavingGoal) => {
+        setEditingGoal(goal);
+        setIsAddGoalDialogOpen(true);
+    }
 
     if (!user) {
         return null;
@@ -909,10 +1003,10 @@ const openEditBudgetDialog = (budgetId: string) => {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-            <div className="mt-2 text-xs text-muted-foreground">
-                Viewing {filteredTransactions.length} transaction(s) with a net total of <span className={cn("font-semibold", totalFilteredAmount >= 0 ? "text-accent" : "text-destructive")}>{formatCurrency(totalFilteredAmount)}</span>.
-            </div>
-            <div className="flex flex-col gap-2 mt-2">
+             <div className="flex flex-col gap-2 mt-2">
+                <div className="text-xs text-muted-foreground">
+                    Viewing {filteredTransactions.length} transaction(s) with a net total of <span className={cn("font-semibold", totalFilteredAmount >= 0 ? "text-accent" : "text-destructive")}>{formatCurrency(totalFilteredAmount)}</span>.
+                </div>
                  <div className="flex items-center gap-2">
                     <Button variant={historyTypeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('all')} className="flex-1 rounded-lg">All</Button>
                     <Button variant={historyTypeFilter === 'income' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('income')} className="flex-1 rounded-lg">Income</Button>
@@ -954,9 +1048,9 @@ const openEditBudgetDialog = (budgetId: string) => {
 
 
         <TabsContent value="budgets" className="flex-grow overflow-y-auto p-4 space-y-4">
-           <div className="flex justify-between items-center mb-2">
-               <h2 className="text-xl font-semibold">Budgets</h2>
-           </div>
+            <div className="flex justify-between items-center">
+                <h1 className="text-xl font-semibold">Budgets</h1>
+            </div>
 
            {(monthlyIncome === null || monthlyIncome === 0) ? (
                <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
@@ -970,81 +1064,141 @@ const openEditBudgetDialog = (budgetId: string) => {
                    </CardContent>
                </Card>
            ) : (
-                <Tabs defaultValue="expenses" className="w-full space-y-0">
-                    <TabsList className="relative grid w-full grid-cols-2 bg-muted/50 rounded-lg p-1 h-10">
-                        <TabsTrigger value="expenses" className="relative z-10 h-full rounded-md text-sm">Expenses</TabsTrigger>
-                        <TabsTrigger value="savings" className="relative z-10 h-full rounded-md text-sm">Savings</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="expenses" className="relative -mt-2">
-                         <Card className="pt-10 rounded-t-none">
-                            <CardContent className="space-y-4">
-                               <div className="flex justify-between items-center text-sm border-b pb-2">
-                                  <span className="text-muted-foreground">Total Allocated Budget:</span>
-                                  <span className="font-bold text-lg text-primary">{formatCurrency(totalAllocatedMonetary)}</span>
-                               </div>
-                               <div className="flex justify-between items-center text-sm">
-                                  <span className="text-muted-foreground">Total % of Income:</span>
-                                  <span className="font-semibold">{totalAllocatedPercentage.toFixed(1)}%</span>
-                               </div>
-                               <div className="space-y-3 pt-4">
-                                {currentMonthBudgets.filter(b => b.category !== 'savings').length > 0 ? (
-                                   currentMonthBudgets
-                                       .filter(b => b.category !== 'savings')
-                                       .map((budget, index) => (
-                                           <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{animationDelay: `${index * 0.05}s`}}>
-                                               <BudgetCard
-                                                   budget={budget}
-                                                   categories={categories}
-                                                   onEdit={() => openEditBudgetDialog(budget.id)}
-                                                   onDelete={() => setBudgetToDelete(budget)}
-                                               />
-                                           </div>
-                                       ))
-                               ) : (
-                                   <div className="text-center text-muted-foreground py-6">
-                                       <Target className="mx-auto h-8 w-8 mb-2" />
-                                       <p className="font-semibold">No Expense Budgets Yet</p>
-                                       <p className="text-sm">Tap the '+' button to start budgeting.</p>
-                                   </div>
-                               )}
-                               </div>
+            <>
+                <Tabs defaultValue="expenses" value={activeBudgetTab} onValueChange={setActiveBudgetTab} className="w-full space-y-4">
+                    <Card>
+                        <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none p-0">
+                            <TabsTrigger value="expenses" className="rounded-tl-lg rounded-br-none rounded-tr-none h-12 text-base data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary">Expenses</TabsTrigger>
+                            <TabsTrigger value="savings" className="rounded-tr-lg rounded-bl-none rounded-br-none h-12 text-base data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-b-2 data-[state=active]:border-accent">Savings</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="expenses" className="m-0">
+                            <CardContent className="p-4">
+                                <p className="text-3xl font-bold text-primary">{formatCurrency(totalAllocatedMonetary)}</p>
+                                <div className="flex justify-between text-sm text-muted-foreground mt-1">
+                                    <span>Income: {formatCurrency(monthlyIncome)}</span>
+                                    <span>Budgeted: {totalAllocatedPercentage.toFixed(1)}%</span>
+                                </div>
                             </CardContent>
-                         </Card>
-                         <div className="fixed bottom-20 right-4 z-10">
-                              <Button size="icon" className="rounded-full h-14 w-14 shadow-lg" id="add-budget-button" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
-                                 <PlusCircle className="h-6 w-6" />
-                              </Button>
-                         </div>
-                    </TabsContent>
-                    <TabsContent value="savings" className="relative -mt-2">
-                        <Card className="pt-10 rounded-t-none">
-                           <CardContent className="space-y-4">
-                               <div className="flex justify-between items-center text-sm border-b pb-2">
-                                  <span className="text-muted-foreground">Total Allocated for Savings:</span>
-                                  <span className="font-bold text-lg text-accent">{formatCurrency(savingsBudget.limit)}</span>
-                               </div>
-                               <div className="flex justify-between items-center text-sm">
-                                  <span className="text-muted-foreground">% of Savings Allocated to Goals:</span>
-                                  <span className="font-semibold">{totalAllocatedPercentageOfSavings.toFixed(1)}%</span>
-                               </div>
+                        </TabsContent>
+                        <TabsContent value="savings" className="m-0">
+                             <CardContent className="p-4">
+                                <p className="text-3xl font-bold text-accent">{formatCurrency(savingsBudget.limit)}</p>
+                                <div className="flex justify-between text-sm text-muted-foreground mt-1">
+                                    <span>For Savings: {unallocatedPercentage.toFixed(1)}%</span>
+                                    <span>Allocated to Goals: {totalAllocatedPercentageOfSavings.toFixed(1)}%</span>
+                                </div>
+                            </CardContent>
+                        </TabsContent>
+                    </Card>
 
-                               <div className="space-y-3 pt-4">
-                                  <BudgetCard
-                                    budget={savingsBudget}
-                                    categories={categories}
-                                    onEdit={() => openEditBudgetDialog(savingsBudget.id)}
-                                    onDelete={() => setBudgetToDelete(savingsBudget)}
-                                  />
-                                 <Button variant="outline" size="sm" className="w-full rounded-lg mt-2" asChild>
-                                     <Link href="/saving-goals">Manage & Allocate Savings Goals</Link>
-                                 </Button>
-                               </div>
-                           </CardContent>
-                        </Card>
-                    </TabsContent>
+                    {activeBudgetTab === 'expenses' && (
+                        <div className="space-y-3">
+                            <h3 className="text-lg font-semibold text-muted-foreground px-1">Expense Budgets</h3>
+                            {currentMonthBudgets.filter(b => b.category !== 'savings').length > 0 ? (
+                                currentMonthBudgets
+                                    .filter(b => b.category !== 'savings')
+                                    .map((budget, index) => (
+                                        <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{animationDelay: `${index * 0.05}s`}}>
+                                            <BudgetCard
+                                                budget={budget}
+                                                categories={categories}
+                                                onEdit={() => openEditBudgetDialog(budget.id)}
+                                                onDelete={() => setBudgetToDelete(budget)}
+                                            />
+                                        </div>
+                                    ))
+                            ) : (
+                                <div className="text-center text-muted-foreground py-6">
+                                    <Target className="mx-auto h-8 w-8 mb-2" />
+                                    <p className="font-semibold">No Expense Budgets Yet</p>
+                                    <p className="text-sm">Tap the '+' button to start budgeting.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    
+                    {activeBudgetTab === 'savings' && (
+                        <div className="space-y-3">
+                             <h3 className="text-lg font-semibold text-muted-foreground px-1">Saving Goals Allocation</h3>
+                            {savingGoals.length > 0 ? (
+                                savingGoals.map((goal, index) => {
+                                    const monthlyContribution = parseFloat(((goal.percentageAllocation ?? 0) / 100 * savingsBudget.limit).toFixed(2));
+                                    const progress = goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) * 100 : 0;
+                                    const goalCategory = savingGoalCategories.find(sgc => sgc.id === goal.goalCategoryId);
+                                    const Icon = getCategoryIconComponent(goalCategory?.icon || 'PiggyBank');
+
+                                    return (
+                                        <Card key={goal.id} className="animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
+                                            <CardHeader className="flex flex-row items-start justify-between p-4 pb-2">
+                                                <div className="flex items-center gap-3">
+                                                    <Icon className="h-6 w-6 text-accent" />
+                                                    <div>
+                                                        <CardTitle className="text-base">{goal.name}</CardTitle>
+                                                        <CardDescription className="text-xs">{goalCategory?.label}</CardDescription>
+                                                    </div>
+                                                </div>
+                                                <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => openEditGoalDialog(goal)}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => setGoalToDelete(goal)} className="text-destructive">
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </CardHeader>
+                                            <CardContent className="p-4 pt-0">
+                                                <Progress value={progress} className="h-2 mb-1 [&>div]:bg-accent" />
+                                                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                                    <span>{formatCurrency(goal.savedAmount)} of {formatCurrency(goal.targetAmount)}</span>
+                                                    <span>{progress.toFixed(1)}%</span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Plan: {goal.percentageAllocation?.toFixed(1)}% of savings (Est. {formatCurrency(monthlyContribution)}/mo)
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                    )
+                                })
+                            ) : (
+                                <div className="text-center text-muted-foreground py-6">
+                                    <Target className="mx-auto h-8 w-8 mb-2 text-accent" />
+                                    <p className="font-semibold">No Saving Goals Yet</p>
+                                    <p className="text-sm">Tap the '+' button to add a goal.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </Tabs>
+
+                <div className="fixed bottom-20 right-4 z-10">
+                    <Button
+                        size="icon"
+                        className="rounded-full h-14 w-14 shadow-lg"
+                        id="add-budget-button"
+                        onClick={() => {
+                            if (activeBudgetTab === 'expenses') {
+                                setEditingBudget(null);
+                                setIsAddBudgetDialogOpen(true);
+                            } else {
+                                setEditingGoal(null);
+                                setIsAddGoalDialogOpen(true);
+                            }
+                        }}
+                    >
+                        <PlusCircle className="h-6 w-6" />
+                    </Button>
+                </div>
+            </>
            )}
        </TabsContent>
+
 
          <TabsContent value="insights" className="flex-grow overflow-y-auto p-4 space-y-4">
              <div className="flex justify-between items-center mb-4">
@@ -1163,6 +1317,22 @@ const openEditBudgetDialog = (budgetId: string) => {
         existingBudget={editingBudget}
       />
 
+       <AddSavingGoalDialog
+            open={isAddGoalDialogOpen}
+            onOpenChange={(isOpen) => {
+                setIsAddGoalDialogOpen(isOpen);
+                if (!isOpen) setEditingGoal(null);
+            }}
+            onSaveGoal={handleAddOrUpdateGoal}
+            existingGoal={editingGoal}
+            totalAllocatedPercentageToOtherGoals={editingGoal && typeof editingGoal.percentageAllocation === 'number' 
+                ? totalAllocatedPercentageOfSavings - (editingGoal.percentageAllocation)
+                : totalAllocatedPercentageOfSavings
+            }
+            savingsBudgetAmount={savingsBudget.limit}
+            savingGoalCategories={appData.savingGoalCategories}
+        />
+
       <TransactionReceiptDialog
         open={isReceiptDialogOpen}
         onOpenChange={setIsReceiptDialogOpen}
@@ -1207,6 +1377,25 @@ const openEditBudgetDialog = (budgetId: string) => {
             </AlertDialogContent>
         </AlertDialog>
       )}
+
+      {goalToDelete && (
+         <AlertDialog open={!!goalToDelete} onOpenChange={() => setGoalToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Saving Goal?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Are you sure you want to delete the goal "{goalToDelete.name}"? This will not delete any past transactions, but the goal and its progress will be removed.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setGoalToDelete(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDeleteGoal(goalToDelete.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg">Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
+
+    
