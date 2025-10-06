@@ -267,7 +267,7 @@ export default function ProfilePage() {
                             value={theme}
                             onValueChange={(value) => setTheme(value)}
                         >
-                            <SelectTrigger className="w-[120px] rounded-lg h-9 text-sm ml-auto" aria-label="Select theme">
+                            <SelectTrigger className="w-full max-w-[120px] rounded-lg h-9 text-sm ml-auto" aria-label="Select theme">
                                 <SelectValue placeholder="Theme" />
                             </SelectTrigger>
                             <SelectContent>
@@ -349,3 +349,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
