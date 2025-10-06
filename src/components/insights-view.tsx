@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Pie, Cell, Sector } from 'recharts';
 import type { Transaction, Budget, Category } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Scale, PiggyBank, Info, BarChartHorizontalBig, PieChart as PieIcon } from 'lucide-react'; // More specific icons
@@ -21,11 +21,11 @@ interface InsightsViewProps {
 
 // Consistent colors for charts from globals.css
 const chartColors = {
-    income: "hsl(var(--chart-2))", // Greenish for income/savings
-    expenses: "hsl(var(--chart-5))", // Reddish for expenses
-    savings: "hsl(var(--chart-3))", // Yellowish/other for savings
-    budgeted: "hsl(var(--chart-4))", // Orangish for budgeted
-    spent: "hsl(var(--chart-1))", // Blue for spent
+    income: "hsl(var(--chart-2))", 
+    expenses: "hsl(var(--chart-5))", 
+    savings: "hsl(var(--chart-3))", 
+    budgeted: "hsl(var(--chart-4))", 
+    spent: "hsl(var(--chart-1))", 
 };
 
 // Define chart configs for legends and tooltips
@@ -65,8 +65,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
     const currentMonthTransactions = React.useMemo(() => transactions.filter(t => format(t.date, 'yyyy-MM') === currentMonth), [transactions, currentMonth]);
     const previousMonthTransactions = React.useMemo(() => transactions.filter(t => format(t.date, 'yyyy-MM') === previousMonth), [transactions, previousMonth]);
     const currentMonthBudgets = React.useMemo(() => budgets.filter(b => b.month === currentMonth), [budgets, currentMonth]);
-    // const previousMonthBudgets = React.useMemo(() => budgets.filter(b => b.month === previousMonth), [budgets, previousMonth]); // Not directly used in this revised logic but kept for potential future use
-
+    
     // Calculate actual income specifically for the previous month from transactions
     const previousMonthActualIncome = React.useMemo(() => {
         return previousMonthTransactions
@@ -229,7 +228,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                             <BarChart data={comparisonData}>
                                 <CartesianGrid vertical={false} />
                                 <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} fontSize={12} />
-                                <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value)} />
+                                <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value as number)} />
                                 <ChartTooltip
                                     cursor={false}
                                     content={<ChartTooltipContent indicator="dot" />}
@@ -258,7 +257,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                          <ChartContainer config={budgetVsActualChartConfig} className="aspect-video max-h-[300px]">
                             <BarChart data={budgetVsActualData} layout="vertical" barSize={15} margin={{ right: 20 }}>
                                 <CartesianGrid horizontal={false} />
-                                <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value)} />
+                                <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value as number)} />
                                 <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} fontSize={12} width={80} interval={0} />
                                 <ChartTooltip
                                      cursor={false}
@@ -319,3 +318,4 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
     );
 };
 
+  
