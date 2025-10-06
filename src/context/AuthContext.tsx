@@ -40,7 +40,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      // Only set the user if their email is verified
+      if (currentUser && currentUser.emailVerified) {
+        setUser(currentUser);
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
@@ -61,12 +66,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, pass: string): Promise<UserCredential> => {
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
     if (userCredential.user && !userCredential.user.emailVerified) {
-      toast({
-        title: "Email Not Verified",
-        description: "Please check your email to verify your account. You can request a new verification email if needed.",
-        variant: "default", 
-        duration: 7000,
-      });
+      await signOut(auth); // Sign out the user
+      const error = new Error("Email not verified. Please check your inbox.");
+      error.name = 'EmailUnverified';
+      throw error;
     }
     return userCredential;
   };

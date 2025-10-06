@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import Image from 'next/image';
 import { auth } from '@/lib/firebase'; 
+import { sendEmailVerification, signInWithEmailAndPassword } from "firebase/auth";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -23,7 +24,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { login, sendVerificationEmail } = useAuth(); 
+  const { login } = useAuth(); 
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
   const [showResendVerification, setShowResendVerification] = React.useState(false);
@@ -39,21 +40,27 @@ export default function LoginPage() {
   });
 
   const handleResendVerification = async () => {
-    if (!auth.currentUser) { 
-      toast({title: "Error", description: "Please try logging in first to resend verification.", variant: "destructive"});
-      return;
+    if (!emailForResend) {
+        toast({ title: "Error", description: "Email address not available.", variant: "destructive" });
+        return;
     }
     setIsLoading(true);
     try {
-      await sendVerificationEmail(auth.currentUser);
-      toast({ title: "Verification Email Sent", description: "A new verification email has been sent. Please check your inbox."});
-      setShowResendVerification(false);
+        // We need to temporarily sign in the user to get their user object, then sign out.
+        // This is a common pattern when you need a user object for actions like sending verification emails.
+        const userCredential = await signInWithEmailAndPassword(auth, emailForResend, form.getValues('password'));
+        if (userCredential.user) {
+            await sendEmailVerification(userCredential.user);
+            toast({ title: "Verification Email Sent", description: "A new verification email has been sent. Please check your inbox." });
+        }
+        await auth.signOut(); // Immediately sign out
+        setShowResendVerification(false);
     } catch (error: any) {
-      toast({ title: "Error Sending Email", description: error.message || "Could not resend verification email.", variant: "destructive"});
+        toast({ title: "Error Sending Email", description: error.message || "Could not resend verification email.", variant: "destructive" });
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+};
 
 
   const onSubmit = async (data: LoginFormValues) => {
@@ -61,19 +68,23 @@ export default function LoginPage() {
     setShowResendVerification(false); 
     setEmailForResend(data.email); 
     try {
-      const userCredential = await login(data.email, data.password);
-      
-      if (userCredential.user && userCredential.user.emailVerified) {
-         toast({ title: "Login Successful", description: "Welcome back!" });
-      } else if (userCredential.user && !userCredential.user.emailVerified) {
-        setShowResendVerification(true);
-      }
+      await login(data.email, data.password);
+      toast({ title: "Login Successful", description: "Welcome back!" });
     } catch (error: any) {
-      toast({
-        title: "Login Failed",
-        description: error.message || "Please check your credentials and try again.",
-        variant: "destructive",
-      });
+        if (error.name === 'EmailUnverified') {
+            setShowResendVerification(true);
+            toast({
+                title: "Email Not Verified",
+                description: "Please check your email to verify your account.",
+                variant: "destructive",
+            });
+        } else {
+            toast({
+                title: "Login Failed",
+                description: error.message || "Please check your credentials and try again.",
+                variant: "destructive",
+            });
+        }
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +140,7 @@ export default function LoginPage() {
               {isLoading ? "Logging in..." : "Log In"}
             </Button>
           </form>
-           {showResendVerification && auth.currentUser && !auth.currentUser.emailVerified && (
+           {showResendVerification && (
             <div className="mt-4 text-center">
               <p className="text-sm text-muted-foreground mb-2">
                 Your email is not verified.
