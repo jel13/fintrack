@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Home, List, BarChart3, UserCircle, History } from "lucide-react";
+import { Home, List, Target, Lightbulb, UserCircle } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -19,8 +19,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { value: "home", label: "Home", icon: Home, href: "/?tab=home", isPage: false },
   { value: "transactions", label: "Transactions", icon: List, href: "/?tab=transactions", isPage: false },
-  { value: "budgets", label: "Budgets", icon: BarChart3, href: "/?tab=budgets", isPage: false },
-  { value: "insights", label: "Insights", icon: BarChart3, href: "/?tab=insights", isPage: false },
+  { value: "budgets", label: "Budgets", icon: Target, href: "/?tab=budgets", isPage: false },
+  { value: "insights", label: "Insights", icon: Lightbulb, href: "/?tab=insights", isPage: false },
   { value: "profile", label: "Profile", icon: UserCircle, href: "/profile", isPage: true },
 ];
 
@@ -84,8 +84,7 @@ export function BottomNavigation() {
   }
 
   // Hide nav on certain pages if desired
-  if (pathname === '/history') {
-    // Or you can choose to show it and have 'Profile' selected
+  if (pathname === '/history' || pathname === '/categories' || pathname === '/learn/budgeting-guide') {
     return null; 
   }
 
