@@ -2,7 +2,6 @@
 "use client";
 
 import * as React from "react";
-import { Fragment } from 'react';
 import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard, ChevronDown, Check, Filter, MoreVertical } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -948,7 +947,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 </CardContent>
                 {transactions.length > 0 && (
                     <CardFooter className="p-2 text-center border-t">
-                        <Button variant="link" size="sm" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'transactions' }))}>View All History</Button>
+                        <Button variant="link" size="sm" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'transactions' }))}>View All Transactions</Button>
                     </CardFooter>
                 )}
             </Card>
@@ -980,7 +979,7 @@ const openEditBudgetDialog = (budgetId: string) => {
         <TabsContent value="transactions" className="flex-grow flex flex-col p-0">
           <div className="sticky top-0 bg-background z-10 p-4 border-b">
             <div className="flex items-center justify-between">
-                <h1 className="text-xl font-semibold">History</h1>
+                <h1 className="text-xl font-semibold">Transactions</h1>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">

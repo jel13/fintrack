@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell, Edit, KeyRound, Save, X, Sun, Moon, Laptop } from "lucide-react";
+import { LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell, Edit, KeyRound, Save, X, Sun, Moon, Laptop, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -312,7 +312,7 @@ export default function ProfilePage() {
           </section>
           
           <section>
-            <SectionHeader>Danger Zone</SectionHeader>
+            <SectionHeader>History & Data</SectionHeader>
             <div className="px-4">
                  <ProfileListItem
                   icon={Trash2}

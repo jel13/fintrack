@@ -18,7 +18,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { value: "home", label: "Home", icon: Home, href: "/?tab=home", isPage: false },
-  { value: "transactions", label: "History", icon: List, href: "/?tab=transactions", isPage: false },
+  { value: "transactions", label: "Transactions", icon: List, href: "/?tab=transactions", isPage: false },
   { value: "budgets", label: "Budgets", icon: TrendingDown, href: "/?tab=budgets", isPage: false },
   { value: "insights", label: "Insights", icon: BarChart3, href: "/?tab=insights", isPage: false },
   { value: "profile", label: "Profile", icon: UserCircle, href: "/profile", isPage: true },
