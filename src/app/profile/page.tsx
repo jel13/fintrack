@@ -5,7 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle, LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell, Edit, KeyRound, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
@@ -30,8 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input"; // For editing username
-import { Label } from "@/components/ui/label"; // For username input
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 interface ProfileListItemProps {
@@ -42,7 +41,7 @@ interface ProfileListItemProps {
   href?: string;
   isDestructive?: boolean;
   children?: React.ReactNode; 
-  actionElement?: React.ReactNode; // New prop for custom action elements like edit button
+  actionElement?: React.ReactNode;
 }
 
 const ProfileListItem: React.FC<ProfileListItemProps> = ({
@@ -58,8 +57,8 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
   const content = (
     <div
       className={cn(
-        "flex items-center p-4 rounded-lg transition-colors min-h-[72px]", // Ensure minimum height
-        onClick && !href ? "hover:bg-secondary active:bg-secondary/80" : "",
+        "flex items-center p-4 rounded-lg transition-colors min-h-[72px]",
+        onClick && !href ? "hover:bg-secondary active:bg-secondary/80 cursor-pointer" : "",
         isDestructive ? "text-destructive hover:bg-destructive/10 active:bg-destructive/20" : "text-foreground"
       )}
       onClick={onClick && !href ? onClick : undefined}
@@ -74,7 +73,6 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
         {children && <div className="mt-1">{children}</div>} 
       </div>
       {actionElement ? actionElement : ( (href || (onClick && !isDestructive && !children)) && <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto" />)}
-      {onClick && isDestructive && !children && !actionElement && <span className="ml-auto"></span>}
     </div>
   );
 
@@ -84,11 +82,11 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
         href={href}
         className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
       >
-        {content}
+        <div className="hover:bg-secondary active:bg-secondary/80 cursor-pointer">{content}</div>
       </Link>
     );
   }
-  return <div className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background" >{content}</div>;
+  return <div className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background">{content}</div>;
 };
 
 
@@ -229,10 +227,12 @@ export default function ProfilePage() {
                     )}
                   </ProfileListItem>
                   <ProfileListItem icon={Settings} title="Email">
-                     <p className="font-medium text-foreground truncate">{user.email}</p>
-                     {!user.emailVerified && (
-                        <Badge variant="destructive" className="text-xs mt-1">Email not verified</Badge>
-                     )}
+                     <div className="flex items-center justify-between">
+                         <p className="font-medium text-foreground truncate">{user.email}</p>
+                         {!user.emailVerified && (
+                            <Badge variant="destructive" className="text-xs ml-2">Unverified</Badge>
+                         )}
+                     </div>
                   </ProfileListItem>
                   <ProfileListItem
                     icon={KeyRound}
@@ -255,46 +255,31 @@ export default function ProfilePage() {
               <CardTitle className="flex items-center gap-2 text-base font-semibold"><Settings className="h-5 w-5 text-primary"/> App Configuration</CardTitle>
             </CardHeader>
             <CardContent className="p-0 divide-y">
-                <Button asChild variant="ghost" className="w-full justify-start p-0 rounded-none hover:bg-secondary active:bg-secondary/80 h-auto min-h-[72px]">
-                   <Link href="/categories" className="flex items-center p-4 w-full">
-                     <FolderCog className="h-5 w-5 mr-4 flex-shrink-0 text-primary" />
-                     <div className="flex-grow text-left">
-                       <p className="font-medium text-foreground">Manage Categories</p>
-                       <p className="text-xs text-muted-foreground">Edit, add, or delete income/expense categories</p>
-                     </div>
-                     <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto" />
-                   </Link>
-                </Button>
-                 <div className="p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <Palette className="h-5 w-5 text-primary" />
-                            <div>
-                                <p className="font-medium">Theme</p>
-                                <p className="text-xs text-muted-foreground">
-                                    Select your preferred app theme.
-                                </p>
-                            </div>
-                        </div>
-                        {mounted ? (
-                            <Select
-                                value={theme}
-                                onValueChange={(value) => setTheme(value)}
-                            >
-                                <SelectTrigger className="w-[120px] rounded-lg h-9 text-sm" aria-label="Select theme">
-                                    <SelectValue placeholder="Theme" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="light">Light</SelectItem>
-                                    <SelectItem value="dark">Dark</SelectItem>
-                                    <SelectItem value="system">System</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        ) : (
-                            <Skeleton className="h-9 w-[120px] rounded-lg" />
-                        )}
-                    </div>
-                </div>
+                <ProfileListItem
+                   icon={FolderCog}
+                   title="Manage Categories"
+                   description="Edit, add, or delete income/expense categories"
+                   href="/categories"
+                />
+                 <ProfileListItem icon={Palette} title="Theme" description="Select your preferred app theme.">
+                    {mounted ? (
+                        <Select
+                            value={theme}
+                            onValueChange={(value) => setTheme(value)}
+                        >
+                            <SelectTrigger className="w-[120px] rounded-lg h-9 text-sm ml-auto" aria-label="Select theme">
+                                <SelectValue placeholder="Theme" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="light">Light</SelectItem>
+                                <SelectItem value="dark">Dark</SelectItem>
+                                <SelectItem value="system">System</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        <Skeleton className="h-9 w-[120px] rounded-lg ml-auto" />
+                    )}
+                 </ProfileListItem>
                  <ProfileListItem
                     icon={Bell}
                     title="Notification Preferences"
@@ -306,13 +291,13 @@ export default function ProfilePage() {
 
           <Card>
             <CardHeader className="bg-destructive/10">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold text-destructive"><AlertTriangle className="h-5 w-5" /> Data Management</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold text-destructive"><AlertTriangle className="h-5 w-5" /> Danger Zone</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <ProfileListItem
                   icon={Trash2}
                   title="Reset Local App Data"
-                  description="Clear all transactions, budgets, etc., on this device"
+                  description="Clear all financial data on this device"
                   isDestructive
                   onClick={() => setIsResetDataDialogOpen(true)}
               />
@@ -331,7 +316,7 @@ export default function ProfilePage() {
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete all
               your financial data (transactions, budgets, categories, goals) stored locally on this device/browser.
-              It will not affect your account if data were synced to a server (not currently implemented).
+              It will not affect your account itself.
               The application will reload after reset.
             </AlertDialogDescription>
           </AlertDialogHeader>
