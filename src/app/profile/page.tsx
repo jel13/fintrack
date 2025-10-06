@@ -282,13 +282,13 @@ export default function ProfilePage() {
                                   </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
-                                  <SelectItem value="light">
+                                  <SelectItem value="light" className="pl-2">
                                       <Sun className="h-4 w-4" />
                                   </SelectItem>
-                                  <SelectItem value="dark">
+                                  <SelectItem value="dark" className="pl-2">
                                       <Moon className="h-4 w-4" />
                                   </SelectItem>
-                                  <SelectItem value="system">
+                                  <SelectItem value="system" className="pl-2">
                                       <Laptop className="h-4 w-4" />
                                   </SelectItem>
                               </SelectContent>
