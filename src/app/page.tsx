@@ -1010,7 +1010,7 @@ const openEditBudgetDialog = (budgetId: string) => {
             </div>
              <div className="flex flex-col gap-2 mt-2">
                 <div className="text-xs text-muted-foreground">
-                    Viewing {filteredTransactions.length} transaction(s) with a net total of <span className={cn("font-semibold", totalFilteredAmount >= 0 ? "text-accent" : "text-destructive"})}>{formatCurrency(totalFilteredAmount)}</span>.
+                    Viewing {filteredTransactions.length} transaction(s) with a net total of <span className={cn("font-semibold", totalFilteredAmount >= 0 ? "text-accent" : "text-destructive")}>{formatCurrency(totalFilteredAmount)}</span>.
                 </div>
                  <div className="flex items-center gap-2">
                     <Button variant={historyTypeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('all')} className="flex-1 rounded-lg">All</Button>
