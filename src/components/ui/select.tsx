@@ -83,7 +83,6 @@ const SelectContent = React.forwardRef<
         className
       )}
       position={position}
-      sideOffset={5}
       {...props}
     >
         <SelectPrimitive.Viewport
