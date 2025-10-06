@@ -396,62 +396,64 @@ export function AddTransactionSheet({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {watchedType === 'income' && incomeCategories.length > 0 && (
-                            incomeCategories.map((category) => {
-                               const Icon = getCategoryIconComponent(category.icon);
-                               return (
-                                 <SelectItem key={category.id} value={category.id}>
-                                   <div className="flex items-center gap-2">
-                                     <Icon className="h-4 w-4 text-muted-foreground" />
-                                     <span>{category.label}</span>
-                                   </div>
-                                 </SelectItem>
-                               );
-                             })
-                         )}
-                         {watchedType === 'expense' && (
-                            <>
-                              {regularExpenseCategories.length > 0 && (
-                                <SelectGroup>
-                                  <SelectLabel>Expense Categories</SelectLabel>
-                                  {regularExpenseCategories.map((category) => {
-                                    const Icon = getCategoryIconComponent(category.icon);
-                                    return (
-                                      <SelectItem key={category.id} value={category.id}>
-                                        <div className="flex items-center gap-2">
-                                          <Icon className="h-4 w-4 text-muted-foreground" />
-                                          <span>{category.label}</span>
-                                        </div>
-                                      </SelectItem>
-                                    );
-                                  })}
-                                </SelectGroup>
-                              )}
-                              {userSavingGoals.length > 0 && (
-                                <SelectGroup>
-                                  <SelectLabel>Allocate to Saving Goal (as Expense)</SelectLabel>
-                                  {userSavingGoals.map((goal) => {
-                                     const GoalCatIcon = getCategoryIconComponent(goal.icon);
-                                    return (
-                                      <SelectItem key={goal.id} value={goal.id}>
-                                        <div className="flex items-center gap-2">
-                                          <GoalCatIcon className="h-4 w-4 text-accent" />
-                                          <span>{goal.label}</span>
-                                        </div>
-                                      </SelectItem>
-                                    );
-                                  })}
-                                </SelectGroup>
-                              )}
-                            </>
-                         )}
-                         {((watchedType === 'income' && incomeCategories.length === 0) ||
-                           (watchedType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0)
-                         ) && (
-                              <SelectItem value="no-cat" disabled>
-                                {watchedType === 'expense' ? 'No categories with active budgets or saving goals' : `No ${watchedType} categories available`}
-                              </SelectItem>
-                         )}
+                        <ScrollArea className="max-h-[250px]">
+                            {watchedType === 'income' && incomeCategories.length > 0 && (
+                                incomeCategories.map((category) => {
+                                   const Icon = getCategoryIconComponent(category.icon);
+                                   return (
+                                     <SelectItem key={category.id} value={category.id}>
+                                       <div className="flex items-center gap-2">
+                                         <Icon className="h-4 w-4 text-muted-foreground" />
+                                         <span>{category.label}</span>
+                                       </div>
+                                     </SelectItem>
+                                   );
+                                 })
+                             )}
+                             {watchedType === 'expense' && (
+                                <>
+                                  {regularExpenseCategories.length > 0 && (
+                                    <SelectGroup>
+                                      <SelectLabel>Expense Categories</SelectLabel>
+                                      {regularExpenseCategories.map((category) => {
+                                        const Icon = getCategoryIconComponent(category.icon);
+                                        return (
+                                          <SelectItem key={category.id} value={category.id}>
+                                            <div className="flex items-center gap-2">
+                                              <Icon className="h-4 w-4 text-muted-foreground" />
+                                              <span>{category.label}</span>
+                                            </div>
+                                          </SelectItem>
+                                        );
+                                      })}
+                                    </SelectGroup>
+                                  )}
+                                  {userSavingGoals.length > 0 && (
+                                    <SelectGroup>
+                                      <SelectLabel>Allocate to Saving Goal (as Expense)</SelectLabel>
+                                      {userSavingGoals.map((goal) => {
+                                         const GoalCatIcon = getCategoryIconComponent(goal.icon);
+                                        return (
+                                          <SelectItem key={goal.id} value={goal.id}>
+                                            <div className="flex items-center gap-2">
+                                              <GoalCatIcon className="h-4 w-4 text-accent" />
+                                              <span>{goal.label}</span>
+                                            </div>
+                                          </SelectItem>
+                                        );
+                                      })}
+                                    </SelectGroup>
+                                  )}
+                                </>
+                             )}
+                             {((watchedType === 'income' && incomeCategories.length === 0) ||
+                               (watchedType === 'expense' && regularExpenseCategories.length === 0 && userSavingGoals.length === 0)
+                             ) && (
+                                  <SelectItem value="no-cat" disabled>
+                                    {watchedType === 'expense' ? 'No categories with active budgets or saving goals' : `No ${watchedType} categories available`}
+                                  </SelectItem>
+                             )}
+                        </ScrollArea>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -581,3 +583,5 @@ export function AddTransactionSheet({
     </Sheet>
   );
 }
+
+    
