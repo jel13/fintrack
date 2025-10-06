@@ -239,11 +239,6 @@ export default function ProfilePage() {
                     description="Send a password reset link to your email"
                     onClick={handlePasswordReset}
                   />
-                  <ProfileListItem
-                    icon={LogOut}
-                    title="Log Out"
-                    onClick={handleLogout}
-                  />
             </div>
           </section>
 
@@ -329,6 +324,16 @@ export default function ProfilePage() {
                 />
             </div>
           </section>
+
+          <section>
+            <div className="space-y-1 px-4">
+                 <ProfileListItem
+                    icon={LogOut}
+                    title="Log Out"
+                    onClick={handleLogout}
+                  />
+            </div>
+          </section>
         </div>
          <div className="p-4 text-center text-xs text-muted-foreground">
             FinTrack Mobile Version 1.0.0
@@ -375,5 +380,7 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
 
     
