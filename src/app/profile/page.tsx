@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle, LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell, Edit, KeyRound, Save, X } from "lucide-react";
+import { ArrowLeft, LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell, Edit, KeyRound, Save, X, Sun, Moon, Laptop } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -56,9 +56,9 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
   const content = (
     <div
       className={cn(
-        "flex items-center p-4 min-h-[64px] bg-card rounded-lg",
-        onClick && !href ? "hover:bg-secondary active:bg-secondary/80 cursor-pointer" : "",
-        isDestructive ? "text-destructive hover:bg-destructive/10 active:bg-destructive/20" : "text-foreground"
+        "flex items-center p-4 min-h-[72px] bg-card rounded-lg transition-colors",
+        onClick && !href ? "hover:bg-secondary/50 active:bg-secondary/80 cursor-pointer" : "",
+        isDestructive ? "text-destructive hover:bg-destructive/10 active:bg-destructive/20 focus-within:bg-destructive/10" : "text-foreground"
       )}
       onClick={onClick && !href ? onClick : undefined}
       role={onClick && !href ? "button" : undefined}
@@ -81,7 +81,7 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
         href={href}
         className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
       >
-        <div className="hover:bg-secondary active:bg-secondary/80 cursor-pointer">{content}</div>
+        <div className="hover:bg-secondary/50 active:bg-secondary/80 cursor-pointer">{content}</div>
       </Link>
     );
   }
@@ -197,10 +197,9 @@ export default function ProfilePage() {
           <section>
             <SectionHeader>Account</SectionHeader>
             <div className="space-y-1 px-4">
-                <div className="bg-card p-4 rounded-lg">
-                    {isEditingUsername ? (
-                      <div className="space-y-2">
-                        <Label htmlFor="username-edit" className="text-sm font-medium">Edit Username</Label>
+                <ProfileListItem icon={UserCircle} title="Username">
+                  {isEditingUsername ? (
+                      <div className="mt-2 space-y-2">
                         <Input
                           id="username-edit"
                           value={newUsername}
@@ -209,39 +208,35 @@ export default function ProfilePage() {
                           className="h-9 text-sm"
                         />
                         {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
-                        <div className="flex gap-2 pt-2">
+                        <div className="flex flex-wrap gap-2 pt-1">
                           <Button size="sm" onClick={handleSaveUsername} className="h-8 text-xs rounded-full">
-                            <Save className="h-3 w-3 mr-1" /> Save
+                            <Save className="h-3 w-3 mr-1.5" /> Save
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => { setIsEditingUsername(false); setUsernameError(null); }} className="h-8 text-xs rounded-full">
-                            <X className="h-3 w-3 mr-1" /> Cancel
+                            <X className="h-3 w-3 mr-1.5" /> Cancel
                           </Button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between w-full">
-                        <div>
-                            <p className="text-sm text-muted-foreground">Username</p>
-                            <p className="font-semibold text-foreground truncate">{user?.displayName || "Not set"}</p>
-                        </div>
+                      <div className="flex items-center justify-between w-full mt-1">
+                        <p className="font-semibold text-foreground truncate">{user?.displayName || "Not set"}</p>
                         <Button variant="ghost" size="sm" onClick={() => { setIsEditingUsername(true); setNewUsername(user?.displayName || ""); setUsernameError(null); }} className="ml-2 text-xs h-8 rounded-full">
-                          <Edit className="h-3 w-3 mr-1" /> Edit
+                          <Edit className="h-3 w-3 mr-1.5" /> Edit
                         </Button>
                       </div>
                     )}
-                </div>
+                </ProfileListItem>
 
-                 <div className="bg-card p-4 rounded-lg">
-                     <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-muted-foreground">Email</p>
-                            <p className="font-semibold text-foreground truncate">{user?.email}</p>
-                        </div>
-                         {!user?.emailVerified && (
+                 <ProfileListItem
+                    icon={UserCircle}
+                    title="Email"
+                    description={user?.email || ""}
+                    actionElement={
+                       !user?.emailVerified && (
                             <Badge variant="destructive" className="text-xs ml-2">Unverified</Badge>
-                         )}
-                     </div>
-                  </div>
+                         )
+                    }
+                 />
 
                   <ProfileListItem
                     icon={KeyRound}
@@ -266,26 +261,48 @@ export default function ProfilePage() {
                    description="Edit, add, or delete income/expense categories"
                    href="/categories"
                 />
-                 <ProfileListItem icon={Palette} title="Theme"
-                  actionElement={
-                    mounted ? (
-                        <Select
-                            value={theme}
-                            onValueChange={(value) => setTheme(value)}
-                        >
-                            <SelectTrigger className="w-auto rounded-full h-9 text-sm focus:ring-0 focus:ring-offset-0 border-0 bg-secondary" aria-label="Select theme">
-                                <SelectValue placeholder="Theme" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="light">Light</SelectItem>
-                                <SelectItem value="dark">Dark</SelectItem>
-                                <SelectItem value="system">System</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    ) : (
-                        <Skeleton className="h-9 w-[120px] rounded-full" />
-                    )
-                  }
+                 <ProfileListItem
+                    icon={Palette}
+                    title="Theme"
+                    description="Choose your preferred interface style"
+                    actionElement={
+                      mounted ? (
+                          <Select
+                              value={theme}
+                              onValueChange={(value) => setTheme(value)}
+                          >
+                              <SelectTrigger className="w-auto rounded-lg h-9 text-sm focus:ring-0 focus:ring-offset-0 border-input bg-secondary" aria-label="Select theme">
+                                  <SelectValue asChild>
+                                      <div className="flex items-center gap-2">
+                                          {theme === 'light' && <Sun className="h-4 w-4" />}
+                                          {theme === 'dark' && <Moon className="h-4 w-4" />}
+                                          {theme === 'system' && <Laptop className="h-4 w-4" />}
+                                          <span className="capitalize sr-only">{theme}</span>
+                                      </div>
+                                  </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="light">
+                                      <div className="flex items-center gap-2">
+                                          <Sun className="h-4 w-4" /> Light
+                                      </div>
+                                  </SelectItem>
+                                  <SelectItem value="dark">
+                                      <div className="flex items-center gap-2">
+                                          <Moon className="h-4 w-4" /> Dark
+                                      </div>
+                                  </SelectItem>
+                                  <SelectItem value="system">
+                                      <div className="flex items-center gap-2">
+                                          <Laptop className="h-4 w-4" /> System
+                                      </div>
+                                  </SelectItem>
+                              </SelectContent>
+                          </Select>
+                      ) : (
+                          <Skeleton className="h-9 w-12 rounded-lg" />
+                      )
+                    }
                  />
                  <ProfileListItem
                     icon={Bell}
@@ -354,3 +371,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
