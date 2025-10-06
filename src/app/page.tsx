@@ -681,100 +681,77 @@ const openEditBudgetDialog = (budgetId: string) => {
                 <h1 className="text-2xl font-bold text-primary">Home</h1>
             </div>
 
-            {monthlyIncome === null || monthlyIncome === 0 ? (
-              <Card className="border-primary border-2 animate-fade-in">
+            {/* Unified Main Dashboard Card */}
+            <Card className="w-full animate-slide-up bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2"><Wallet className="text-accent h-6 w-6"/> Set Your Monthly Income</CardTitle>
-                  <CardDescription>Enter your estimated total income for the month and select its primary source category. This forms the basis for your budget and can be updated later.</CardDescription>
+                    <CardTitle className="text-sm font-medium text-primary-foreground/80">
+                      {monthlyIncome !== null && monthlyIncome > 0 ? "Actual Balance" : "Set Monthly Income"}
+                    </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-                        <div className="space-y-1">
-                            <Label htmlFor="monthly-income">Amount (₱)</Label>
-                            <Input
-                                id="monthly-income"
-                                type="number"
-                                placeholder="e.g., 30000"
-                                value={tempIncome}
-                                onChange={(e) => setTempIncome(e.target.value)}
-                            />
-                        </div>
-                         <div className="space-y-1">
-                             <Label htmlFor="income-category">Source Category</Label>
-                             <Select value={selectedIncomeCategory} onValueChange={setSelectedIncomeCategory}>
-                                <SelectTrigger id="income-category" className="truncate">
-                                    <SelectValue placeholder="Select source" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {incomeCategories.length > 0 ? (
-                                        incomeCategories.map((cat) => {
-                                            const Icon = getCategoryIconComponent(cat.icon);
-                                            return (
-                                                <SelectItem key={cat.id} value={cat.id}>
-                                                    <div className="flex items-center gap-2">
-                                                    <Icon className="h-4 w-4 text-muted-foreground" />
-                                                    <span>{cat.label}</span>
-                                                    </div>
-                                                </SelectItem>
-                                            );
-                                        })
-                                    ) : (
-                                         <SelectItem value="no-income-cats" disabled>
-                                            Define income categories first
-                                         </SelectItem>
-                                    )}
-                                </SelectContent>
-                             </Select>
-                         </div>
-                   </div>
-                   <Button onClick={handleSetIncome} className="w-full">Set Monthly Income</Button>
-                   {incomeCategories.length === 0 && (
-                        <p className="text-xs text-muted-foreground text-center">No income source categories found. Please add some in 'Profile' &gt; 'Manage Categories'.</p>
-                   )}
+                <CardContent>
+                    {monthlyIncome !== null && monthlyIncome > 0 ? (
+                        <>
+                            <p className="text-4xl font-bold tracking-tight">{formatCurrency(monthlySummary.balance)}</p>
+                            <div className="mt-4 flex justify-between text-sm text-primary-foreground/80">
+                                <div className="flex items-center gap-2">
+                                    <Wallet className="h-4 w-4"/>
+                                    <span>Income: {formatCurrency(monthlySummary.income)}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <TrendingDown className="h-4 w-4"/>
+                                    <span>Expenses: {formatCurrency(monthlySummary.expenses)}</span>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                      <div className="space-y-3 text-primary-foreground">
+                          <p className="text-sm opacity-90">Enter your estimated income for this month to start budgeting.</p>
+                           <div className="space-y-1">
+                                <Label htmlFor="monthly-income" className="text-xs opacity-80">Amount (₱)</Label>
+                                <Input
+                                    id="monthly-income"
+                                    type="number"
+                                    placeholder="e.g., 30000"
+                                    value={tempIncome}
+                                    onChange={(e) => setTempIncome(e.target.value)}
+                                    className="bg-white/20 text-white placeholder:text-primary-foreground/60 border-primary-foreground/30 focus-visible:ring-offset-primary"
+                                />
+                            </div>
+                             <div className="space-y-1">
+                                 <Label htmlFor="income-category" className="text-xs opacity-80">Source Category</Label>
+                                 <Select value={selectedIncomeCategory} onValueChange={setSelectedIncomeCategory}>
+                                    <SelectTrigger id="income-category" className="truncate bg-white/20 text-white placeholder:text-primary-foreground/60 border-primary-foreground/30 focus-visible:ring-offset-primary">
+                                        <SelectValue placeholder="Select source" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {incomeCategories.length > 0 ? (
+                                            incomeCategories.map((cat) => {
+                                                const Icon = getCategoryIconComponent(cat.icon);
+                                                return (
+                                                    <SelectItem key={cat.id} value={cat.id}>
+                                                        <div className="flex items-center gap-2">
+                                                        <Icon className="h-4 w-4 text-muted-foreground" />
+                                                        <span>{cat.label}</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                );
+                                            })
+                                        ) : (
+                                             <SelectItem value="no-income-cats" disabled>
+                                                Define income categories first
+                                             </SelectItem>
+                                        )}
+                                    </SelectContent>
+                                 </Select>
+                             </div>
+                           <Button onClick={handleSetIncome} className="w-full bg-primary-foreground text-primary hover:bg-primary-foreground/90 mt-2">Set Monthly Income</Button>
+                           {incomeCategories.length === 0 && (
+                                <p className="text-xs opacity-80 text-center pt-1">Add an income source in 'Profile' &gt; 'Manage Categories'.</p>
+                           )}
+                      </div>
+                    )}
                 </CardContent>
-              </Card>
-            ) : null}
-
-             {monthlyIncome !== null && monthlyIncome > 0 && (
-                <>
-                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 animate-slide-up">
-                    <Card className="sm:col-span-2 lg:col-span-1">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Budgeted Income</CardTitle>
-                            <Wallet className="h-4 w-4 text-accent" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-primary">{formatCurrency(monthlySummary.income)}</div>
-                            <p className="text-xs text-muted-foreground">This month's budgeted total</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                           <CardTitle className="text-sm font-medium">Actual Balance</CardTitle>
-                           <Scale className="h-4 w-4 text-accent" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold text-primary">{formatCurrency(monthlySummary.balance)}</div>
-                           <p className="text-xs text-muted-foreground">Budgeted income minus expenses this month.</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Expenses Logged</CardTitle>
-                            <TrendingDown className="h-4 w-4 text-primary" />
-                        </CardHeader>
-                        <CardContent>
-                             {hasExpenseBudgetsSet ? (
-                                <div className="text-2xl font-bold">{formatCurrency(monthlySummary.expenses)}</div>
-                             ) : (
-                                 <Skeleton className="h-8 w-24" />
-                             )}
-                             <p className="text-xs text-muted-foreground">{hasExpenseBudgetsSet ? "This month" : "Set budgets first"}</p>
-                        </CardContent>
-                    </Card>
-                </div>
-                </>
-             )}
+            </Card>
 
 
           {monthlyIncome !== null && monthlyIncome > 0 && hasExpenseBudgetsSet && (
@@ -786,8 +763,8 @@ const openEditBudgetDialog = (budgetId: string) => {
           {monthlyIncome !== null && monthlyIncome > 0 && (
             <Card className="animate-slide-up" style={{animationDelay: "0.3s"}}>
                 <CardHeader>
-                <CardTitle className="flex items-center gap-2"><List className="h-5 w-5 text-accent"/>Recent Transactions</CardTitle>
-                 <CardDescription>Your latest financial activity.</CardDescription>
+                  <CardTitle className="flex items-center gap-2"><List className="h-5 w-5 text-primary"/>Recent Transactions</CardTitle>
+                  <CardDescription>Your latest financial activity.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                 <ScrollArea className="h-[200px]">
@@ -809,48 +786,41 @@ const openEditBudgetDialog = (budgetId: string) => {
                         </div>
                     )}
                 </ScrollArea>
-                 {transactions.length > 5 && (
-                     <div className="p-2 text-center border-t">
-                        <Button variant="link" size="sm" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'transactions' }))}>View All History</Button>
-                     </div>
-                )}
                 </CardContent>
-            </Card>
-          )}
-           {!hasExpenseBudgetsSet && monthlyIncome !== null && monthlyIncome > 0 && (
-                <Card className="border-dashed border-muted-foreground animate-fade-in bg-secondary/30">
-                    <CardContent className="p-6 text-center text-muted-foreground">
-                        <Target className="mx-auto h-8 w-8 mb-2 text-accent" />
-                        <p className="font-semibold">Ready to Budget?</p>
-                        <p className="text-sm">Head over to the 'Budgets' tab to allocate your income and start tracking your spending effectively.</p>
-                         <Button size="sm" className="mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>
-                             Go to Budgets
-                        </Button>
-                    </CardContent>
-                </Card>
-           )}
-           {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && (!hasSeenOnboarding || hasSeenOnboarding === undefined) && (
-                 <Card className="border-dashed border-destructive/30 bg-destructive/10 animate-fade-in">
-                    <CardContent className="p-6 text-center">
-                        <AlertCircle className="mx-auto h-8 w-8 mb-2 text-destructive" />
-                         <p className="font-semibold text-destructive">Set Your Income</p>
-                        <p className="text-sm text-destructive/80">Please set your estimated monthly income above to unlock budgeting and tracking features.</p>
-                    </CardContent>
-                </Card>
-           )}
-             <Card className="animate-slide-up">
-                <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-5 w-5 text-accent"/> Financial Planning Tips</CardTitle>
-                     <CardDescription className="text-xs">Learn more about managing your money.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Link href="/learn/budgeting-guide">
-                        <Button variant="link" className="p-0 h-auto text-base">
-                           How to Budget Guide
+                <CardFooter className="p-2 text-center border-t flex-col gap-2">
+                     {transactions.length > 5 && (
+                         <Button variant="link" size="sm" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'transactions' }))}>View All History</Button>
+                     )}
+                     <Link href="/learn/budgeting-guide" className="w-full">
+                        <Button variant="outline" className="w-full text-primary">
+                           <BookOpen className="mr-2 h-4 w-4"/> How to Budget Guide
                         </Button>
                     </Link>
-                </CardContent>
-             </Card>
+                </CardFooter>
+            </Card>
+          )}
+
+           {!hasExpenseBudgetsSet && monthlyIncome !== null && monthlyIncome > 0 && (
+                <Alert variant="default" className="animate-fade-in bg-secondary/50">
+                    <Target className="h-5 w-5 text-primary" />
+                    <AlertTitle>Ready to Budget?</AlertTitle>
+                    <AlertDescription>
+                        Head to the 'Budgets' tab to allocate your income and start tracking spending.
+                        <Button size="sm" className="w-full mt-3" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>
+                             Go to Budgets
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+           )}
+           {(monthlyIncome === null || monthlyIncome === 0) && isLoaded && (!hasSeenOnboarding || hasSeenOnboarding === undefined) && (
+                 <Alert variant="destructive" className="animate-fade-in">
+                    <AlertCircle className="h-5 w-5"/>
+                    <AlertTitle>Set Your Income</AlertTitle>
+                    <AlertDescription>
+                        Please set your estimated monthly income above to unlock budgeting and tracking features.
+                    </AlertDescription>
+                </Alert>
+           )}
         </TabsContent>
 
         <TabsContent value="transactions" className="flex-grow overflow-y-auto p-0">
@@ -1125,5 +1095,7 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
+
+    
 
     
