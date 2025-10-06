@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard, ChevronDown, Check, Filter, MoreVertical, History } from "lucide-react";
+import { PlusCircle, Target, Lightbulb, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, DollarSign, CreditCard, ChevronDown, Check, Filter, MoreVertical, History } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -927,7 +927,7 @@ const openEditBudgetDialog = (budgetId: string) => {
           {monthlyIncome !== null && monthlyIncome > 0 && (
             <Card className="animate-slide-up" style={{animationDelay: "0.3s"}}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><List className="h-5 w-5 text-primary"/>Recent Transactions</CardTitle>
+                  <CardTitle className="flex items-center gap-2"><History className="h-5 w-5 text-primary"/>Recent Transactions</CardTitle>
                   <CardDescription>Your latest financial activity.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -945,7 +945,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                     ))}
                     {transactions.length === 0 && (
                         <div className="p-4 text-center text-muted-foreground">
-                             <List className="mx-auto h-8 w-8 mb-2" />
+                             <History className="mx-auto h-8 w-8 mb-2" />
                             No transactions yet. Use the '+' button to add one!
                         </div>
                     )}
@@ -1047,7 +1047,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                ) : (
                     <Card className="border-dashed mt-4">
                         <CardContent className="p-6 text-center text-muted-foreground">
-                            <List className="mx-auto h-8 w-8 mb-2" />
+                            <History className="mx-auto h-8 w-8 mb-2" />
                             <p className="font-semibold">No transactions found</p>
                             <p className="text-sm">No transactions match your current filters.</p>
                         </CardContent>
@@ -1207,7 +1207,7 @@ const openEditBudgetDialog = (budgetId: string) => {
              ) : !hasExpenseBudgetsSet ? (
                   <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in">
                        <CardContent className="p-6 text-center text-muted-foreground">
-                          <BarChart3 className="mx-auto h-8 w-8 mb-2 text-primary" />
+                          <Lightbulb className="mx-auto h-8 w-8 mb-2 text-primary" />
                            <p className="font-semibold">Set Budgets First</p>
                           <p className="text-sm">Set your budgets in the 'Budgets' tab to generate detailed spending insights.</p>
                           <Button size="sm" className="mt-3 rounded-lg" onClick={() => document.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'budgets' }))}>

@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Lightbulb, PlusCircle, TrendingDown, BarChart3, Wallet } from "lucide-react";
+import { Lightbulb, PlusCircle, Target, Wallet } from "lucide-react";
 
 interface OnboardingDialogProps {
   open: boolean;
@@ -64,12 +64,12 @@ export const OnboardingDialog: React.FC<OnboardingDialogProps> = ({ open, onDism
             description="Use the '+' button (bottom right on Home when income is set) to add your income and expenses as they happen."
           />
           <TipItem
-            icon={TrendingDown}
+            icon={Target}
             title={isIncomeSet ? "2. Create Budgets" : "3. Create Budgets"}
             description="Navigate to the 'Budgets' tab to allocate percentages of your income to different spending categories."
           />
           <TipItem
-            icon={BarChart3}
+            icon={Lightbulb}
             title={isIncomeSet ? "3. Analyze Spending" : "4. Analyze Spending"}
             description="Check the 'Insights' tab to visualize your spending patterns and track your financial progress."
           />
