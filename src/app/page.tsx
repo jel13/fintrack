@@ -109,7 +109,7 @@ export default function Home() {
 
   const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = React.useState(false); 
   const [historyDateFilter, setHistoryDateFilter] = React.useState('thisMonth');
-  const [historyTypeFilter, setHistoryTypeFilter] = React.useState<'all' | 'income' | 'expense'>('all');
+  const [historyTypeFilter, setHistoryTypeFilter] = React.useState<'all' | 'income' | 'expense' | 'goals'>('all');
 
   const [isAddGoalDialogOpen, setIsAddGoalDialogOpen] = React.useState(false);
   const [editingGoal, setEditingGoal] = React.useState<SavingGoal | null>(null);
@@ -648,12 +648,15 @@ const openEditBudgetDialog = (budgetId: string) => {
 
   const filteredTransactions = React.useMemo(() => {
     let filtered = [...transactions];
+    const savingGoalIds = new Set(savingGoals.map(sg => sg.id));
 
     // Filter by type
-    if (historyTypeFilter !== 'all') {
-      filtered = filtered.filter(t => t.type === historyTypeFilter);
+    if (historyTypeFilter === 'income' || historyTypeFilter === 'expense') {
+        filtered = filtered.filter(t => t.type === historyTypeFilter && !savingGoalIds.has(t.category));
+    } else if (historyTypeFilter === 'goals') {
+        filtered = filtered.filter(t => t.type === 'expense' && savingGoalIds.has(t.category));
     }
-
+    
     // Filter by date
     const now = new Date();
     if (historyDateFilter === 'thisMonth') {
@@ -669,7 +672,7 @@ const openEditBudgetDialog = (budgetId: string) => {
     }
 
     return filtered;
-  }, [transactions, historyDateFilter, historyTypeFilter]);
+  }, [transactions, historyDateFilter, historyTypeFilter, savingGoals]);
 
   const groupedTransactions = React.useMemo(() => {
     return filteredTransactions.reduce((acc, t) => {
@@ -1007,12 +1010,13 @@ const openEditBudgetDialog = (budgetId: string) => {
             </div>
              <div className="flex flex-col gap-2 mt-2">
                 <div className="text-xs text-muted-foreground">
-                    Viewing {filteredTransactions.length} transaction(s) with a net total of <span className={cn("font-semibold", totalFilteredAmount >= 0 ? "text-accent" : "text-destructive")}>{formatCurrency(totalFilteredAmount)}</span>.
+                    Viewing {filteredTransactions.length} transaction(s) with a net total of <span className={cn("font-semibold", totalFilteredAmount >= 0 ? "text-accent" : "text-destructive"})}>{formatCurrency(totalFilteredAmount)}</span>.
                 </div>
                  <div className="flex items-center gap-2">
                     <Button variant={historyTypeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('all')} className="flex-1 rounded-lg">All</Button>
                     <Button variant={historyTypeFilter === 'income' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('income')} className="flex-1 rounded-lg">Income</Button>
                     <Button variant={historyTypeFilter === 'expense' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('expense')} className="flex-1 rounded-lg">Expense</Button>
+                    <Button variant={historyTypeFilter === 'goals' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('goals')} className="flex-1 rounded-lg">Goals</Button>
                  </div>
             </div>
           </div>
