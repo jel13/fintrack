@@ -100,7 +100,6 @@ export default function Home() {
   const [budgetToDelete, setBudgetToDelete] = React.useState<Budget | null>(null);
 
   const [tempIncome, setTempIncome] = React.useState<string>('');
-  const [selectedIncomeCategory, setSelectedIncomeCategory] = React.useState<string>('');
   const { toast } = useToast();
 
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = React.useState(false);
@@ -552,36 +551,16 @@ const openEditBudgetDialog = (budgetId: string) => {
  const handleSetIncome = () => {
     const incomeValue = parseFloat(tempIncome);
     if (isNaN(incomeValue) || incomeValue <= 0) {
-         requestAnimationFrame(() => {
-            toast({ title: "Invalid Income", description: "Please enter a valid positive number for income.", variant: "destructive" });
+        requestAnimationFrame(() => {
+            toast({ title: "Invalid Income", description: "Please enter a valid positive number for your estimated monthly income.", variant: "destructive" });
         });
         return;
     }
-    if (!selectedIncomeCategory) {
-         requestAnimationFrame(() => {
-            toast({ title: "Select Income Source", description: "Please select an income source category.", variant: "destructive" });
-        });
-         return;
-    }
-
-    // Set the monthly income for budget percentage calculations
     setAppData(prev => ({ ...prev, monthlyIncome: incomeValue }));
-
-    // Create a new transaction for the income
-    const newTransaction: Transaction = {
-        id: `tx-income-${Date.now()}`,
-        type: 'income',
-        amount: incomeValue,
-        category: selectedIncomeCategory,
-        date: new Date(),
-        description: 'Monthly Budgeted Income'
-    };
-    handleSaveTransaction(newTransaction);
-
     requestAnimationFrame(() => {
-        toast({ title: "Income Set & Logged", description: `Monthly budgeted income of ${formatCurrency(incomeValue)} set and logged as a transaction.` });
+        toast({ title: "Monthly Income Set", description: `Your estimated monthly income is now ${formatCurrency(incomeValue)}.` });
     });
-  };
+};
 
   const getCategoryById = React.useCallback((id: string, cats: Category[]): Category | undefined => {
     return cats.find(cat => cat.id === id);
@@ -865,48 +844,23 @@ const openEditBudgetDialog = (budgetId: string) => {
                     ) : (
                       <div className="space-y-3 text-primary-foreground">
                           <p className="text-sm opacity-90">Enter your estimated income for this month to start budgeting.</p>
-                           <div className="space-y-1">
-                                <Label htmlFor="monthly-income" className="text-xs opacity-80">Amount (₱)</Label>
-                                <Input
-                                    id="monthly-income"
-                                    type="number"
-                                    placeholder="e.g., 30000"
-                                    value={tempIncome}
-                                    onChange={(e) => setTempIncome(e.target.value)}
-                                    className="bg-white/20 text-white placeholder:text-primary-foreground/60 border-primary-foreground/30 focus-visible:ring-offset-primary rounded-lg"
-                                />
-                            </div>
-                             <div className="space-y-1">
-                                 <Label htmlFor="income-category" className="text-xs opacity-80">Source Category</Label>
-                                 <Select value={selectedIncomeCategory} onValueChange={setSelectedIncomeCategory}>
-                                    <SelectTrigger id="income-category" className="truncate bg-white/20 text-white placeholder:text-primary-foreground/60 border-primary-foreground/30 focus-visible:ring-offset-primary rounded-lg">
-                                        <SelectValue placeholder="Select source" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {incomeCategories.length > 0 ? (
-                                            incomeCategories.map((cat) => {
-                                                const Icon = getCategoryIconComponent(cat.icon);
-                                                return (
-                                                    <SelectItem key={cat.id} value={cat.id}>
-                                                        <div className="flex items-center gap-2">
-                                                        <Icon className="h-4 w-4 text-muted-foreground" />
-                                                        <span>{cat.label}</span>
-                                                        </div>
-                                                    </SelectItem>
-                                                );
-                                            })
-                                        ) : (
-                                             <SelectItem value="no-income-cats" disabled>
-                                                Define income categories first
-                                             </SelectItem>
-                                        )}
-                                    </SelectContent>
-                                 </Select>
-                             </div>
-                           <Button onClick={handleSetIncome} className="w-full bg-primary-foreground text-primary hover:bg-primary-foreground/90 mt-2 rounded-lg">Set Monthly Income</Button>
-                           {incomeCategories.length === 0 && (
-                                <p className="text-xs opacity-80 text-center pt-1">Add an income source in 'Profile' &gt; 'Manage Categories'.</p>
-                           )}
+                           <div className="flex gap-2">
+                                <div className="flex-grow space-y-1">
+                                    <Label htmlFor="monthly-income" className="text-xs opacity-80">Amount (₱)</Label>
+                                    <Input
+                                        id="monthly-income"
+                                        type="number"
+                                        placeholder="e.g., 30000"
+                                        value={tempIncome}
+                                        onChange={(e) => setTempIncome(e.target.value)}
+                                        className="bg-white/20 text-white placeholder:text-primary-foreground/60 border-primary-foreground/30 focus-visible:ring-offset-primary rounded-lg"
+                                    />
+                                </div>
+                                <div className="flex-shrink-0 self-end">
+                                    <Button onClick={handleSetIncome} className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 rounded-lg">Set Income</Button>
+                                </div>
+                           </div>
+                           
                       </div>
                     )}
                 </CardContent>
@@ -1402,5 +1356,3 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
-
-    
