@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Home, History, Target, Lightbulb, UserCircle } from "lucide-react";
+import { Home, Target, Lightbulb, UserCircle, List, History } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -106,7 +106,7 @@ export function BottomNavigation() {
             aria-label={item.label}
           >
             <item.icon className={cn("h-5 w-5", activeTab === item.value ? "text-accent" : "text-muted-foreground/80" )} />
-            {item.label}
+            {activeTab === item.value && item.label}
           </TabsTrigger>
         ))}
       </TabsList>
