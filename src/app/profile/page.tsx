@@ -313,7 +313,13 @@ export default function ProfilePage() {
           
           <section>
             <SectionHeader>History & Data</SectionHeader>
-            <div className="px-4">
+            <div className="space-y-1 px-4">
+                 <ProfileListItem
+                   icon={History}
+                   title="View Transaction History"
+                   description="See all your past income and expenses"
+                   href="/?tab=transactions"
+                />
                  <ProfileListItem
                   icon={Trash2}
                   title="Reset Local App Data"
@@ -369,3 +375,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    
