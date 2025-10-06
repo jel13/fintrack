@@ -5,7 +5,6 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle, LogOut, UserCircle, Trash2, Settings, FolderCog, ChevronRight, Palette, Bell, Edit, KeyRound, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
@@ -57,7 +56,7 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
   const content = (
     <div
       className={cn(
-        "flex items-center p-4 rounded-lg transition-colors min-h-[72px]",
+        "flex items-center p-4 min-h-[64px] bg-card rounded-lg",
         onClick && !href ? "hover:bg-secondary active:bg-secondary/80 cursor-pointer" : "",
         isDestructive ? "text-destructive hover:bg-destructive/10 active:bg-destructive/20" : "text-foreground"
       )}
@@ -68,11 +67,11 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
     >
       <Icon className={cn("h-5 w-5 mr-4 flex-shrink-0", isDestructive ? "text-destructive" : "text-primary")} />
       <div className="flex-grow">
-        <p className="font-medium">{title}</p>
+        <p className="font-medium text-sm">{title}</p>
         {description && <p className="text-xs text-muted-foreground">{description}</p>}
         {children && <div className="mt-1">{children}</div>} 
       </div>
-      {actionElement ? actionElement : ( (href || (onClick && !isDestructive && !children)) && <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto" />)}
+      {actionElement ? <div className="ml-auto pl-2">{actionElement}</div> : ( (href || (onClick && !isDestructive && !children)) && <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto" />)}
     </div>
   );
 
@@ -88,6 +87,10 @@ const ProfileListItem: React.FC<ProfileListItemProps> = ({
   }
   return <div className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background">{content}</div>;
 };
+
+const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <h2 className="px-4 py-2 text-sm font-semibold text-muted-foreground">{children}</h2>
+);
 
 
 export default function ProfilePage() {
@@ -178,7 +181,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="flex flex-col flex-1 bg-secondary/50">
+    <div className="flex flex-col flex-1 bg-secondary/30">
       <div className="flex items-center p-4 border-b sticky top-0 bg-background z-10 shadow-sm">
         <Link href="/" passHref>
           <Button asChild variant="ghost" size="icon" aria-label="Back to Home">
@@ -189,24 +192,15 @@ export default function ProfilePage() {
       </div>
 
       <ScrollArea className="flex-grow">
-        <div className="p-4 space-y-6">
-          <Card>
-            <CardHeader className="bg-muted/30">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold"><UserCircle className="h-5 w-5 text-primary" /> Account</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 divide-y">
-              {user && (
-                <>
-                  <ProfileListItem icon={UserCircle} title="Username">
-                    {!isEditingUsername ? (
-                      <div className="flex items-center justify-between w-full">
-                        <p className="font-medium text-foreground truncate">{user.displayName || "Not set"}</p>
-                        <Button variant="ghost" size="sm" onClick={() => { setIsEditingUsername(true); setNewUsername(user.displayName || ""); setUsernameError(null); }} className="ml-2 text-xs h-7">
-                          <Edit className="h-3 w-3 mr-1" /> Edit
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 pt-1">
+        <div className="py-4 space-y-4">
+          
+          <section>
+            <SectionHeader>Account</SectionHeader>
+            <div className="space-y-1 px-4">
+                <div className="bg-card p-4 rounded-lg">
+                    {isEditingUsername ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="username-edit" className="text-sm font-medium">Edit Username</Label>
                         <Input
                           id="username-edit"
                           value={newUsername}
@@ -215,59 +209,71 @@ export default function ProfilePage() {
                           className="h-9 text-sm"
                         />
                         {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={handleSaveUsername} className="h-8 text-xs">
+                        <div className="flex gap-2 pt-2">
+                          <Button size="sm" onClick={handleSaveUsername} className="h-8 text-xs rounded-full">
                             <Save className="h-3 w-3 mr-1" /> Save
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => { setIsEditingUsername(false); setUsernameError(null); }} className="h-8 text-xs">
+                          <Button variant="ghost" size="sm" onClick={() => { setIsEditingUsername(false); setUsernameError(null); }} className="h-8 text-xs rounded-full">
                             <X className="h-3 w-3 mr-1" /> Cancel
                           </Button>
                         </div>
                       </div>
+                    ) : (
+                      <div className="flex items-center justify-between w-full">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Username</p>
+                            <p className="font-semibold text-foreground truncate">{user?.displayName || "Not set"}</p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => { setIsEditingUsername(true); setNewUsername(user?.displayName || ""); setUsernameError(null); }} className="ml-2 text-xs h-8 rounded-full">
+                          <Edit className="h-3 w-3 mr-1" /> Edit
+                        </Button>
+                      </div>
                     )}
-                  </ProfileListItem>
-                  <ProfileListItem icon={Settings} title="Email">
+                </div>
+
+                 <div className="bg-card p-4 rounded-lg">
                      <div className="flex items-center justify-between">
-                         <p className="font-medium text-foreground truncate">{user.email}</p>
-                         {!user.emailVerified && (
+                        <div>
+                            <p className="text-sm text-muted-foreground">Email</p>
+                            <p className="font-semibold text-foreground truncate">{user?.email}</p>
+                        </div>
+                         {!user?.emailVerified && (
                             <Badge variant="destructive" className="text-xs ml-2">Unverified</Badge>
                          )}
                      </div>
-                  </ProfileListItem>
+                  </div>
+
                   <ProfileListItem
                     icon={KeyRound}
                     title="Reset Password"
                     description="Send a password reset link to your email"
                     onClick={handlePasswordReset}
                   />
-                </>
-              )}
-              <ProfileListItem
-                icon={LogOut}
-                title="Log Out"
-                onClick={handleLogout}
-              />
-            </CardContent>
-          </Card>
+                  <ProfileListItem
+                    icon={LogOut}
+                    title="Log Out"
+                    onClick={handleLogout}
+                  />
+            </div>
+          </section>
 
-          <Card>
-            <CardHeader className="bg-muted/30">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold"><Settings className="h-5 w-5 text-primary"/> App Configuration</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 divide-y">
-                <ProfileListItem
+          <section>
+            <SectionHeader>App Settings</SectionHeader>
+             <div className="space-y-1 px-4">
+                 <ProfileListItem
                    icon={FolderCog}
                    title="Manage Categories"
                    description="Edit, add, or delete income/expense categories"
                    href="/categories"
                 />
-                 <ProfileListItem icon={Palette} title="Theme" description="Select your preferred app theme.">
-                    {mounted ? (
+                 <ProfileListItem icon={Palette} title="Theme"
+                  actionElement={
+                    mounted ? (
                         <Select
                             value={theme}
                             onValueChange={(value) => setTheme(value)}
                         >
-                            <SelectTrigger className="w-full max-w-[120px] rounded-lg h-9 text-sm ml-auto" aria-label="Select theme">
+                            <SelectTrigger className="w-auto rounded-full h-9 text-sm focus:ring-0 focus:ring-offset-0 border-0 bg-secondary" aria-label="Select theme">
                                 <SelectValue placeholder="Theme" />
                             </SelectTrigger>
                             <SelectContent>
@@ -277,32 +283,31 @@ export default function ProfilePage() {
                             </SelectContent>
                         </Select>
                     ) : (
-                        <Skeleton className="h-9 w-[120px] rounded-lg ml-auto" />
-                    )}
-                 </ProfileListItem>
+                        <Skeleton className="h-9 w-[120px] rounded-full" />
+                    )
+                  }
+                 />
                  <ProfileListItem
                     icon={Bell}
                     title="Notification Preferences"
                     description="Manage app notifications"
                     onClick={() => setIsNotificationsInfoOpen(true)}
                 />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="bg-destructive/10">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold text-destructive"><AlertTriangle className="h-5 w-5" /> Danger Zone</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ProfileListItem
+            </div>
+          </section>
+          
+          <section>
+            <SectionHeader>Danger Zone</SectionHeader>
+            <div className="px-4">
+                 <ProfileListItem
                   icon={Trash2}
                   title="Reset Local App Data"
                   description="Clear all financial data on this device"
                   isDestructive
                   onClick={() => setIsResetDataDialogOpen(true)}
-              />
-            </CardContent>
-          </Card>
+                />
+            </div>
+          </section>
         </div>
          <div className="p-4 text-center text-xs text-muted-foreground">
             FinTrack Mobile Version 1.0.0
@@ -349,5 +354,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
