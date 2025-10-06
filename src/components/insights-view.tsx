@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Pie, Cell, Sector } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Pie, PieChart, Cell, Sector } from 'recharts';
 import type { Transaction, Budget, Category } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Scale, PiggyBank, Info, BarChartHorizontalBig, PieChart as PieIcon } from 'lucide-react'; // More specific icons
@@ -319,3 +319,5 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
 };
 
   
+
+    
