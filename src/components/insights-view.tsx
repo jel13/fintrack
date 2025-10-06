@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Pie, PieChart, Cell, Sector } from 'recharts';
 import type { Transaction, Budget, Category } from '@/types';
 import { formatCurrency } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Scale, PiggyBank, Info, BarChartHorizontalBig, PieChart as PieIcon } from 'lucide-react'; // More specific icons
-import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"; // Use ShadCN Chart components
+import { TrendingUp, TrendingDown, Scale, PiggyBank, Info, BarChartHorizontalBig, LineChart, PieChart as PieIcon } from 'lucide-react';
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 interface InsightsViewProps {
     currentMonth: string; // "yyyy-MM"
@@ -216,108 +218,118 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
                 </Card>
             </div>
 
-            {/* Income vs Expense Trend */}
+            {/* Consolidated Chart Card */}
             <Card>
-                <CardHeader>
-                    <CardTitle>Monthly Overview Trend</CardTitle>
-                    <CardDescription>Income vs Expenses vs Net Savings compared to last month.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {comparisonData.length > 0 ? (
-                        <ChartContainer config={comparisonChartConfig} className="aspect-video max-h-[300px]">
-                            <BarChart data={comparisonData}>
-                                <CartesianGrid vertical={false} />
-                                <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} fontSize={12} />
-                                <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value as number)} />
-                                <ChartTooltip
-                                    cursor={false}
-                                    content={<ChartTooltipContent indicator="dot" />}
-                                    formatter={(value) => formatCurrency(value as number)}
-                                />
-                                <ChartLegend content={<ChartLegendContent />} />
-                                <Bar dataKey="Income" fill={chartColors.income} radius={4} />
-                                <Bar dataKey="Expenses" fill={chartColors.expenses} radius={4} />
-                                <Bar dataKey="Savings" name="Net Savings" fill={chartColors.savings} radius={4} />
-                            </BarChart>
-                        </ChartContainer>
-                    ) : (
-                         <p className="text-sm text-muted-foreground text-center py-4">Not enough data for comparison.</p>
-                    )}
-                </CardContent>
-            </Card>
+                <Tabs defaultValue="trend" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 rounded-t-lg rounded-b-none p-0 h-14">
+                        <TabsTrigger value="trend" className="rounded-tl-lg h-full text-xs sm:text-sm">
+                            <LineChart className="h-4 w-4 mr-1.5"/> Trend
+                        </TabsTrigger>
+                        <TabsTrigger value="budgets" className="h-full text-xs sm:text-sm">
+                             <BarChartHorizontalBig className="h-4 w-4 mr-1.5"/> Budgets
+                        </TabsTrigger>
+                        <TabsTrigger value="breakdown" className="rounded-tr-lg h-full text-xs sm:text-sm">
+                             <PieIcon className="h-4 w-4 mr-1.5"/> Breakdown
+                        </TabsTrigger>
+                    </TabsList>
 
-              {/* Budget vs Actual Spending */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><BarChartHorizontalBig className="h-5 w-5 text-primary"/> Budget vs Actual Spending</CardTitle>
-                    <CardDescription>Comparison of budgeted amounts and actual expenses for {format(new Date(currentMonth + '-01T00:00:00'), 'MMMM yyyy')}.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {budgetVsActualData.length > 0 ? (
-                         <ChartContainer config={budgetVsActualChartConfig} className="aspect-video max-h-[300px]">
-                            <BarChart data={budgetVsActualData} layout="vertical" barSize={15} margin={{ right: 20 }}>
-                                <CartesianGrid horizontal={false} />
-                                <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value as number)} />
-                                <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} fontSize={12} width={80} interval={0} />
-                                <ChartTooltip
-                                     cursor={false}
-                                     content={<ChartTooltipContent hideLabel />}
-                                     formatter={(value) => formatCurrency(value as number)}
-                                 />
-                                <ChartLegend content={<ChartLegendContent />} />
-                                <Bar dataKey="Budgeted" fill={chartColors.budgeted} radius={4} />
-                                <Bar dataKey="Spent" fill={chartColors.spent} radius={4}/>
-                            </BarChart>
-                        </ChartContainer>
-                    ) : (
-                         <p className="text-sm text-muted-foreground text-center py-4">No budgets set to compare for this month.</p>
-                    )}
-                </CardContent>
-            </Card>
+                    <TabsContent value="trend">
+                        <CardHeader>
+                            <CardTitle>Monthly Overview Trend</CardTitle>
+                            <CardDescription>Income, Expenses, and Net Savings compared to last month.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {comparisonData.length > 0 ? (
+                                <ChartContainer config={comparisonChartConfig} className="aspect-video max-h-[250px]">
+                                    <BarChart data={comparisonData}>
+                                        <CartesianGrid vertical={false} />
+                                        <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} fontSize={12} />
+                                        <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value as number)} />
+                                        <ChartTooltip
+                                            cursor={false}
+                                            content={<ChartTooltipContent indicator="dot" />}
+                                            formatter={(value) => formatCurrency(value as number)}
+                                        />
+                                        <ChartLegend content={<ChartLegendContent />} />
+                                        <Bar dataKey="Income" fill={chartColors.income} radius={4} />
+                                        <Bar dataKey="Expenses" fill={chartColors.expenses} radius={4} />
+                                        <Bar dataKey="Savings" name="Net Savings" fill={chartColors.savings} radius={4} />
+                                    </BarChart>
+                                </ChartContainer>
+                            ) : (
+                                 <p className="text-sm text-muted-foreground text-center py-10">Not enough data for comparison.</p>
+                            )}
+                        </CardContent>
+                    </TabsContent>
+                    
+                    <TabsContent value="budgets">
+                         <CardHeader>
+                            <CardTitle>Budget vs Actual Spending</CardTitle>
+                            <CardDescription>Comparison of budgeted amounts and actual expenses for {format(new Date(currentMonth + '-01T00:00:00'), 'MMMM yyyy')}.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {budgetVsActualData.length > 0 ? (
+                                 <ChartContainer config={budgetVsActualChartConfig} className="aspect-video max-h-[250px]">
+                                    <BarChart data={budgetVsActualData} layout="vertical" barSize={15} margin={{ right: 20 }}>
+                                        <CartesianGrid horizontal={false} />
+                                        <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(value) => formatCurrency(value as number)} />
+                                        <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} fontSize={12} width={80} interval={0} />
+                                        <ChartTooltip
+                                             cursor={false}
+                                             content={<ChartTooltipContent hideLabel />}
+                                             formatter={(value) => formatCurrency(value as number)}
+                                         />
+                                        <ChartLegend content={<ChartLegendContent />} />
+                                        <Bar dataKey="Budgeted" fill={chartColors.budgeted} radius={4} />
+                                        <Bar dataKey="Spent" fill={chartColors.spent} radius={4}/>
+                                    </BarChart>
+                                </ChartContainer>
+                            ) : (
+                                 <p className="text-sm text-muted-foreground text-center py-10">No budgets set to compare for this month.</p>
+                            )}
+                        </CardContent>
+                    </TabsContent>
 
-             {/* Spending by Category Pie Chart */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><PieIcon className="h-5 w-5 text-primary"/> Expense Breakdown</CardTitle>
-                    <CardDescription>Spending by top-level category for {format(new Date(currentMonth + '-01T00:00:00'), 'MMMM yyyy')}.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                     {spendingByCategory.data.length > 0 ? (
-                         <ChartContainer config={spendingByCategory.config} className="aspect-square max-h-[300px]">
-                             <PieChart>
-                                <ChartTooltip
-                                     cursor={false}
-                                     content={<ChartTooltipContent hideLabel indicator="dot" />}
-                                     formatter={(value) => formatCurrency(value as number)}
-                                 />
-                                 <Pie
-                                     data={spendingByCategory.data}
-                                     dataKey="value"
-                                     nameKey="name"
-                                     cx="50%"
-                                     cy="50%"
-                                     outerRadius={80}
-                                     innerRadius={50} 
-                                     strokeWidth={2}
-                                     labelLine={false}
-                                     label={({ percent }) => `${(percent * 100).toFixed(0)}%`} 
-                                 >
-                                      {spendingByCategory.data.map((entry) => (
-                                         <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                                     ))}
-                                 </Pie>
-                                 <ChartLegend content={<ChartLegendContent nameKey="name"/>} />
-                             </PieChart>
-                         </ChartContainer>
-                     ) : (
-                          <p className="text-sm text-muted-foreground text-center py-4">No expense data available for this month.</p>
-                     )}
-                </CardContent>
+                    <TabsContent value="breakdown">
+                         <CardHeader>
+                            <CardTitle>Expense Breakdown</CardTitle>
+                            <CardDescription>Spending by top-level category for {format(new Date(currentMonth + '-01T00:00:00'), 'MMMM yyyy')}.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             {spendingByCategory.data.length > 0 ? (
+                                 <ChartContainer config={spendingByCategory.config} className="aspect-square max-h-[250px] mx-auto">
+                                     <PieChart>
+                                        <ChartTooltip
+                                             cursor={false}
+                                             content={<ChartTooltipContent hideLabel indicator="dot" />}
+                                             formatter={(value) => formatCurrency(value as number)}
+                                         />
+                                         <Pie
+                                             data={spendingByCategory.data}
+                                             dataKey="value"
+                                             nameKey="name"
+                                             cx="50%"
+                                             cy="50%"
+                                             outerRadius={80}
+                                             innerRadius={50} 
+                                             strokeWidth={2}
+                                             labelLine={false}
+                                             label={({ percent }) => `${(percent * 100).toFixed(0)}%`} 
+                                         >
+                                              {spendingByCategory.data.map((entry) => (
+                                                 <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                                             ))}
+                                         </Pie>
+                                         <ChartLegend content={<ChartLegendContent nameKey="name" className="text-xs flex-wrap justify-center"/>} wrapperStyle={{ marginTop: '10px' }} />
+                                     </PieChart>
+                                 </ChartContainer>
+                             ) : (
+                                  <p className="text-sm text-muted-foreground text-center py-10">No expense data available for this month.</p>
+                             )}
+                        </CardContent>
+                    </TabsContent>
+                </Tabs>
             </Card>
         </div>
     );
 };
-
-  
-
-    
