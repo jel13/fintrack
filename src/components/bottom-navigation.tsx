@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Home, List, Target, Lightbulb, UserCircle } from "lucide-react";
+import { Home, History, Target, Lightbulb, UserCircle } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -18,7 +18,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { value: "home", label: "Home", icon: Home, href: "/?tab=home", isPage: false },
-  { value: "transactions", label: "Transactions", icon: List, href: "/?tab=transactions", isPage: false },
+  { value: "transactions", label: "Transactions", icon: History, href: "/?tab=transactions", isPage: false },
   { value: "budgets", label: "Budgets", icon: Target, href: "/?tab=budgets", isPage: false },
   { value: "insights", label: "Insights", icon: Lightbulb, href: "/?tab=insights", isPage: false },
   { value: "profile", label: "Profile", icon: UserCircle, href: "/profile", isPage: true },
