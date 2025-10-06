@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Fragment } from 'react';
-import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard, ChevronDown, Check } from "lucide-react";
+import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard, ChevronDown, Check, Filter } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -879,28 +879,36 @@ const openEditBudgetDialog = (budgetId: string) => {
 
         <TabsContent value="transactions" className="flex-grow flex flex-col p-0">
           <div className="sticky top-0 bg-background z-10 p-4 border-b">
-            <h1 className="text-xl font-semibold">History</h1>
-            <div className="flex flex-col gap-2 mt-2">
+            <div className="flex items-center justify-between">
+                <h1 className="text-xl font-semibold">History</h1>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between">
-                            <span>
-                                {historyDateFilter === 'thisMonth' && 'This Month'}
-                                {historyDateFilter === 'lastMonth' && 'Last Month'}
-                                {historyDateFilter === 'last3Months' && 'Last 3 Months'}
-                                {historyDateFilter === 'allTime' && 'All Time'}
-                            </span>
-                            <ChevronDown className="h-4 w-4 opacity-50" />
+                        <Button variant="ghost" size="icon">
+                            <Filter className="h-5 w-5" />
+                            <span className="sr-only">Filter Date Range</span>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">
-                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('thisMonth')}>This Month</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('lastMonth')}>Last Month</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('last3Months')}>Last 3 Months</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('allTime')}>All Time</DropdownMenuItem>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('thisMonth')}>
+                            <span className="w-40">This Month</span>
+                            {historyDateFilter === 'thisMonth' && <Check className="h-4 w-4 ml-2" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('lastMonth')}>
+                            <span className="w-40">Last Month</span>
+                             {historyDateFilter === 'lastMonth' && <Check className="h-4 w-4 ml-2" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('last3Months')}>
+                            <span className="w-40">Last 3 Months</span>
+                            {historyDateFilter === 'last3Months' && <Check className="h-4 w-4 ml-2" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setHistoryDateFilter('allTime')}>
+                            <span className="w-40">All Time</span>
+                            {historyDateFilter === 'allTime' && <Check className="h-4 w-4 ml-2" />}
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
-
+            </div>
+            <div className="flex flex-col gap-2 mt-2">
                  <div className="flex items-center gap-2">
                     <Button variant={historyTypeFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('all')} className="flex-1">All</Button>
                     <Button variant={historyTypeFilter === 'income' ? 'secondary' : 'ghost'} size="sm" onClick={() => setHistoryTypeFilter('income')} className="flex-1">Income</Button>
