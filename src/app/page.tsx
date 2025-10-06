@@ -972,31 +972,6 @@ const openEditBudgetDialog = (budgetId: string) => {
                </Card>
            ) : (
              <>
-                {/* Budget Allocation Summary Card */}
-                <Card className="bg-secondary/50">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-base">Budget Allocation</CardTitle>
-                        <CardDescription className="text-xs">
-                             Of your {formatCurrency(monthlyIncome)} monthly income...
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="text-sm space-y-2">
-                        <div>
-                            <div className="flex justify-between mb-1">
-                                <span className="font-medium">Allocated to Expenses:</span>
-                                <span className="font-semibold">{formatCurrency(totalAllocatedMonetary)} ({totalAllocatedPercentage.toFixed(1)}%)</span>
-                            </div>
-                            <Progress value={totalAllocatedPercentage} className="h-2" />
-                        </div>
-                         <div>
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>Unallocated (for Savings):</span>
-                                <span className="font-medium">{formatCurrency(savingsBudget.limit)} ({unallocatedPercentage.toFixed(1)}%)</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
                 {/* Savings Section */}
                 <div className="space-y-2 pt-4">
                     <h3 className="font-semibold flex items-center gap-2"><PiggyBank className="h-5 w-5 text-accent"/> Savings Overview</h3>
