@@ -832,6 +832,12 @@ const openEditBudgetDialog = (budgetId: string) => {
       />
       <Tabs defaultValue={initialTab} value={currentTab} onValueChange={setCurrentTab} className="flex-grow flex flex-col">
         <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Welcome,</h1>
+                <p className="text-muted-foreground">{user?.displayName || "User"}</p>
+              </div>
+            </div>
             <Card className="w-full animate-slide-up bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
                 <CardHeader>
                     <CardTitle className="text-sm font-medium text-primary-foreground/80">
