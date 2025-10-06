@@ -181,9 +181,9 @@ export function AddSavingGoalDialog({
                  </AlertDescription>
              </Alert>
         )}
-        <ScrollArea className="flex-grow pr-6 -mr-6">
+        <div className="flex-grow overflow-y-auto -mx-6 px-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} id="saving-goal-form" className="space-y-4 py-1">
+            <form onSubmit={form.handleSubmit(onSubmit)} id="saving-goal-form" className="space-y-4 pt-1 pb-4">
               <FormField
                 control={form.control}
                 name="name"
@@ -343,7 +343,7 @@ export function AddSavingGoalDialog({
                 />
             </form>
           </Form>
-         </ScrollArea>
+        </div>
         <DialogFooter className="mt-auto pt-4 border-t">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button type="submit" form="saving-goal-form" disabled={isAllocationDisabled && !existingGoal}>
@@ -354,3 +354,5 @@ export function AddSavingGoalDialog({
     </Dialog>
   );
 }
+
+    
