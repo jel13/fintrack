@@ -54,4 +54,5 @@ export interface AppData {
   savingGoalCategories: SavingGoalCategory[];
   savingGoals: SavingGoal[];
   hasSeenOnboarding?: boolean;
+  seenTours?: string[]; // To track completed guided tours
 }

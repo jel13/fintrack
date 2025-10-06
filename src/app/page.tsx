@@ -47,6 +47,8 @@ import { useSearchParams } from 'next/navigation';
 import { TransactionReceiptDialog } from "@/components/transaction-receipt-dialog";
 import { OnboardingDialog } from "@/components/onboarding-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useTour, TourStep } from "@/hooks/use-tour";
+import { GuidedTour } from "@/components/guided-tour";
 
 
 interface CategoryOrGoalDisplayForReceipt {
@@ -59,6 +61,21 @@ interface SelectedTransactionForReceipt {
   transaction: Transaction;
   displayInfo: CategoryOrGoalDisplayForReceipt;
 }
+
+const budgetTourSteps: TourStep[] = [
+  {
+    target: '#add-budget-button',
+    title: 'Add a New Budget',
+    content: 'Click here to set a spending limit for an expense category. You allocate a percentage of your monthly income.',
+    placement: 'bottom',
+  },
+  {
+    target: '.budget-card-tour-highlight',
+    title: 'Your Budget Cards',
+    content: 'Each card shows your spending progress for a category. You can edit or delete a budget from the menu on the right.',
+    placement: 'bottom',
+  },
+];
 
 
 export default function Home() {
@@ -114,6 +131,21 @@ export default function Home() {
       saveAppData(appData);
     }
   }, [appData, isLoaded, user]);
+
+  const handleTourEnd = (tourId: string) => {
+    setAppData(prev => ({
+        ...prev,
+        seenTours: [...(prev.seenTours || []), tourId],
+    }));
+  };
+
+  const budgetTour = useTour({
+    tourId: 'budgets-tour',
+    steps: budgetTourSteps,
+    seenTours: appData.seenTours || [],
+    onTourEnd: handleTourEnd,
+    condition: initialTab === 'budgets' && (appData.budgets || []).some(b => b.category !== 'savings'),
+  });
 
   const { monthlyIncome, transactions, budgets, categories, savingGoals, savingGoalCategories, hasSeenOnboarding } = appData;
 
@@ -635,6 +667,14 @@ const openEditBudgetDialog = (budgetId: string) => {
             isIncomeSet={!!monthlyIncome && monthlyIncome > 0}
         />
       )}
+      <GuidedTour
+        steps={budgetTour.steps}
+        isRunning={budgetTour.isRunning}
+        currentStep={budgetTour.currentStep}
+        onNext={budgetTour.nextStep}
+        onPrev={budgetTour.prevStep}
+        onFinish={budgetTour.endTour}
+      />
       <Tabs defaultValue={initialTab} value={initialTab} className="flex-grow flex flex-col">
         <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center mb-2">
@@ -871,7 +911,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                   </Link>
                 </Button>
                  {monthlyIncome !== null && monthlyIncome > 0 && (
-                    <Button size="sm" className="shadow-sm" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
+                    <Button size="sm" className="shadow-sm" id="add-budget-button" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Budget
                     </Button>
                  )}
@@ -900,7 +940,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                     return labelA.localeCompare(labelB);
                 })
                 .map((budget, index) => (
-                    <div key={budget.id} className="animate-slide-up" style={{"animationDelay": `${index * 0.05}s`}}>
+                    <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{"animationDelay": `${index * 0.05}s`}}>
                          <BudgetCard
                             budget={budget}
                             categories={categories}
@@ -1085,4 +1125,3 @@ const openEditBudgetDialog = (budgetId: string) => {
     </div>
   );
 }
-

@@ -70,6 +70,7 @@ export const defaultAppData: AppData = {
   savingGoalCategories: defaultSavingGoalCategories.map(sgc => ({...sgc})), // Ensure defaults are new objects
   savingGoals: [],
   hasSeenOnboarding: false,
+  seenTours: [],
 };
 
 export const loadAppData = (): AppData => {
@@ -108,6 +109,7 @@ export const loadAppData = (): AppData => {
             percentageAllocation: sg.percentageAllocation ?? 0,
         })) : [],
         hasSeenOnboarding: parsedData.hasSeenOnboarding === undefined ? false : parsedData.hasSeenOnboarding,
+        seenTours: parsedData.seenTours || [],
       };
 
       // Further ensure categories are well-formed and defaults are respected for non-deletable/non-income flags
@@ -186,6 +188,7 @@ export const saveAppData = (data: AppData) => {
         description: g.description,
       })),
       hasSeenOnboarding: data.hasSeenOnboarding,
+      seenTours: data.seenTours,
     };
     localStorage.setItem(APP_DATA_KEY, JSON.stringify(dataToStore));
   } catch (error) {
@@ -198,4 +201,3 @@ export const clearAppData = () => {
   localStorage.removeItem(APP_DATA_KEY);
   window.location.reload();
 };
-
