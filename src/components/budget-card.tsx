@@ -112,3 +112,5 @@ const BudgetCard: FC<BudgetCardProps> = ({ budget, categories, monthlyIncome, on
 };
 
 export default BudgetCard;
+
+    
