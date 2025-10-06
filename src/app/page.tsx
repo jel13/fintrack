@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Fragment } from 'react';
 import { PlusCircle, List, Target, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, Lightbulb, DollarSign, CreditCard, ChevronDown, Check, Filter } from "lucide-react";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -947,13 +947,6 @@ const openEditBudgetDialog = (budgetId: string) => {
         <TabsContent value="budgets" className="flex-grow overflow-y-auto p-4 space-y-4">
            <div className="flex justify-between items-center mb-2">
                <h2 className="text-xl font-semibold">Budgets</h2>
-                <div className="flex items-center gap-2">
-                    {monthlyIncome !== null && monthlyIncome > 0 && (
-                       <Button size="sm" className="rounded-lg shadow-sm" id="add-budget-button" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
-                           <PlusCircle className="mr-2 h-4 w-4" /> Add
-                       </Button>
-                   )}
-                </div>
            </div>
 
            {(monthlyIncome === null || monthlyIncome === 0) ? (
@@ -968,10 +961,43 @@ const openEditBudgetDialog = (budgetId: string) => {
                    </CardContent>
                </Card>
            ) : (
-             <>
-                {/* Savings Section */}
-                <div className="space-y-2 pt-4">
-                    <h3 className="font-semibold flex items-center gap-2"><PiggyBank className="h-5 w-5 text-accent"/> Savings Overview</h3>
+             <Tabs defaultValue="expenses" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="expenses">Expenses</TabsTrigger>
+                    <TabsTrigger value="savings">Savings</TabsTrigger>
+                </TabsList>
+                <TabsContent value="expenses" className="relative pt-4">
+                    {currentMonthBudgets.filter(b => b.category !== 'savings').length > 0 ? (
+                        <div className="space-y-3">
+                           {currentMonthBudgets
+                               .filter(b => b.category !== 'savings')
+                               .map((budget, index) => (
+                                   <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{animationDelay: `${index * 0.05}s`}}>
+                                       <BudgetCard
+                                           budget={budget}
+                                           categories={categories}
+                                           onEdit={() => openEditBudgetDialog(budget.id)}
+                                           onDelete={() => setBudgetToDelete(budget)}
+                                       />
+                                   </div>
+                               ))}
+                        </div>
+                   ) : (
+                       <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in">
+                           <CardContent className="p-6 text-center text-muted-foreground">
+                               <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
+                               <p className="font-semibold">No Expense Budgets Yet</p>
+                               <p className="text-sm">Click the '+' button to start allocating funds to your spending categories.</p>
+                           </CardContent>
+                       </Card>
+                   )}
+                   <div className="fixed bottom-20 right-4 z-10">
+                        <Button size="icon" className="rounded-full h-14 w-14 shadow-lg" id="add-budget-button" onClick={() => { setEditingBudget(null); setIsAddBudgetDialogOpen(true); }}>
+                           <PlusCircle className="h-6 w-6" />
+                        </Button>
+                   </div>
+                </TabsContent>
+                <TabsContent value="savings" className="pt-4 space-y-3">
                     <BudgetCard
                         budget={savingsBudget}
                         categories={categories}
@@ -981,36 +1007,8 @@ const openEditBudgetDialog = (budgetId: string) => {
                      <Button variant="outline" size="sm" className="w-full rounded-lg" asChild>
                          <Link href="/saving-goals">Manage & Allocate Savings Goals</Link>
                      </Button>
-                </div>
-
-
-                {/* Expense Budgets Section */}
-                <div className="space-y-2 pt-4">
-                   <h3 className="font-semibold flex items-center gap-2"><TrendingDown className="h-5 w-5 text-primary"/> Expense Budgets</h3>
-                   {currentMonthBudgets.filter(b => b.category !== 'savings').length > 0 ? (
-                       currentMonthBudgets
-                           .filter(b => b.category !== 'savings')
-                           .map((budget, index) => (
-                               <div key={budget.id} className={cn("animate-slide-up", index === 0 && "budget-card-tour-highlight")} style={{animationDelay: `${index * 0.05}s`}}>
-                                   <BudgetCard
-                                       budget={budget}
-                                       categories={categories}
-                                       onEdit={() => openEditBudgetDialog(budget.id)}
-                                       onDelete={() => setBudgetToDelete(budget)}
-                                   />
-                               </div>
-                           ))
-                   ) : (
-                       <Card className="border-dashed border-secondary/50 bg-secondary/30 animate-fade-in">
-                           <CardContent className="p-6 text-center text-muted-foreground">
-                               <Target className="mx-auto h-8 w-8 mb-2 text-primary" />
-                               <p className="font-semibold">No Expense Budgets Yet</p>
-                               <p className="text-sm">Click 'Add' above to start allocating funds to your spending categories.</p>
-                           </CardContent>
-                       </Card>
-                   )}
-                </div>
-             </>
+                </TabsContent>
+             </Tabs>
            )}
        </TabsContent>
 
