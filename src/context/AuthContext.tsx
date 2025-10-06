@@ -86,8 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         displayName: username
       });
       await sendEmailVerification(userCredential.user);
-      // Update local user state to reflect new displayName immediately
-      setUser(auth.currentUser); 
+      await signOut(auth); // Sign out the user immediately after registration
     }
     return userCredential;
   };
