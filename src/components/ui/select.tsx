@@ -86,7 +86,6 @@ const SelectContent = React.forwardRef<
       {...props}
     >
       <ScrollArea
-        className="h-full w-full"
         type="auto"
       >
         <SelectPrimitive.Viewport
