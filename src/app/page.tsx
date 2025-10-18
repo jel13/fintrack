@@ -138,17 +138,13 @@ export default function Home() {
 
   React.useEffect(() => {
     if (isLoaded && user) {
-        setAppData(prevData => {
-            const today = new Date();
-            const currentMonth = format(today, 'yyyy-MM');
-            const lastMonth = format(subMonths(today, 1), 'yyyy-MM');
+        const today = new Date();
+        const lastMonth = format(subMonths(today, 1), 'yyyy-MM');
+        const hasReportForLastMonth = appData.monthlyReports.some(report => report.month === lastMonth);
+        const hasTransactionsInLastMonth = appData.transactions.some(t => format(t.date, 'yyyy-MM') === lastMonth);
 
-            const hasReportForLastMonth = prevData.monthlyReports.some(report => report.month === lastMonth);
-
-            // Don't run this logic if we just entered a new month and haven't had any transactions yet.
-            const hasTransactionsInLastMonth = prevData.transactions.some(t => format(t.date, 'yyyy-MM') === lastMonth);
-
-            if (!hasReportForLastMonth && hasTransactionsInLastMonth) {
+        if (!hasReportForLastMonth && hasTransactionsInLastMonth) {
+            setAppData(prevData => {
                 const lastMonthTransactions = prevData.transactions.filter(t => format(t.date, 'yyyy-MM') === lastMonth);
                 const totalIncome = lastMonthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
                 const totalExpenses = lastMonthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
@@ -178,20 +174,21 @@ export default function Home() {
                 
                 toast({
                     title: "Monthly Report Saved",
-                    description: `Your financial summary for ${format(new Date(lastMonth + '-02'), 'MMMM yyyy')} has been saved to History.`,
+                    description: `Your financial summary for ${format(new Date(lastMonth + '-02'), 'MMMM yyyy')} has been saved to Monthly Reports.`,
                 });
                 
-                const newData = { ...prevData, monthlyReports: updatedReports };
-                saveAppData(newData);
-                return newData;
-            }
-            
-            saveAppData(prevData);
-            return prevData;
-        });
+                return { ...prevData, monthlyReports: updatedReports };
+            });
+        }
     }
-}, [isLoaded, user, toast]);
+}, [isLoaded, user, toast, appData.monthlyReports, appData.transactions, appData.categories]);
 
+
+React.useEffect(() => {
+    if (isLoaded) {
+        saveAppData(appData);
+    }
+}, [appData, isLoaded]);
 
     React.useEffect(() => {
         // This effect keeps the local state `currentTab` in sync with the URL query param.
@@ -369,15 +366,6 @@ export default function Home() {
         }
         updatedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
         
-        let newMonthlyIncome = prev.monthlyIncome ?? 0;
-        if (transactionData.type === 'income') {
-            // No longer automatically add to monthly income here, as it's a separate concept now.
-            // But if we edit an old income transaction, we need to adjust.
-             if (isUpdate && originalTransactionIfUpdate?.type === 'income') {
-                 // This logic might need review if monthlyIncome is purely for budgeting percentages
-             }
-        }
-
         if (targetSavingGoal && transactionData.type === 'expense') {
             let amountChange = transactionData.amount;
             if (isUpdate && originalTransactionIfUpdate?.category === targetSavingGoal.id && originalTransactionIfUpdate.type === 'expense') {
@@ -394,7 +382,6 @@ export default function Home() {
         return {
             ...prev,
             transactions: updatedTransactions,
-            monthlyIncome: newMonthlyIncome, // monthlyIncome is now primarily for budget calculation
             savingGoals: updatedSavingGoals || prev.savingGoals,
         };
     });
