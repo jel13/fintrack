@@ -1,0 +1,54 @@
+<mxfile host="app.diagrams.net" modified="2024-05-22T13:30:00.000Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36" etag="ABC-123" version="24.4.0" type="device">
+  <diagram name="ERD" id="ERD-1">
+    <mxGraphModel dx="1434" dy="782" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="user-entity" value="&lt;b&gt;User&lt;/b&gt;&lt;hr/&gt;PK: userId&lt;br/&gt;email&lt;br/&gt;displayName&lt;br/&gt;emailVerified" style="shape=table;startSize=20;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="category-entity" value="&lt;b&gt;Category&lt;/b&gt;&lt;hr/&gt;PK: categoryId&lt;br/&gt;label&lt;br/&gt;icon&lt;br/&gt;isIncomeSource&lt;br/&gt;FK: parentId" style="shape=table;startSize=20;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="200" width="180" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="transaction-entity" value="&lt;b&gt;Transaction&lt;/b&gt;&lt;hr/&gt;PK: transactionId&lt;br/&gt;type&lt;br/&gt;amount&lt;br/&gt;date&lt;br/&gt;description&lt;br/&gt;receiptDataUrl&lt;br/&gt;FK: categoryId" style="shape=table;startSize=20;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="200" width="180" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="budget-entity" value="&lt;b&gt;Budget&lt;/b&gt;&lt;hr/&gt;PK: budgetId&lt;br/&gt;month&lt;br/&gt;limit&lt;br/&gt;percentage&lt;br/&gt;spent&lt;br/&gt;FK: categoryId" style="shape=table;startSize=20;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="420" width="180" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="saving-goal-category-entity" value="&lt;b&gt;SavingGoalCategory&lt;/b&gt;&lt;hr/&gt;PK: goalCategoryId&lt;br/&gt;label&lt;br/&gt;icon" style="shape=table;startSize=20;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="620" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="saving-goal-entity" value="&lt;b&gt;SavingGoal&lt;/b&gt;&lt;hr/&gt;PK: goalId&lt;br/&gt;name&lt;br/&gt;targetAmount&lt;br/&gt;savedAmount&lt;br/&gt;percentageAllocation&lt;br/&gt;description&lt;br/&gt;FK: goalCategoryId" style="shape=table;startSize=20;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="580" width="180" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="rel-cat-budget" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERoneToMany;startArrow=ERmandOne;endFill=1;startFill=0;" edge="1" parent="1" source="category-entity" target="budget-entity">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel-cat-transaction" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERoneToMany;startArrow=ERmandOne;endFill=1;startFill=0;" edge="1" parent="1" source="category-entity" target="transaction-entity">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel-goal-transaction" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERoneToMany;startArrow=ERmandOne;endFill=1;startFill=0;dashed=1;label=polymorphic;html=1;verticalAlign=bottom" edge="1" parent="1" source="saving-goal-entity" target="transaction-entity">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel-cat-cat" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERoneToMany;startArrow=ERzeroOrOne;endFill=1;startFill=0;entryX=-0.05;entryY=0.5;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="category-entity" target="category-entity">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="230" y="270" as="sourcePoint" />
+            <mxPoint x="230" y="170" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="220" y="270" />
+              <mxPoint x="220" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-goalcat-goal" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERoneToMany;startArrow=ERmandOne;endFill=1;startFill=0;" edge="1" parent="1" source="saving-goal-category-entity" target="saving-goal-entity">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note-user" value="User implicitly owns all data for their session. FK to User exists conceptually in all other tables." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="10" y="170" width="220" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+    
