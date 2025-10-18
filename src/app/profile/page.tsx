@@ -311,9 +311,9 @@ export default function ProfilePage() {
             <div className="space-y-1 px-4">
                  <ProfileListItem
                    icon={History}
-                   title="View Monthly History"
+                   title="View Monthly Reports"
                    description="See all your past monthly reports"
-                   href="/history"
+                   href="/monthly-reports"
                 />
                  <ProfileListItem
                   icon={Trash2}
@@ -380,7 +380,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
-
-    

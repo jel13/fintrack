@@ -15,7 +15,7 @@ import { formatCurrency, cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function HistoryPage() {
+export default function MonthlyReportsPage() {
     const { user } = useAuth();
     const [appData, setAppData] = React.useState<AppData | null>(null);
     const [isLoaded, setIsLoaded] = React.useState(false);
@@ -36,7 +36,7 @@ export default function HistoryPage() {
                        <ArrowLeft className="h-5 w-5" />
                     </Button>
                 </Link>
-                <h1 className="text-xl font-semibold ml-2">Monthly History</h1>
+                <h1 className="text-xl font-semibold ml-2">Monthly Reports</h1>
             </div>
 
             <ScrollArea className="flex-grow p-4">
@@ -48,7 +48,7 @@ export default function HistoryPage() {
                     <Card className="border-dashed mt-4">
                         <CardContent className="p-6 text-center text-muted-foreground">
                             <Calendar className="mx-auto h-8 w-8 mb-2" />
-                            <p className="font-semibold">No History Yet</p>
+                            <p className="font-semibold">No Reports Yet</p>
                             <p className="text-sm">Your first monthly report will be saved here automatically at the start of next month.</p>
                         </CardContent>
                     </Card>

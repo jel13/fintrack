@@ -44,11 +44,11 @@ export function BottomNavigation() {
     } else if (pathname === "/") {
       setActiveTab("home"); 
     } else {
-      // Handle cases like /categories, /history etc. which are related to profile
+      // Handle cases like /categories, /monthly-reports etc. which are related to profile
       const baseHrefMatch = navItems.find(item => item.isPage && pathname.startsWith(item.href));
       if (baseHrefMatch) {
         setActiveTab(baseHrefMatch.value);
-      } else if (pathname.startsWith('/history') || pathname.startsWith('/categories')) {
+      } else if (pathname.startsWith('/monthly-reports') || pathname.startsWith('/categories')) {
          setActiveTab("profile");
       }
     }
@@ -84,7 +84,7 @@ export function BottomNavigation() {
   }
 
   // Hide nav on certain pages if desired
-  if (pathname === '/history' || pathname === '/categories' || pathname === '/learn/budgeting-guide') {
+  if (pathname === '/monthly-reports' || pathname === '/categories' || pathname === '/learn/budgeting-guide') {
     return null; 
   }
 
