@@ -94,7 +94,7 @@ const TransactionListItem: FC<TransactionListItemProps> = ({ transaction, catego
             )}>
             {isIncome ? '+' : '-'} {formatCurrency(transaction.amount)}
             </p>
-            <p className="text-xs text-muted-foreground">{format(transaction.date, 'MMM d, yyyy')}</p>
+            <p className="text-xs text-muted-foreground">{format(transaction.date, 'MMM d')}</p>
         </div>
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
