@@ -57,6 +57,7 @@ const formSchema = z.object({
   description: z.string().max(100, "Description max 100 characters").optional(),
   startDate: z.date().optional(),
   targetDate: z.date().optional(),
+  savingMode: z.enum(['daily', 'weekly', 'monthly']).optional(),
 }).refine(data => !data.targetAmount || data.savedAmount === undefined || data.savedAmount <= data.targetAmount, {
     message: "Initial saved amount cannot exceed the target amount.",
     path: ["savedAmount"],
@@ -97,6 +98,7 @@ export function AddSavingGoalDialog({
         description: existingGoal.description,
         startDate: existingGoal.startDate,
         targetDate: existingGoal.targetDate,
+        savingMode: existingGoal.savingMode,
     } : {
       name: "",
       goalCategoryId: "",
@@ -106,6 +108,7 @@ export function AddSavingGoalDialog({
       description: "",
       startDate: new Date(),
       targetDate: undefined,
+      savingMode: 'monthly',
     },
   });
 
@@ -120,6 +123,7 @@ export function AddSavingGoalDialog({
                 description: existingGoal.description || "",
                 startDate: existingGoal.startDate,
                 targetDate: existingGoal.targetDate,
+                savingMode: existingGoal.savingMode || 'monthly',
             } : {
                 name: "",
                 goalCategoryId: "",
@@ -129,6 +133,7 @@ export function AddSavingGoalDialog({
                 description: "",
                 startDate: new Date(),
                 targetDate: undefined,
+                savingMode: 'monthly',
             });
         }
     }, [open, existingGoal, form]);
@@ -165,6 +170,7 @@ export function AddSavingGoalDialog({
         description: values.description,
         startDate: values.startDate,
         targetDate: values.targetDate,
+        savingMode: values.savingMode,
     };
      if (existingGoal) {
       dataToSave.id = existingGoal.id;
@@ -334,6 +340,32 @@ export function AddSavingGoalDialog({
                       </p>
                   </FormItem>
                   )}
+              />
+
+                <FormField
+                control={form.control}
+                name="savingMode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Savings Frequency</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a saving frequency" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-xs">
+                        Set how often you plan to save. Reminders are planned for a future update.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
               <div className="grid grid-cols-2 gap-4">

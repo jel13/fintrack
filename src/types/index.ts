@@ -46,6 +46,7 @@ export interface SavingGoal {
     description?: string;
     startDate?: Date;
     targetDate?: Date;
+    savingMode?: 'daily' | 'weekly' | 'monthly'; // New field for savings frequency
 }
 
 export interface MonthlyReport {

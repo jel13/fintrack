@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, Target, Lightbulb, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, DollarSign, CreditCard, ChevronDown, Check, Filter, MoreVertical, History, List, Calendar } from "lucide-react";
+import { PlusCircle, Target, Lightbulb, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, DollarSign, CreditCard, ChevronDown, Check, Filter, MoreVertical, History, List, Calendar, Repeat } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -773,6 +773,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 description: goalData.description,
                 startDate: goalData.startDate,
                 targetDate: goalData.targetDate,
+                savingMode: goalData.savingMode,
             };
 
             if (goalData.id) { // Editing existing goal
@@ -1154,8 +1155,9 @@ const openEditBudgetDialog = (budgetId: string) => {
                                                         <span>{progress.toFixed(1)}%</span>
                                                     </div>
                                                     <div className="text-xs text-muted-foreground mt-2 flex justify-between items-center">
-                                                        <p>
-                                                            Plan: {goal.percentageAllocation?.toFixed(1)}% of savings (Est. {formatCurrency(monthlyContribution)}/mo)
+                                                        <p className="flex items-center gap-1.5">
+                                                          <Repeat className="h-3 w-3"/>
+                                                          {goal.savingMode ? `${goal.savingMode.charAt(0).toUpperCase()}${goal.savingMode.slice(1)}` : `Est. ${formatCurrency(monthlyContribution)}/mo`}
                                                         </p>
                                                         {goal.targetDate && (
                                                             <p className="flex items-center gap-1.5">
