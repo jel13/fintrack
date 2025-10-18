@@ -85,17 +85,17 @@ export const loadAppData = (): AppData => {
   try {
     const storedData = localStorage.getItem(APP_DATA_KEY);
     if (storedData) {
-      const parsedData: Partial<AppData> & { transactions?: Array<Transaction & { date: string }>} = JSON.parse(storedData);
+      const parsedData = JSON.parse(storedData);
       const currentMonth = format(new Date(), 'yyyy-MM');
 
       // Ensure all AppData fields exist, merging with defaults
       const mergedData: AppData = {
         monthlyIncome: parsedData.monthlyIncome !== undefined ? parsedData.monthlyIncome : null,
-        transactions: parsedData.transactions ? parsedData.transactions.map(t => ({ ...t, date: parseISO(t.date) })) : [],
-        budgets: parsedData.budgets ? parsedData.budgets.map(b => {
+        transactions: parsedData.transactions ? parsedData.transactions.map((t: any) => ({ ...t, date: parseISO(t.date) })) : [],
+        budgets: parsedData.budgets ? parsedData.budgets.map((b: any) => {
             const spent = (parsedData.transactions || [])
-                .filter(t => t.type === 'expense' && t.category === b.category && format(parseISO(t.date), 'yyyy-MM') === (b.month || currentMonth))
-                .reduce((sum, t) => sum + t.amount, 0);
+                .filter((t: any) => t.type === 'expense' && t.category === b.category && format(parseISO(t.date), 'yyyy-MM') === (b.month || currentMonth))
+                .reduce((sum: number, t: any) => sum + t.amount, 0);
             return { ...b, month: b.month || currentMonth, spent: spent };
         }) : [],
         categories: parsedData.categories && parsedData.categories.length > 0
@@ -104,10 +104,12 @@ export const loadAppData = (): AppData => {
         savingGoalCategories: parsedData.savingGoalCategories && parsedData.savingGoalCategories.length > 0
             ? parsedData.savingGoalCategories
             : defaultSavingGoalCategories.map(sgc => ({...sgc})),
-        savingGoals: parsedData.savingGoals ? parsedData.savingGoals.map(sg => ({
+        savingGoals: parsedData.savingGoals ? parsedData.savingGoals.map((sg: any) => ({
             ...sg,
-            targetAmount: sg.targetAmount ?? 0, // Default targetAmount if missing
+            targetAmount: sg.targetAmount ?? 0,
             percentageAllocation: sg.percentageAllocation ?? 0,
+            startDate: sg.startDate ? parseISO(sg.startDate) : undefined,
+            targetDate: sg.targetDate ? parseISO(sg.targetDate) : undefined,
         })) : [],
         hasSeenOnboarding: parsedData.hasSeenOnboarding === undefined ? false : parsedData.hasSeenOnboarding,
         seenTours: parsedData.seenTours || [],
@@ -180,14 +182,16 @@ export const saveAppData = (data: AppData) => {
         ...t,
         date: typeof t.date === 'string' ? t.date : t.date.toISOString(),
       })),
-      savingGoals: data.savingGoals.map(g => ({ // Ensure only valid fields are saved
+      savingGoals: data.savingGoals.map(g => ({
         id: g.id,
         name: g.name,
         goalCategoryId: g.goalCategoryId,
-        targetAmount: g.targetAmount, // Save new field
+        targetAmount: g.targetAmount,
         savedAmount: g.savedAmount,
         percentageAllocation: g.percentageAllocation,
         description: g.description,
+        startDate: g.startDate ? g.startDate.toISOString() : undefined,
+        targetDate: g.targetDate ? g.targetDate.toISOString() : undefined,
       })),
       hasSeenOnboarding: data.hasSeenOnboarding,
       seenTours: data.seenTours,

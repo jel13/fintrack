@@ -44,6 +44,8 @@ export interface SavingGoal {
     savedAmount: number; // Total amount accumulated for this specific goal
     percentageAllocation?: number; // Percentage of *total monthly savings budget limit* allocated to this goal
     description?: string;
+    startDate?: Date;
+    targetDate?: Date;
 }
 
 export interface MonthlyReport {

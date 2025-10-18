@@ -5,8 +5,9 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Info } from "lucide-react";
+import { Info, Calendar as CalendarIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,8 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import type { SavingGoal, SavingGoalCategory } from "@/types";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getCategoryIconComponent } from '@/components/category-icon';
 
@@ -52,9 +55,14 @@ const formSchema = z.object({
     .lte(100, "Allocation cannot exceed 100%")
     .multipleOf(0.1, { message: "Allocation can have max 1 decimal place" }),
   description: z.string().max(100, "Description max 100 characters").optional(),
+  startDate: z.date().optional(),
+  targetDate: z.date().optional(),
 }).refine(data => !data.targetAmount || data.savedAmount === undefined || data.savedAmount <= data.targetAmount, {
     message: "Initial saved amount cannot exceed the target amount.",
     path: ["savedAmount"],
+}).refine(data => !data.startDate || !data.targetDate || data.startDate < data.targetDate, {
+    message: "Target date must be after the start date.",
+    path: ["targetDate"],
 });
 
 type GoalFormValues = z.infer<typeof formSchema>;
@@ -87,6 +95,8 @@ export function AddSavingGoalDialog({
         savedAmount: existingGoal.savedAmount,
         percentageAllocation: existingGoal.percentageAllocation,
         description: existingGoal.description,
+        startDate: existingGoal.startDate,
+        targetDate: existingGoal.targetDate,
     } : {
       name: "",
       goalCategoryId: "",
@@ -94,6 +104,8 @@ export function AddSavingGoalDialog({
       savedAmount: 0,
       percentageAllocation: undefined,
       description: "",
+      startDate: new Date(),
+      targetDate: undefined,
     },
   });
 
@@ -106,6 +118,8 @@ export function AddSavingGoalDialog({
                 savedAmount: existingGoal.savedAmount,
                 percentageAllocation: existingGoal.percentageAllocation,
                 description: existingGoal.description || "",
+                startDate: existingGoal.startDate,
+                targetDate: existingGoal.targetDate,
             } : {
                 name: "",
                 goalCategoryId: "",
@@ -113,6 +127,8 @@ export function AddSavingGoalDialog({
                 savedAmount: 0,
                 percentageAllocation: undefined,
                 description: "",
+                startDate: new Date(),
+                targetDate: undefined,
             });
         }
     }, [open, existingGoal, form]);
@@ -121,8 +137,6 @@ export function AddSavingGoalDialog({
   const currentPercentage = watch('percentageAllocation');
 
   const maxAllowedPercentage = React.useMemo(() => {
-      // This is the max percentage the *current goal being edited/added* can take,
-      // considering what's already allocated to *other* goals.
       return Math.max(0, parseFloat((100 - totalAllocatedPercentageToOtherGoals).toFixed(1)));
   }, [totalAllocatedPercentageToOtherGoals]);
 
@@ -142,17 +156,15 @@ export function AddSavingGoalDialog({
         return;
     }
     
-    // The check for the SUM of allocations (this goal + others > 100%)
-    // is handled in `handleAddOrUpdateGoal` in `saving-goals/page.tsx`
-    // as it has the full context of all goals.
-
     const dataToSave: Omit<SavingGoal, 'id'> & { id?: string } = {
         name: values.name,
         goalCategoryId: values.goalCategoryId,
         targetAmount: values.targetAmount,
         savedAmount: values.savedAmount ?? 0,
-        percentageAllocation: values.percentageAllocation ?? 0, // Default to 0 if undefined (though Zod should require it)
+        percentageAllocation: values.percentageAllocation ?? 0,
         description: values.description,
+        startDate: values.startDate,
+        targetDate: values.targetDate,
     };
      if (existingGoal) {
       dataToSave.id = existingGoal.id;
@@ -324,6 +336,80 @@ export function AddSavingGoalDialog({
                   )}
               />
 
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Start Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="targetDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Target Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              form.getValues("startDate") ? date < form.getValues("startDate")! : false
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
                <FormField
                   control={form.control}
                   name="description"
@@ -354,5 +440,3 @@ export function AddSavingGoalDialog({
     </Dialog>
   );
 }
-
-    

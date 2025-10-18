@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, Target, Lightbulb, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, DollarSign, CreditCard, ChevronDown, Check, Filter, MoreVertical, History, List } from "lucide-react";
+import { PlusCircle, Target, Lightbulb, PiggyBank, Settings, BookOpen, AlertCircle, Wallet, BarChart3, Activity, UserCircle, Home as HomeIcon, Edit, Trash2, TrendingDown, Scale, FolderCog, DollarSign, CreditCard, ChevronDown, Check, Filter, MoreVertical, History, List, Calendar } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import BudgetCard from "@/components/budget-card";
 import TransactionListItem from "@/components/transaction-list-item";
 import { SpendingChart } from "@/components/spending-chart";
 import type { Transaction, Budget, Category, AppData, SavingGoal, TransactionType, MonthlyReport } from "@/types";
-import { format, isToday, isYesterday, startOfMonth, subMonths, endOfMonth } from 'date-fns';
+import { format, isToday, isYesterday, startOfMonth, subMonths, endOfMonth, parseISO } from 'date-fns';
 import { loadAppData, saveAppData, defaultAppData } from "@/lib/storage";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -763,29 +763,29 @@ const openEditBudgetDialog = (budgetId: string) => {
             let toastMessageTitle = "";
             let toastMessageDescription = "";
 
+            const goalToSave: SavingGoal = {
+                id: goalData.id || `goal-${Date.now().toString()}`,
+                name: goalData.name,
+                goalCategoryId: goalData.goalCategoryId,
+                targetAmount: goalData.targetAmount,
+                savedAmount: goalData.savedAmount ?? 0,
+                percentageAllocation: goalData.percentageAllocation,
+                description: goalData.description,
+                startDate: goalData.startDate,
+                targetDate: goalData.targetDate,
+            };
+
             if (goalData.id) { // Editing existing goal
                 const index = goals.findIndex(g => g.id === goalData.id);
                 if (index > -1) {
-                    goals[index] = {
-                        ...goals[index], 
-                        ...goalData,     
-                    };
+                    goals[index] = goalToSave;
                     toastMessageTitle = "Goal Updated";
                     toastMessageDescription = `Saving goal "${goalData.name}" updated.`;
                 }
             } else { // Adding new goal
-                const newGoal: SavingGoal = {
-                    id: `goal-${Date.now().toString()}`, 
-                    name: goalData.name,
-                    goalCategoryId: goalData.goalCategoryId,
-                    targetAmount: goalData.targetAmount,
-                    savedAmount: goalData.savedAmount ?? 0, 
-                    percentageAllocation: goalData.percentageAllocation,
-                    description: goalData.description,
-                };
-                goals.push(newGoal);
+                goals.push(goalToSave);
                 toastMessageTitle = "Goal Added";
-                toastMessageDescription = `New saving goal "${newGoal.name}" added.`;
+                toastMessageDescription = `New saving goal "${goalToSave.name}" added.`;
             }
             goals.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -1153,9 +1153,17 @@ const openEditBudgetDialog = (budgetId: string) => {
                                                         <span>{formatCurrency(goal.savedAmount)} of {formatCurrency(goal.targetAmount)}</span>
                                                         <span>{progress.toFixed(1)}%</span>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground mt-1">
-                                                        Plan: {goal.percentageAllocation?.toFixed(1)}% of savings (Est. {formatCurrency(monthlyContribution)}/mo)
-                                                    </p>
+                                                    <div className="text-xs text-muted-foreground mt-2 flex justify-between items-center">
+                                                        <p>
+                                                            Plan: {goal.percentageAllocation?.toFixed(1)}% of savings (Est. {formatCurrency(monthlyContribution)}/mo)
+                                                        </p>
+                                                        {goal.targetDate && (
+                                                            <p className="flex items-center gap-1.5">
+                                                                <Calendar className="h-3 w-3" />
+                                                                {format(goal.targetDate, 'MMM yyyy')}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </CardContent>
                                             </Card>
                                         )
