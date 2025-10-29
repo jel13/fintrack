@@ -14,7 +14,7 @@ This project can be bundled as a native Android application using [Capacitor](ht
 2.  **Android Studio**: Required for building and running the Android app. Install it from [developer.android.com/studio](https://developer.android.com/studio).
 3.  **Java Development Kit (JDK)**: Android Studio usually bundles this, but ensure it's correctly configured.
 
-### Setup Steps
+### Setup Steps 
 
 1.  **Install Capacitor CLI and Core dependencies**:
     The necessary dependencies (`@capacitor/core`, `@capacitor/cli`, `@capacitor/android`) have been added to `package.json`. If you are setting up from scratch, you would run:
