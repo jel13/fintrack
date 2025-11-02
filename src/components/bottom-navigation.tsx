@@ -90,6 +90,7 @@ export function BottomNavigation() {
 
   return (
     <Tabs
+      id="bottom-nav-tabs"
       value={activeTab}
       onValueChange={handleTabChange}
       className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card shadow-lg"

@@ -63,25 +63,37 @@ interface SelectedTransactionForReceipt {
   displayInfo: CategoryOrGoalDisplayForReceipt;
 }
 
-const budgetTourSteps = [
-  {
-    element: '#add-budget-button',
-    popover: {
-      title: 'Add a New Budget',
-      description: 'Click here to set a spending limit for an expense category. You allocate a percentage of your monthly income.',
-      side: 'bottom',
-      align: 'start',
+const welcomeTourSteps = [
+    {
+        element: '#main-balance-card',
+        popover: {
+            title: 'Welcome to FinTrack!',
+            description: "Let's take a quick tour. First, set your monthly income here to get started with budgeting.",
+        },
     },
-  },
-  {
-    element: '.budget-card-tour-highlight',
-    popover: {
-      title: 'Your Budget Cards',
-      description: 'Each card shows your spending progress for a category. You can edit or delete a budget from the menu on the right.',
-      side: 'bottom',
-      align: 'start',
+    {
+        element: '#bottom-nav-tabs',
+        popover: {
+            title: 'Navigate Your App',
+            description: 'Use these tabs to switch between Home, Transactions, Budgets, Insights, and your Profile.',
+        },
     },
-  },
+    {
+        element: '#add-transaction-button',
+        popover: {
+            title: 'Add Transactions',
+            description: "Once your income is set, this button will appear. Use it to quickly add new income or expenses.",
+            side: 'top',
+            align: 'end',
+        }
+    },
+    {
+        element: 'button[value="budgets"]',
+        popover: {
+            title: 'Set Your Budgets',
+            description: 'Head to the Budgets tab to allocate your income and track your spending against your limits.',
+        },
+    },
 ];
 
 
@@ -208,11 +220,11 @@ React.useEffect(() => {
   };
 
   useDriverTour({
-    tourId: 'budgets-tour',
-    steps: budgetTourSteps,
+    tourId: 'welcome-tour',
+    steps: welcomeTourSteps,
     seenTours: appData.seenTours || [],
     onTourEnd: handleTourEnd,
-    condition: initialTab === 'budgets' && (appData.budgets || []).some(b => b.category !== 'savings'),
+    condition: isLoaded && user, // Show tour as soon as user is loaded
   });
 
   const { monthlyIncome, transactions, budgets, categories, savingGoals, savingGoalCategories, hasSeenOnboarding } = appData;
@@ -856,7 +868,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 <h1 className="text-2xl font-bold text-foreground">{user?.displayName || "User"}</h1>
               </div>
             </div>
-            <Card className="w-full animate-slide-up bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
+            <Card id="main-balance-card" className="w-full animate-slide-up bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
                 <CardHeader>
                     <CardTitle className="text-sm font-medium text-primary-foreground/80">
                       {monthlyIncome !== null && monthlyIncome > 0 ? "Actual Balance" : "Set Monthly Income"}
@@ -1225,7 +1237,7 @@ const openEditBudgetDialog = (budgetId: string) => {
 
         {/* Global Transaction FAB (Visible on Home and Transactions tabs) */}
         {(currentTab === 'home' || currentTab === 'transactions') && monthlyIncome !== null && monthlyIncome > 0 && (incomeCategories.length > 0 || hasExpenseBudgetsSet) && (
-            <div className="fixed bottom-20 right-4 z-10 animate-bounce-in">
+            <div id="add-transaction-button" className="fixed bottom-20 right-4 z-10 animate-bounce-in">
                 <Popover open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
                     <PopoverTrigger asChild>
                         <Button
