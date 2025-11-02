@@ -3,6 +3,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import 'driver.js/dist/driver.css';
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
@@ -169,4 +171,66 @@ input[type='number'] {
       opacity: .6;
     }
   }
+}
+
+/* Driver.js theme customization */
+.driver-popover {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+}
+
+.driver-popover-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.driver-popover-description {
+  color: hsl(var(--muted-foreground));
+}
+
+.driver-popover-arrow-side-bottom .driver-popover-arrow {
+  border-top-color: hsl(var(--border));
+}
+.driver-popover-arrow-side-top .driver-popover-arrow {
+  border-bottom-color: hsl(var(--border));
+}
+.driver-popover-arrow-side-left .driver-popover-arrow {
+  border-right-color: hsl(var(--border));
+}
+.driver-popover-arrow-side-right .driver-popover-arrow {
+  border-left-color: hsl(var(--border));
+}
+
+.driver-popover-close-btn {
+  color: hsl(var(--muted-foreground));
+}
+.driver-popover-close-btn:hover {
+  color: hsl(var(--foreground));
+}
+
+.driver-popover-footer button {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  text-shadow: none;
+  border-radius: calc(var(--radius) - 4px);
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+}
+.driver-popover-footer button:hover {
+  background-color: hsl(var(--secondary) / 0.8);
+}
+
+.driver-popover-footer .driver-popover-next-btn {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.driver-popover-footer .driver-popover-next-btn:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
+
+.driver-popover-progress-text {
+  color: hsl(var(--muted-foreground));
 }

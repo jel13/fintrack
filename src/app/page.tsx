@@ -46,8 +46,7 @@ import { useSearchParams } from 'next/navigation';
 import { TransactionReceiptDialog } from "@/components/transaction-receipt-dialog";
 import { OnboardingDialog } from "@/components/onboarding-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useTour, TourStep } from "@/hooks/use-tour";
-import { GuidedTour } from "@/components/guided-tour";
+import { useDriverTour } from "@/hooks/use-driver-tour";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import { AddSavingGoalDialog } from "@/components/add-saving-goal-dialog";
@@ -64,18 +63,24 @@ interface SelectedTransactionForReceipt {
   displayInfo: CategoryOrGoalDisplayForReceipt;
 }
 
-const budgetTourSteps: TourStep[] = [
+const budgetTourSteps = [
   {
-    target: '#add-budget-button',
-    title: 'Add a New Budget',
-    content: 'Click here to set a spending limit for an expense category. You allocate a percentage of your monthly income.',
-    placement: 'bottom',
+    element: '#add-budget-button',
+    popover: {
+      title: 'Add a New Budget',
+      description: 'Click here to set a spending limit for an expense category. You allocate a percentage of your monthly income.',
+      side: 'bottom',
+      align: 'start',
+    },
   },
   {
-    target: '.budget-card-tour-highlight',
-    title: 'Your Budget Cards',
-    content: 'Each card shows your spending progress for a category. You can edit or delete a budget from the menu on the right.',
-    placement: 'bottom',
+    element: '.budget-card-tour-highlight',
+    popover: {
+      title: 'Your Budget Cards',
+      description: 'Each card shows your spending progress for a category. You can edit or delete a budget from the menu on the right.',
+      side: 'bottom',
+      align: 'start',
+    },
   },
 ];
 
@@ -202,7 +207,7 @@ React.useEffect(() => {
     }));
   };
 
-  const budgetTour = useTour({
+  useDriverTour({
     tourId: 'budgets-tour',
     steps: budgetTourSteps,
     seenTours: appData.seenTours || [],
@@ -769,7 +774,7 @@ const openEditBudgetDialog = (budgetId: string) => {
                 goalCategoryId: goalData.goalCategoryId,
                 targetAmount: goalData.targetAmount,
                 savedAmount: goalData.savedAmount ?? 0,
-                percentageAllocation: goalData.percentageAllocation,
+                percentageAllocation: goalData.percentageAllocation ?? 0,
                 description: goalData.description,
                 startDate: goalData.startDate,
                 targetDate: goalData.targetDate,
@@ -843,14 +848,6 @@ const openEditBudgetDialog = (budgetId: string) => {
             isIncomeSet={!!monthlyIncome && monthlyIncome > 0}
         />
       )}
-      <GuidedTour
-        steps={budgetTour.steps}
-        isRunning={budgetTour.isRunning}
-        currentStep={budgetTour.currentStep}
-        onNext={budgetTour.nextStep}
-        onPrev={budgetTour.prevStep}
-        onFinish={budgetTour.endTour}
-      />
       <Tabs defaultValue={initialTab} value={currentTab} onValueChange={setCurrentTab} className="flex-grow flex flex-col">
         <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center">
