@@ -109,6 +109,7 @@ export default function Home() {
   const [sheetInitialType, setSheetInitialType] = React.useState<TransactionType | null>(null);
   const [isAddMenuOpen, setIsAddMenuOpen] = React.useState(false);
   const [currentTab, setCurrentTab] = React.useState(initialTab);
+  const [hasSeenWelcomeTourThisSession, setHasSeenWelcomeTourThisSession] = React.useState(false);
 
 
   const [isAddBudgetDialogOpen, setIsAddBudgetDialogOpen] = React.useState(false);
@@ -142,6 +143,7 @@ export default function Home() {
         setAppData(loadedData);
         setTempIncome(loadedData.monthlyIncome?.toString() ?? '');
         setIsLoaded(true);
+        setHasSeenWelcomeTourThisSession(false); // Reset tour status on user change/login
     } else {
         setAppData(defaultAppData);
         setIsLoaded(false);
@@ -210,8 +212,8 @@ React.useEffect(() => {
   useDriverTour({
     tourId: 'welcome-tour',
     steps: welcomeTourSteps,
-    force: true, // Show tour on every login
-    condition: isLoaded && user, // Tour can start when data is loaded for a logged-in user
+    onTourEnd: () => setHasSeenWelcomeTourThisSession(true),
+    condition: isLoaded && user && !hasSeenWelcomeTourThisSession,
   });
 
   const { monthlyIncome, transactions, budgets, categories, savingGoals, savingGoalCategories, hasSeenOnboarding } = appData;

@@ -7,10 +7,8 @@ import { driver, DriveStep } from 'driver.js';
 interface UseDriverTourOptions {
   tourId: string;
   steps: DriveStep[];
-  onTourEnd?: (tourId: string) => void;
+  onTourEnd?: () => void;
   condition?: boolean;
-  force?: boolean; // New property to force the tour
-  seenTours?: string[]; // Make optional as it's not needed when forcing
 }
 
 export const useDriverTour = ({
@@ -18,16 +16,9 @@ export const useDriverTour = ({
   steps,
   onTourEnd,
   condition = true,
-  force = false,
-  seenTours = [],
 }: UseDriverTourOptions) => {
   useEffect(() => {
-    // If `force` is false, check if the tour has been seen.
-    // If `force` is true, this check is skipped.
-    const hasSeen = force ? false : seenTours.includes(tourId);
-
-    // If the tour has not been seen (or is forced) and the general condition is met, start the tour.
-    if (!hasSeen && condition) {
+    if (condition) {
       const timer = setTimeout(() => {
         const driverObj = driver({
           showProgress: true,
@@ -35,14 +26,14 @@ export const useDriverTour = ({
           onDeselected: () => {
             // This callback is fired when the user clicks the overlay to close the tour.
             if (onTourEnd) {
-                onTourEnd(tourId);
+                onTourEnd();
             }
             driverObj.destroy();
           },
           onDestroyed: () => {
             // This is fired when the tour is fully completed or destroyed.
             if (onTourEnd) {
-                onTourEnd(tourId);
+                onTourEnd();
             }
           }
         });
@@ -51,5 +42,6 @@ export const useDriverTour = ({
 
       return () => clearTimeout(timer);
     }
-  }, [tourId, seenTours, condition, steps, onTourEnd, force]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourId, condition, steps]);
 };
