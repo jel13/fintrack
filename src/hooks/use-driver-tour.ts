@@ -28,14 +28,15 @@ export const useDriverTour = ({
         const driverObj = driver({
           showProgress: true,
           steps: steps,
-          onDestroyStarted: () => {
-            // This ensures that if the user closes the tour prematurely (e.g., by pressing ESC),
-            // it's still marked as "seen".
-            if (!driverObj.isActivated()) {
-              onTourEnd(tourId);
-              driverObj.destroy();
-            }
+          onDeselected: () => {
+            // This callback is fired when the user clicks the overlay to close the tour.
+            onTourEnd(tourId);
+            driverObj.destroy();
           },
+          onDestroyed: () => {
+            // This is fired when the tour is fully completed or destroyed.
+            onTourEnd(tourId);
+          }
         });
         driverObj.drive();
       }, 500); // A small delay to ensure the UI is ready for the tour.
