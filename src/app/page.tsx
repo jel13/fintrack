@@ -44,7 +44,6 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from 'next/navigation';
 import { TransactionReceiptDialog } from "@/components/transaction-receipt-dialog";
-import { OnboardingDialog } from "@/components/onboarding-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDriverTour } from "@/hooks/use-driver-tour";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -122,7 +121,6 @@ export default function Home() {
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = React.useState(false);
   const [selectedTransactionForReceipt, setSelectedTransactionForReceipt] = React.useState<SelectedTransactionForReceipt | null>(null);
 
-  const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = React.useState(false); 
   const [historyDateFilter, setHistoryDateFilter] = React.useState('thisMonth');
   const [historyTypeFilter, setHistoryTypeFilter] = React.useState<'all' | 'income' | 'expense' | 'goals'>('all');
 
@@ -144,9 +142,6 @@ export default function Home() {
         setAppData(loadedData);
         setTempIncome(loadedData.monthlyIncome?.toString() ?? '');
         setIsLoaded(true);
-        if (!loadedData.hasSeenOnboarding) {
-            setIsOnboardingDialogOpen(true);
-        }
     } else {
         setAppData(defaultAppData);
         setIsLoaded(false);
@@ -224,7 +219,7 @@ React.useEffect(() => {
     steps: welcomeTourSteps,
     seenTours: appData.seenTours || [],
     onTourEnd: handleTourEnd,
-    condition: isLoaded && user, // Show tour as soon as user is loaded
+    condition: isLoaded && user && !appData.seenTours?.includes('welcome-tour'),
   });
 
   const { monthlyIncome, transactions, budgets, categories, savingGoals, savingGoalCategories, hasSeenOnboarding } = appData;
@@ -661,11 +656,6 @@ const openEditBudgetDialog = (budgetId: string) => {
     setIsReceiptDialogOpen(true);
   };
 
-  const handleDismissOnboarding = () => {
-    setAppData(prev => ({ ...prev, hasSeenOnboarding: true }));
-    setIsOnboardingDialogOpen(false); 
-  };
-
   const openAddTransactionSheetForIncome = () => {
     setEditingTransaction(null);
     setSheetInitialType('income');
@@ -853,13 +843,6 @@ const openEditBudgetDialog = (budgetId: string) => {
 
   return (
     <div className="flex flex-col flex-1 bg-background">
-      {isLoaded && (
-        <OnboardingDialog
-            open={isOnboardingDialogOpen}
-            onDismiss={handleDismissOnboarding}
-            isIncomeSet={!!monthlyIncome && monthlyIncome > 0}
-        />
-      )}
       <Tabs defaultValue={initialTab} value={currentTab} onValueChange={setCurrentTab} className="flex-grow flex flex-col">
         <TabsContent value="home" className="flex-grow overflow-y-auto p-4 space-y-4">
             <div className="flex justify-between items-center">
