@@ -207,19 +207,11 @@ React.useEffect(() => {
         setCurrentTab(initialTab);
     }, [initialTab]);
 
-  const handleTourEnd = (tourId: string) => {
-    setAppData(prev => ({
-        ...prev,
-        seenTours: [...(prev.seenTours || []), tourId],
-    }));
-  };
-
   useDriverTour({
     tourId: 'welcome-tour',
     steps: welcomeTourSteps,
-    seenTours: appData.seenTours || [],
-    onTourEnd: handleTourEnd,
-    condition: isLoaded && user && !appData.seenTours?.includes('welcome-tour'),
+    force: true, // Show tour on every login
+    condition: isLoaded && user, // Tour can start when data is loaded for a logged-in user
   });
 
   const { monthlyIncome, transactions, budgets, categories, savingGoals, savingGoalCategories, hasSeenOnboarding } = appData;
