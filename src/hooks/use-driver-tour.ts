@@ -7,34 +7,29 @@ import { driver, DriveStep } from 'driver.js';
 interface UseDriverTourOptions {
   tourId: string;
   steps: DriveStep[];
-  onTourEnd?: () => void;
   condition?: boolean;
 }
 
 export const useDriverTour = ({
   tourId,
   steps,
-  onTourEnd,
   condition = true,
 }: UseDriverTourOptions) => {
   useEffect(() => {
-    if (condition) {
+    // Check condition and if tour has been seen this session
+    const hasSeenTourThisSession = sessionStorage.getItem(tourId) === 'true';
+
+    if (condition && !hasSeenTourThisSession) {
       const timer = setTimeout(() => {
         const driverObj = driver({
           showProgress: true,
           steps: steps,
           onDeselected: () => {
-            // This callback is fired when the user clicks the overlay to close the tour.
-            if (onTourEnd) {
-                onTourEnd();
-            }
+            sessionStorage.setItem(tourId, 'true');
             driverObj.destroy();
           },
           onDestroyed: () => {
-            // This is fired when the tour is fully completed or destroyed.
-            if (onTourEnd) {
-                onTourEnd();
-            }
+            sessionStorage.setItem(tourId, 'true');
           }
         });
         driverObj.drive();
@@ -42,6 +37,5 @@ export const useDriverTour = ({
 
       return () => clearTimeout(timer);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tourId, condition, steps]);
 };
