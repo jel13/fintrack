@@ -4,6 +4,56 @@ This is a NextJS starter in Firebase Studio.
 
 To get started, take a look at src/app/page.tsx.
 
+## Local Development Setup
+
+Follow these steps to get the project running on your local machine using VS Code or your preferred editor.
+
+### Prerequisites
+
+-   [Node.js](https://nodejs.org/) (v18 or later recommended)
+-   [npm](https://www.npmjs.com/) (usually comes with Node.js)
+-   [Git](https://git-scm.com/)
+
+### Setup Steps
+
+1.  **Clone the Repository**
+
+    ```bash
+    git clone <your-repository-url>
+    cd <project-directory>
+    ```
+
+2.  **Install Dependencies**
+    This command will install all the necessary packages defined in `package.json`.
+
+    ```bash
+    npm install
+    ```
+
+3.  **Set Up Environment Variables**
+    Create a new file named `.env.local` in the root of your project. Copy the contents of the `.env` file (if it has any variables) into `.env.local` and add your Firebase configuration details. This file is ignored by Git and is the safe place for your secret keys.
+
+    You will need to get your Firebase project's web configuration object and add it to `.env.local`.
+
+    ```
+    # .env.local
+    NEXT_PUBLIC_FIREBASE_API_KEY="AIza..."
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project-id.firebaseapp.com"
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your-project-id.appspot.com"
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="..."
+    NEXT_PUBLIC_FIREBASE_APP_ID="1:..."
+    ```
+
+4.  **Run the Development Server**
+    This command starts the Next.js development server, which you can access at `http://localhost:9002` by default.
+
+    ```bash
+    npm run dev
+    ```
+
+The app will now be running in development mode with hot-reloading enabled. Any changes you make to the code will be reflected in your browser instantly.
+
 ## Building for Android (using Capacitor)
 
 This project can be bundled as a native Android application using [Capacitor](https://capacitorjs.com/).
