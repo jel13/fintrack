@@ -1,4 +1,4 @@
-package com.fintrack.mobile;
+package com.fintrack.app;
 
 import com.getcapacitor.BridgeActivity;
 
